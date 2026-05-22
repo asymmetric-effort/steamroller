@@ -4,9 +4,15 @@
 
 ## Current State
 
-The `asymmetric-effort/steamroller` repository is an empty git repo with:
-- `PLAN.md` — exhaustive implementation plan
-- No source code, no tests, no CI, no documentation, no package configuration
+The `asymmetric-effort/steamroller` repository has:
+- `PLAN.md` — exhaustive 1774-line implementation plan
+- `GapAnalysis.md` — this document
+- `README.md` — project overview with logo
+- `logo.png` — project logo
+- `website/` — GitHub Pages SPA (steamroller.asymmetric-effort.com)
+- `.claude/skills` — shared skills submodule
+- **131 GitHub issues** across 15 milestones tracking all implementation work
+- No source code, no tests, no CI, no package configuration yet
 
 ## Target State
 
@@ -189,6 +195,38 @@ A fully functional, zero-dependency TypeScript module bundler that is a drop-in 
 | GX.5 | No type system | missing | 100+ exported types matching rollup's rollup.d.ts |
 | GX.6 | No threading model | missing | Single-threaded async/await, semaphore for maxParallelFileOps |
 
+### GV — Versioning & Distribution (PLAN.md §21)
+
+| ID | Gap | Current | Target |
+|---|---|---|---|
+| GV.1 | No CHANGELOG.md | missing | CHANGELOG.md with Keep a Changelog format |
+| GV.2 | No npm publish pipeline | missing | Tag-triggered GitHub Actions workflow for npm publish |
+| GV.3 | No defineConfig()/VERSION | missing | defineConfig() type helper (3 overloads) + VERSION constant |
+
+### GP — Performance (PLAN.md §24)
+
+| ID | Gap | Current | Target |
+|---|---|---|---|
+| GP.1 | No parser optimizations | missing | Single-pass tokenization, string interning, keyword trie, typed arrays |
+| GP.2 | No graph/codegen optimizations | missing | Lazy parsing, parallel loading, deferred VLQ, array-join concatenation |
+| GP.3 | No benchmark regression CI | missing | Per-commit timing, >10% regression alerts |
+
+### GD — Documentation (PLAN.md §2)
+
+| ID | Gap | Current | Target |
+|---|---|---|---|
+| GD.1 | No docs/ directory | missing | 6 documentation pages (index, JS API, config, plugins, CLI, migration) |
+
+### GI — CI/CD Infrastructure (PLAN.md §3, §20)
+
+| ID | Gap | Current | Target |
+|---|---|---|---|
+| GI.1 | No CodeQL/Dependabot | missing | CodeQL scanning + Dependabot for deps and Actions |
+| GI.2 | No cross-platform CI | missing | Ubuntu + macOS + Windows matrix, Node 18/20/22 |
+| GI.3 | No website deploy workflow | missing | GitHub Actions workflow for website build/deploy |
+| GI.4 | No snapshot testing | missing | Output format, error message, source map, and hash snapshots |
+| GI.5 | No error code parity tests | missing | Test fixtures for all 60+ error codes |
+
 ### GB — Bundled Library Reimplementations
 
 | ID | Gap | Library | Target |
@@ -211,23 +249,27 @@ A fully functional, zero-dependency TypeScript module bundler that is a drop-in 
 
 ## Summary
 
-| Category | Gap Count | Estimated Complexity |
-|---|---|---|
-| G0 — Infrastructure | 11 | Low |
-| G1 — Parser | 15 | Very High |
-| G2 — Module Graph | 10 | High |
-| G3 — Tree-Shaking | 8 | Very High |
-| G4 — Code Generation | 11 | High |
-| G5 — Source Maps | 4 | Medium |
-| G6 — Plugin System | 7 | High |
-| G7 — Code Splitting | 5 | High |
-| G8 — Output Formats | 7 | Medium |
-| G9 — Watch Mode | 4 | Medium |
-| G10 — CLI | 6 | Medium |
-| G11 — Configuration | 3 | Low |
-| G12 — Compatibility | 6 | Medium |
-| GX — Cross-Cutting | 6 | Medium |
-| GB — Reimplementations | 13 | Medium |
-| **Total** | **116** | |
+| Category | Gap Count | Issues | Estimated Complexity |
+|---|---|---|---|
+| G0 — Infrastructure | 11 | 12 | Low |
+| G1 — Parser | 15 | 21 | Very High |
+| G2 — Module Graph | 10 | 9 | High |
+| G3 — Tree-Shaking | 8 | 7 | Very High |
+| G4 — Code Generation | 11 | 11 | High |
+| G5 — Source Maps | 4 | 4 | Medium |
+| G6 — Plugin System | 7 | 8 | High |
+| G7 — Code Splitting | 5 | 5 | High |
+| G8 — Output Formats | 7 | 7 | Medium |
+| G9 — Watch Mode | 4 | 4 | Medium |
+| G10 — CLI | 6 | 5 | Medium |
+| G11 — Configuration | 3 | 3 | Low |
+| G12 — Compatibility | 6 | 8 | Medium |
+| GX — Cross-Cutting | 6 | 10 | Medium |
+| GV — Versioning | 3 | 3 | Low |
+| GP — Performance | 3 | 3 | Medium |
+| GD — Documentation | 1 | 1 | Medium |
+| GI — CI/CD Infrastructure | 5 | 5 | Low |
+| GB — Reimplementations | 13 | 9 | Medium |
+| **Total** | **128** | **131** |
 
-Every gap represents one or more atomic GitHub issues. Some gaps decompose into multiple issues for tractability.
+131 GitHub issues track all identified gaps. Some gaps decompose into multiple issues (parser: 15 gaps → 21 issues). Some gaps share issues (GB items covered by feature-phase issues). Three issues (#118 rollup(), #119 watch(), #15 nightly CI) cover integration work not mapped to a single gap.

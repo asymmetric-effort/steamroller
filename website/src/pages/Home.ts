@@ -15,6 +15,7 @@ export function Home(): ReturnType<typeof createElement> {
 
   return createElement('div', null,
     createElement('section', { className: 'hero' },
+      createElement('img', { src: '/logo.png', alt: 'Steamroller', className: 'hero-logo', width: 96, height: 96 }),
       createElement('h1', null, 'Steamroller'),
       createElement('p', { className: 'hero-subtitle' },
         'A zero-dependency TypeScript reimplementation of ',

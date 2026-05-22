@@ -1,6 +1,12 @@
-# Steamroller
+<p align="center">
+  <img src="logo.png" alt="Steamroller" width="128" height="128">
+</p>
 
-A zero-dependency TypeScript reimplementation of [rollup](https://rollupjs.org) with 100% feature parity and 100% API compatibility.
+<h1 align="center">Steamroller</h1>
+
+<p align="center">
+  A zero-dependency TypeScript reimplementation of <a href="https://rollupjs.org">rollup</a> with 100% feature parity and 100% API compatibility.
+</p>
 
 ## Overview
 

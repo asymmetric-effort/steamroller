@@ -85,10 +85,17 @@ a:hover {
 }
 
 .nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 20px;
   font-weight: 700;
   color: var(--color-primary) !important;
   text-decoration: none;
+}
+
+.nav-logo {
+  border-radius: 6px;
 }
 
 .nav-links {
@@ -128,6 +135,11 @@ a:hover {
 .hero {
   text-align: center;
   padding: 80px 0 48px;
+}
+
+.hero-logo {
+  border-radius: 16px;
+  margin-bottom: 16px;
 }
 
 .hero h1 {
