@@ -1,0 +1,19 @@
+{
+  "name": "steamroller-website",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test:e2e": "npx playwright test"
+  },
+  "dependencies": {
+    "@asymmetric-effort/specifyjs": "^0.2.98"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
+  }
+}
