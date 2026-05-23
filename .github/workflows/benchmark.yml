@@ -1,0 +1,36 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642195f882d5062a8a97e71
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run benchmarks
+        run: |
+          echo "Benchmarks not yet implemented — placeholder"
+          # TODO: npm run bench -- --json > benchmark-results.json
+          echo '{"parse":0,"bundle":0,"render":0}' > benchmark-results.json
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: benchmark-results.json
+          retention-days: 90
