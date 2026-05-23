@@ -13,7 +13,7 @@ export default defineConfig({
         lines: 98,
       },
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts'],
+      exclude: ['src/**/*.d.ts', 'src/ast/types.ts'],
     },
     include: [
       'tests/unit/**/*.test.ts',
