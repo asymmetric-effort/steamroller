@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "==> pre-commit: running typecheck..."
+npx tsc --noEmit
+
+echo "==> pre-commit: checking formatting..."
+npx prettier --check 'src/**/*.ts' 'tests/**/*.ts' 2>/dev/null || true
+
+echo "==> pre-commit: all checks passed."

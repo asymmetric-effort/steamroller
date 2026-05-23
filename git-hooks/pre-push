@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "==> pre-push: running tests with coverage..."
+npx vitest run --coverage --coverage.thresholds.statements=98 --coverage.thresholds.branches=98 --coverage.thresholds.functions=98 --coverage.thresholds.lines=98
+
+echo "==> pre-push: all checks passed."
