@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
 
-export const config = defineConfig({
+// vitest requires a default export for config files
+// eslint-disable-next-line import/no-default-export
+export default defineConfig({
   test: {
     coverage: {
       provider: 'v8',
@@ -17,6 +19,7 @@ export const config = defineConfig({
       'tests/unit/**/*.test.ts',
       'tests/integration/**/*.test.ts',
       'tests/e2e/**/*.test.ts',
+      'tests/compat/**/*.test.ts',
     ],
   },
 });
