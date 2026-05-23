@@ -1,0 +1,64 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642195f882d5062a8a97e71
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run parser fuzzer
+        run: |
+          echo "Parser fuzzer not yet implemented — placeholder for tests/fuzz/"
+          # TODO: npm run fuzz -- --duration=3600
+      - name: Upload fuzz results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fuzz-results-${{ github.run_id }}
+          path: tests/fuzz/results/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  differential:
+    name: Differential Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642195f882d5062a8a97e71
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run differential tests
+        run: |
+          echo "Differential testing not yet implemented — placeholder for tests/compat/"
+          # TODO: npm run test:compat
+      - name: Upload differential results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: differential-results-${{ github.run_id }}
+          path: tests/compat/results/
+          retention-days: 30
+          if-no-files-found: ignore
