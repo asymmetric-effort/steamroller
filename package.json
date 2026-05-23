@@ -1,0 +1,45 @@
+{
+  "name": "steamroller",
+  "version": "0.0.0",
+  "description": "A zero-dependency JavaScript bundler",
+  "license": "MIT",
+  "author": "Asymmetric Effort <info@asymmetric-effort.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asymmetric-effort/steamroller.git"
+  },
+  "type": "module",
+  "main": "dist/steamroller.cjs",
+  "module": "dist/steamroller.mjs",
+  "types": "dist/steamroller.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/steamroller.mjs",
+      "require": "./dist/steamroller.cjs",
+      "types": "./dist/steamroller.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --coverage",
+    "lint": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "clean": "rm -rf dist coverage",
+    "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
+  }
+}
