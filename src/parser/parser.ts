@@ -12,6 +12,13 @@ import type * as AST from '../ast/types.js';
 import { Lexer } from './lexer.js';
 import { TokenType } from './token-types.js';
 import { tokenTypeName } from './token-types.js';
+import {
+  parseFunctionDeclaration,
+  parseClassDeclaration,
+  parseImportDeclaration,
+  parseExportDeclaration,
+} from './declarations.js';
+import type { ParserContext } from './declarations.js';
 
 /**
  * Options for the parser.
@@ -31,11 +38,11 @@ export interface ParseOptions {
  * Internal state fields are mutable (documented exception for parser
  * state machine pattern).
  */
-export class Parser {
+export class Parser implements ParserContext {
   /** The lexer producing the token stream. */
-  private lexer: Lexer;
+  lexer: Lexer;
   /** Whether parsing as module or script. */
-  private sourceType: 'module' | 'script';
+  sourceType: 'module' | 'script';
 
   /**
    * Create a new Parser for the given source text.
@@ -84,9 +91,8 @@ export class Parser {
   /**
    * Parse a single statement or module declaration.
    *
-   * This is a placeholder that handles only semicolons (empty statements)
-   * for now. Full statement parsing will be implemented by issues #19,
-   * #22, and #24.
+   * Delegates to specialized parsers for declarations (function, class,
+   * import, export). Other statement types will be added by subsequent issues.
    *
    * @returns The parsed statement or module declaration AST node.
    * @throws {SyntaxError} For unrecognized tokens (statement parsing not
@@ -105,9 +111,122 @@ export class Parser {
       });
     }
 
+    // Function declaration
+    if (token.type === TokenType.Function) {
+      return parseFunctionDeclaration(this, false);
+    }
+
+    // Async function declaration
+    if (token.type === TokenType.Async) {
+      const saved = this.lexer.saveState();
+      this.lexer.next();
+      if (this.lexer.is(TokenType.Function)) {
+        return parseFunctionDeclaration(this, true);
+      }
+      this.lexer.restoreState(saved);
+    }
+
+    // Class declaration
+    if (token.type === TokenType.Class) {
+      return parseClassDeclaration(this);
+    }
+
+    // Import declaration (module only)
+    if (token.type === TokenType.Import) {
+      return parseImportDeclaration(this);
+    }
+
+    // Export declaration (module only)
+    if (token.type === TokenType.Export) {
+      return parseExportDeclaration(this);
+    }
+
     const typeName = tokenTypeName(token.type);
     throw new SyntaxError(
       `Statement parsing not yet implemented for ${typeName} at position ${token.start}`,
+    );
+  }
+
+  /**
+   * Parse a block statement: { ... }
+   *
+   * @returns The BlockStatement AST node.
+   */
+  parseBlockStatement(): AST.BlockStatement {
+    const start = this.lexer.token.start;
+    this.lexer.expect(TokenType.LeftBrace);
+
+    const body: Array<AST.Statement> = [];
+    while (!this.lexer.is(TokenType.RightBrace) && !this.lexer.is(TokenType.EOF)) {
+      const stmt = this.parseStatement() as AST.Statement;
+      body.push(stmt);
+    }
+
+    const endToken = this.lexer.expect(TokenType.RightBrace);
+
+    return Object.freeze({
+      type: 'BlockStatement' as const,
+      body: Object.freeze(body),
+      start,
+      end: endToken.end,
+    });
+  }
+
+  /**
+   * Parse an expression (placeholder for full expression parsing).
+   *
+   * Currently handles identifiers and literals for use by declaration parsers.
+   *
+   * @returns The Expression AST node.
+   */
+  parseExpression(): AST.Expression {
+    const token = this.lexer.token;
+
+    if (token.type === TokenType.Identifier) {
+      this.lexer.next();
+      return Object.freeze({
+        type: 'Identifier' as const,
+        name: token.value as string,
+        start: token.start,
+        end: token.end,
+      });
+    }
+
+    if (token.type === TokenType.NumericLiteral || token.type === TokenType.StringLiteral) {
+      this.lexer.next();
+      return Object.freeze({
+        type: 'Literal' as const,
+        value: token.value as string | number,
+        raw: token.raw,
+        start: token.start,
+        end: token.end,
+      });
+    }
+
+    if (token.type === TokenType.True || token.type === TokenType.False) {
+      this.lexer.next();
+      return Object.freeze({
+        type: 'Literal' as const,
+        value: token.value as boolean,
+        raw: token.raw,
+        start: token.start,
+        end: token.end,
+      });
+    }
+
+    if (token.type === TokenType.Null) {
+      this.lexer.next();
+      return Object.freeze({
+        type: 'Literal' as const,
+        value: null,
+        raw: token.raw,
+        start: token.start,
+        end: token.end,
+      });
+    }
+
+    throw new SyntaxError(
+      `Expression parsing not yet implemented for ${tokenTypeName(token.type)} at position ${token.start}`,
     );
   }
 }
