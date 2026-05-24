@@ -70,8 +70,18 @@ export const parseFunctionExpression = (
   // Parse parameters
   const params = parseParams(ctx);
 
+  // Save previous context and set async/generator flags for body parsing
+  const prevAsync = ctx.lexer.inAsync;
+  const prevGenerator = ctx.lexer.inGenerator;
+  ctx.lexer.inAsync = isAsync;
+  ctx.lexer.inGenerator = generator;
+
   // Parse body
   const body = ctx.parseBlockStatementFromLexer(ctx.lexer);
+
+  // Restore previous context
+  ctx.lexer.inAsync = prevAsync;
+  ctx.lexer.inGenerator = prevGenerator;
 
   return Object.freeze({
     type: "FunctionExpression" as const,
@@ -112,10 +122,21 @@ export const parseArrowFunction = (
   // Consume '=>'
   ctx.lexer.expect(TokenType.Arrow);
 
+  // Save previous context and set async flag for body parsing
+  const prevAsync = ctx.lexer.inAsync;
+  const prevGenerator = ctx.lexer.inGenerator;
+  ctx.lexer.inAsync = isAsync;
+  ctx.lexer.inGenerator = false;
+
   // Determine body type: block or expression
   if (ctx.lexer.is(TokenType.LeftBrace)) {
     // Block body: () => { ... }
     const body = ctx.parseBlockStatementFromLexer(ctx.lexer);
+
+    // Restore previous context
+    ctx.lexer.inAsync = prevAsync;
+    ctx.lexer.inGenerator = prevGenerator;
+
     return Object.freeze({
       type: "ArrowFunctionExpression" as const,
       id: null,
@@ -131,6 +152,11 @@ export const parseArrowFunction = (
 
   // Concise body: () => expr
   const body = ctx.parseAssignmentExpression(ctx.lexer, true);
+
+  // Restore previous context
+  ctx.lexer.inAsync = prevAsync;
+  ctx.lexer.inGenerator = prevGenerator;
+
   return Object.freeze({
     type: "ArrowFunctionExpression" as const,
     id: null,

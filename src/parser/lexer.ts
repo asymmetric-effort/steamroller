@@ -36,6 +36,8 @@ export interface LexerState {
   readonly hadLineTerminatorBefore: boolean;
   readonly previousTokenType: number;
   readonly templateDepth: number;
+  readonly inAsync: boolean;
+  readonly inGenerator: boolean;
 }
 
 /**
@@ -133,6 +135,10 @@ export class Lexer {
   private previousTokenType: number;
   /** Whether the hashbang at source start has been processed. */
   private hashbangProcessed: boolean;
+  /** Whether the current parsing context is inside an async function. */
+  private _inAsync: boolean;
+  /** Whether the current parsing context is inside a generator function. */
+  private _inGenerator: boolean;
 
   /**
    * Create a new Lexer for the given source text.
@@ -149,6 +155,8 @@ export class Lexer {
     this.templateDepth = 0;
     this.previousTokenType = -1;
     this.hashbangProcessed = false;
+    this._inAsync = false;
+    this._inGenerator = false;
 
     // Handle hashbang if allowed and present
     if (allowHashBang) {
@@ -175,6 +183,34 @@ export class Lexer {
    */
   get hadLineTerminatorBefore(): boolean {
     return this.hadLineTerminator;
+  }
+
+  /**
+   * Whether the parser is currently inside an async function body.
+   */
+  get inAsync(): boolean {
+    return this._inAsync;
+  }
+
+  /**
+   * Set whether the parser is inside an async function body.
+   */
+  set inAsync(value: boolean) {
+    this._inAsync = value;
+  }
+
+  /**
+   * Whether the parser is currently inside a generator function body.
+   */
+  get inGenerator(): boolean {
+    return this._inGenerator;
+  }
+
+  /**
+   * Set whether the parser is inside a generator function body.
+   */
+  set inGenerator(value: boolean) {
+    this._inGenerator = value;
   }
 
   /**
@@ -244,6 +280,8 @@ export class Lexer {
       hadLineTerminatorBefore: this.hadLineTerminator,
       previousTokenType: this.previousTokenType,
       templateDepth: this.templateDepth,
+      inAsync: this._inAsync,
+      inGenerator: this._inGenerator,
     });
   }
 
@@ -258,6 +296,8 @@ export class Lexer {
     this.hadLineTerminator = state.hadLineTerminatorBefore;
     this.previousTokenType = state.previousTokenType;
     this.templateDepth = state.templateDepth;
+    this._inAsync = state.inAsync;
+    this._inGenerator = state.inGenerator;
   }
 
   /**
