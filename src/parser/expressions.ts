@@ -3,9 +3,9 @@
  *
  * Handles primary/literal expressions including identifiers, literals,
  * this, arrays, objects, template literals, and parenthesized expressions.
- * Also provides basic assignment and sequence expression parsing.
+ * Also provides assignment, sequence, binary, unary, update, and
+ * conditional expression parsing via Pratt parsing (issue #29).
  *
- * Operator precedence (Pratt parsing) will be implemented by issue #29.
  * Function/arrow/class expressions will be implemented by issue #27.
  * Member/call expressions will be implemented by issue #31.
  *
@@ -16,15 +16,26 @@ import type * as AST from "../ast/types.js";
 import type { Lexer } from "./lexer.js";
 import { TokenType } from "./token-types.js";
 import { tokenTypeName } from "./token-types.js";
+import {
+  parseBinaryExpression,
+  parseUnaryExpression,
+  parseConditionalExpression,
+  parseAssignment,
+  setPrimaryExpressionParser,
+} from "./operators.js";
 
 /**
  * Parse a full expression, handling sequence expressions (comma-separated).
  *
  * @param lexer - The lexer instance to consume tokens from.
+ * @param allowIn - Whether the `in` operator is permitted. Defaults to true.
  * @returns The parsed Expression AST node.
  */
-export const parseExpression = (lexer: Lexer): AST.Expression => {
-  const expr = parseAssignmentExpression(lexer);
+export const parseExpression = (
+  lexer: Lexer,
+  allowIn: boolean = true,
+): AST.Expression => {
+  const expr = parseAssignmentExpression(lexer, allowIn);
 
   // Check for sequence expression (comma-separated)
   if (!lexer.is(TokenType.Comma)) {
@@ -36,7 +47,7 @@ export const parseExpression = (lexer: Lexer): AST.Expression => {
 
   while (lexer.is(TokenType.Comma)) {
     lexer.next();
-    const next = parseAssignmentExpression(lexer);
+    const next = parseAssignmentExpression(lexer, allowIn);
     expressions.push(next);
   }
 
@@ -51,43 +62,43 @@ export const parseExpression = (lexer: Lexer): AST.Expression => {
 };
 
 /**
- * Parse an assignment expression (simple = form for now).
+ * Parse an assignment expression with full operator support.
  *
- * Full compound assignment operators will be handled when operator
- * parsing is implemented in issue #29.
+ * Pipeline: unary -> binary (Pratt) -> conditional -> assignment check.
+ * If `allowIn` is false (for-loop init), the `in` operator is excluded
+ * from binary precedence.
  *
  * @param lexer - The lexer instance.
+ * @param allowIn - Whether the `in` operator is permitted. Defaults to true.
  * @returns The parsed Expression AST node.
  */
-export const parseAssignmentExpression = (lexer: Lexer): AST.Expression => {
-  const left = parseMaybeUnary(lexer);
+export const parseAssignmentExpression = (
+  lexer: Lexer,
+  allowIn: boolean = true,
+): AST.Expression => {
+  // Parse unary (prefix operators + primary + postfix)
+  const unary = parseUnaryExpression(lexer, () =>
+    parsePrimaryExpression(lexer),
+  );
 
-  if (lexer.is(TokenType.Equals)) {
-    lexer.next();
-    const right = parseAssignmentExpression(lexer);
-    return Object.freeze({
-      type: "AssignmentExpression" as const,
-      start: left.start,
-      end: right.end,
-      operator: "=" as const,
-      left,
-      right,
-    });
+  // Parse binary/logical with Pratt precedence
+  const binary = parseBinaryExpression(lexer, unary, 1, allowIn);
+
+  // Parse conditional (ternary)
+  const conditional = parseConditionalExpression(lexer, binary, () =>
+    parseAssignmentExpression(lexer, allowIn),
+  );
+
+  // Check for assignment
+  const assignment = parseAssignment(lexer, conditional, () =>
+    parseAssignmentExpression(lexer, allowIn),
+  );
+
+  if (assignment !== null) {
+    return assignment;
   }
 
-  return left;
-};
-
-/**
- * Stub for unary/update expression parsing.
- * Will be filled by issue #29 (operator precedence).
- * For now just delegates to primary expressions.
- *
- * @param lexer - The lexer instance.
- * @returns The parsed Expression AST node.
- */
-const parseMaybeUnary = (lexer: Lexer): AST.Expression => {
-  return parsePrimaryExpression(lexer);
+  return conditional;
 };
 
 /**
@@ -905,3 +916,7 @@ const parseClassExpressionStub = (lexer: Lexer): AST.ClassExpression => {
     `Class expressions not yet implemented at position ${lexer.token.start}`,
   );
 };
+
+// Register primary expression parser with the operators module to
+// break the circular dependency.
+setPrimaryExpressionParser(parsePrimaryExpression);
