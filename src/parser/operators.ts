@@ -13,6 +13,7 @@
 import type * as AST from "../ast/types.js";
 import type { Lexer } from "./lexer.js";
 import { TokenType } from "./token-types.js";
+import { expressionToPattern } from "./patterns.js";
 
 /**
  * Precedence levels for binary and logical operators.
@@ -424,6 +425,9 @@ export const parseConditionalExpression = (
 /**
  * Parse an assignment expression if the current token is an assignment operator.
  *
+ * When the left-hand side is an ArrayExpression or ObjectExpression and the
+ * operator is '=', converts the expression to a destructuring pattern.
+ *
  * @param lexer - The lexer instance.
  * @param left - The left-hand side expression.
  * @param parseRight - Function to parse the right-hand side (assignment expression).
@@ -440,6 +444,16 @@ export const parseAssignment = (
   }
 
   lexer.next(); // consume assignment operator
+
+  // Convert array/object expression to pattern for destructuring assignment
+  let assignLeft: AST.Pattern | AST.Expression = left;
+  if (
+    operator === "=" &&
+    (left.type === "ArrayExpression" || left.type === "ObjectExpression")
+  ) {
+    assignLeft = expressionToPattern(left);
+  }
+
   const right = parseRight();
 
   return Object.freeze({
@@ -447,7 +461,7 @@ export const parseAssignment = (
     start: left.start,
     end: right.end,
     operator,
-    left,
+    left: assignLeft,
     right,
   });
 };

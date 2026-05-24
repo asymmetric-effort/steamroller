@@ -11,6 +11,7 @@
 import type * as AST from "../ast/types.js";
 import type { Lexer } from "./lexer.js";
 import { TokenType } from "./token-types.js";
+import { parseBindingPattern as parseBindingPatternFromModule } from "./patterns.js";
 
 /**
  * Extended ImportDeclaration that supports import attributes.
@@ -109,7 +110,8 @@ export const parseFunctionDeclaration = (
 /**
  * Parse function parameters.
  *
- * Handles simple identifiers, rest elements (...args), and default values.
+ * Handles simple identifiers, destructuring patterns (array/object),
+ * rest elements (...args), and default values.
  *
  * @param ctx - The parser context.
  * @returns Array of Pattern nodes.
@@ -118,6 +120,7 @@ const parseParameters = (ctx: ParserContext): Array<AST.Pattern> => {
   ctx.lexer.expect(TokenType.LeftParen);
 
   const params: Array<AST.Pattern> = [];
+  const parseAssignExpr = (): AST.Expression => ctx.parseAssignmentExpression();
 
   while (!ctx.lexer.is(TokenType.RightParen) && !ctx.lexer.is(TokenType.EOF)) {
     if (params.length > 0) {
@@ -128,13 +131,10 @@ const parseParameters = (ctx: ParserContext): Array<AST.Pattern> => {
     if (ctx.lexer.is(TokenType.Ellipsis)) {
       const restStart = ctx.lexer.token.start;
       ctx.lexer.next();
-      const argToken = ctx.lexer.expect(TokenType.Identifier);
-      const argument: AST.Identifier = Object.freeze({
-        type: "Identifier" as const,
-        name: argToken.value as string,
-        start: argToken.start,
-        end: argToken.end,
-      });
+      const argument = parseBindingPatternFromModule(
+        ctx.lexer,
+        parseAssignExpr,
+      );
       params.push(
         Object.freeze({
           type: "RestElement" as const,
@@ -147,31 +147,25 @@ const parseParameters = (ctx: ParserContext): Array<AST.Pattern> => {
       break;
     }
 
-    // Simple identifier
-    const paramToken = ctx.lexer.expect(TokenType.Identifier);
-    const paramId: AST.Identifier = Object.freeze({
-      type: "Identifier" as const,
-      name: paramToken.value as string,
-      start: paramToken.start,
-      end: paramToken.end,
-    });
+    // Parse binding pattern (identifier, array pattern, or object pattern)
+    const param = parseBindingPatternFromModule(ctx.lexer, parseAssignExpr);
 
     // Check for default value (use assignment expression to avoid consuming comma)
     if (ctx.lexer.is(TokenType.Equals)) {
-      const assignStart = paramId.start;
+      const assignStart = param.start;
       ctx.lexer.next();
       const right = ctx.parseAssignmentExpression();
       params.push(
         Object.freeze({
           type: "AssignmentPattern" as const,
-          left: paramId,
+          left: param,
           right,
           start: assignStart,
           end: right.end,
         }),
       );
     } else {
-      params.push(paramId);
+      params.push(param);
     }
   }
 

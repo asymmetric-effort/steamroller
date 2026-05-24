@@ -12,7 +12,6 @@ import type * as AST from "../ast/types.js";
 import type { Token } from "./token.js";
 import { Lexer } from "./lexer.js";
 import { TokenType } from "./token-types.js";
-import { tokenTypeName } from "./token-types.js";
 import {
   parseFunctionDeclaration,
   parseClassDeclaration,
@@ -20,6 +19,7 @@ import {
   parseExportDeclaration,
 } from "./declarations.js";
 import type { ParserContext as DeclarationsContext } from "./declarations.js";
+import { parseBindingPattern as parseBindingPatternFromModule } from "./patterns.js";
 import {
   parseExpression as parseExpressionModule,
   parseAssignmentExpression as parseAssignmentExpressionModule,
@@ -327,27 +327,14 @@ export class Parser implements DeclarationsContext, StatementsContext {
   /**
    * Parse a binding pattern for destructuring.
    *
-   * Currently handles simple identifiers. Full destructuring patterns
-   * will be implemented by a subsequent issue.
+   * Handles identifiers, array patterns, and object patterns
+   * with full support for nesting, defaults, and rest elements.
    *
    * @returns The Pattern AST node.
    */
   parseBindingPattern(): AST.Pattern {
-    const token = this.lexer.token;
-
-    if (token.type === TokenType.Identifier) {
-      this.lexer.next();
-      return Object.freeze({
-        type: "Identifier" as const,
-        name: token.value as string,
-        start: token.start,
-        end: token.end,
-      });
-    }
-
-    const typeName = tokenTypeName(token.type);
-    throw new SyntaxError(
-      `Expected binding pattern but found ${typeName} at position ${token.start}`,
+    return parseBindingPatternFromModule(this.lexer, () =>
+      parseAssignmentExpressionModule(this.lexer, this.allowIn),
     );
   }
 }
