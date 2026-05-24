@@ -6,16 +6,13 @@
  */
 
 /** Callback invoked on process exit or signal. */
-export type ExitCallback = (
-  code: number | null,
-  signal: string | null,
-) => void;
+export type ExitCallback = (code: number | null, signal: string | null) => void;
 
 /** Maximum number of registered callbacks. */
 const MAX_CALLBACKS = 100;
 
 /** Signals we listen for. */
-const SIGNALS: ReadonlyArray<NodeJS.Signals> = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+const SIGNALS: ReadonlyArray<NodeJS.Signals> = ["SIGINT", "SIGTERM", "SIGHUP"];
 
 /** Mutable internal state stored in a const object. */
 const state = {
@@ -61,7 +58,7 @@ const installListeners = (): void => {
   }
   state.listenersInstalled = true;
 
-  process.on('exit', onProcessExit);
+  process.on("exit", onProcessExit);
   for (const sig of SIGNALS) {
     process.on(sig, onSignal);
   }
@@ -74,9 +71,7 @@ const installListeners = (): void => {
  * @returns A function that unregisters the callback.
  * @throws {Error} If maximum callback limit is reached.
  */
-export const onExit = (
-  callback: ExitCallback,
-): (() => void) => {
+export const onExit = (callback: ExitCallback): (() => void) => {
   if (state.callbacks.length >= MAX_CALLBACKS) {
     throw new Error(
       `signal-exit: maximum of ${MAX_CALLBACKS} callbacks exceeded`,
@@ -104,7 +99,7 @@ export const _resetForTesting = (): void => {
   state.cleanupDone = false;
   state.callbacks.length = 0;
   state.listenersInstalled = false;
-  process.removeListener('exit', onProcessExit);
+  process.removeListener("exit", onProcessExit);
   for (const sig of SIGNALS) {
     process.removeListener(sig, onSignal);
   }

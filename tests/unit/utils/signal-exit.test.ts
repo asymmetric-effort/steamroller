@@ -1,16 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   onExit,
   _resetForTesting,
   type ExitCallback,
-} from '../../../src/utils/signal-exit.js';
+} from "../../../src/utils/signal-exit.js";
 
-describe('signal-exit', () => {
+describe("signal-exit", () => {
   /** Spies for process.on / process.removeListener / process.kill */
-  const processOnSpy = vi.spyOn(process, 'on');
-  const processRemoveListenerSpy = vi.spyOn(process, 'removeListener');
+  const processOnSpy = vi.spyOn(process, "on");
+  const processRemoveListenerSpy = vi.spyOn(process, "removeListener");
   const processKillSpy = vi
-    .spyOn(process, 'kill')
+    .spyOn(process, "kill")
     .mockImplementation(() => true);
 
   beforeEach(() => {
@@ -26,26 +26,26 @@ describe('signal-exit', () => {
 
   // ── Registration ───────────────────────────────────────────────
 
-  describe('onExit', () => {
-    it('should register a callback and install process listeners', () => {
+  describe("onExit", () => {
+    it("should register a callback and install process listeners", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       // Should have registered exit + 3 signals = 4 calls
       const eventNames = processOnSpy.mock.calls.map((c) => c[0]);
-      expect(eventNames).toContain('exit');
-      expect(eventNames).toContain('SIGINT');
-      expect(eventNames).toContain('SIGTERM');
-      expect(eventNames).toContain('SIGHUP');
+      expect(eventNames).toContain("exit");
+      expect(eventNames).toContain("SIGINT");
+      expect(eventNames).toContain("SIGTERM");
+      expect(eventNames).toContain("SIGHUP");
     });
 
-    it('should return an unregister function', () => {
+    it("should return an unregister function", () => {
       const cb: ExitCallback = vi.fn();
       const unregister = onExit(cb);
-      expect(typeof unregister).toBe('function');
+      expect(typeof unregister).toBe("function");
     });
 
-    it('should install listeners only once for multiple registrations', () => {
+    it("should install listeners only once for multiple registrations", () => {
       const cb1: ExitCallback = vi.fn();
       const cb2: ExitCallback = vi.fn();
       onExit(cb1);
@@ -58,15 +58,15 @@ describe('signal-exit', () => {
 
   // ── Unregister ─────────────────────────────────────────────────
 
-  describe('unregister', () => {
-    it('should remove the callback so it does not fire on exit', () => {
+  describe("unregister", () => {
+    it("should remove the callback so it does not fire on exit", () => {
       const cb: ExitCallback = vi.fn();
       const unregister = onExit(cb);
       unregister();
 
       // Simulate exit event
       const exitHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as ((code: number) => void) | undefined;
       expect(exitHandler).toBeDefined();
       exitHandler!(0);
@@ -74,7 +74,7 @@ describe('signal-exit', () => {
       expect(cb).not.toHaveBeenCalled();
     });
 
-    it('should be safe to call unregister multiple times', () => {
+    it("should be safe to call unregister multiple times", () => {
       const cb: ExitCallback = vi.fn();
       const unregister = onExit(cb);
       unregister();
@@ -85,13 +85,13 @@ describe('signal-exit', () => {
 
   // ── Process exit event ─────────────────────────────────────────
 
-  describe('process exit event', () => {
-    it('should call the callback with (code, null) on exit', () => {
+  describe("process exit event", () => {
+    it("should call the callback with (code, null) on exit", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       const exitHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as (code: number) => void;
       exitHandler(42);
 
@@ -99,12 +99,12 @@ describe('signal-exit', () => {
       expect(cb).toHaveBeenCalledWith(42, null);
     });
 
-    it('should pass code 0 for normal exit', () => {
+    it("should pass code 0 for normal exit", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       const exitHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as (code: number) => void;
       exitHandler(0);
 
@@ -114,13 +114,13 @@ describe('signal-exit', () => {
 
   // ── Exactly-once guarantee ─────────────────────────────────────
 
-  describe('exactly-once execution', () => {
-    it('should run callbacks only once even if exit fires twice', () => {
+  describe("exactly-once execution", () => {
+    it("should run callbacks only once even if exit fires twice", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       const exitHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as (code: number) => void;
 
       exitHandler(0);
@@ -129,19 +129,19 @@ describe('signal-exit', () => {
       expect(cb).toHaveBeenCalledOnce();
     });
 
-    it('should not run callbacks if signal fires after exit', () => {
+    it("should not run callbacks if signal fires after exit", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       const exitHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as (code: number) => void;
       const sigHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'SIGINT',
+        (c) => c[0] === "SIGINT",
       )?.[1] as (signal: NodeJS.Signals) => void;
 
       exitHandler(0);
-      sigHandler('SIGINT');
+      sigHandler("SIGINT");
 
       expect(cb).toHaveBeenCalledOnce();
     });
@@ -149,8 +149,8 @@ describe('signal-exit', () => {
 
   // ── Multiple callbacks ─────────────────────────────────────────
 
-  describe('multiple callbacks', () => {
-    it('should fire all registered callbacks on exit', () => {
+  describe("multiple callbacks", () => {
+    it("should fire all registered callbacks on exit", () => {
       const cb1: ExitCallback = vi.fn();
       const cb2: ExitCallback = vi.fn();
       const cb3: ExitCallback = vi.fn();
@@ -159,7 +159,7 @@ describe('signal-exit', () => {
       onExit(cb3);
 
       const exitHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as (code: number) => void;
       exitHandler(1);
 
@@ -168,7 +168,7 @@ describe('signal-exit', () => {
       expect(cb3).toHaveBeenCalledOnce();
     });
 
-    it('should not fire unregistered callbacks among multiple', () => {
+    it("should not fire unregistered callbacks among multiple", () => {
       const cb1: ExitCallback = vi.fn();
       const cb2: ExitCallback = vi.fn();
       onExit(cb1);
@@ -176,7 +176,7 @@ describe('signal-exit', () => {
       unregister2();
 
       const exitHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as (code: number) => void;
       exitHandler(0);
 
@@ -187,18 +187,18 @@ describe('signal-exit', () => {
 
   // ── Bounded callbacks ──────────────────────────────────────────
 
-  describe('max callbacks bound', () => {
-    it('should throw when exceeding 100 callbacks', () => {
+  describe("max callbacks bound", () => {
+    it("should throw when exceeding 100 callbacks", () => {
       for (const _ of Array.from({ length: 100 })) {
         onExit(vi.fn());
       }
 
       expect(() => onExit(vi.fn())).toThrow(
-        'signal-exit: maximum of 100 callbacks exceeded',
+        "signal-exit: maximum of 100 callbacks exceeded",
       );
     });
 
-    it('should allow registering after unregistering when at limit', () => {
+    it("should allow registering after unregistering when at limit", () => {
       const unregisters: Array<() => void> = [];
       for (const _ of Array.from({ length: 100 })) {
         unregisters.push(onExit(vi.fn()));
@@ -214,70 +214,70 @@ describe('signal-exit', () => {
 
   // ── Signal handling ────────────────────────────────────────────
 
-  describe('signal handling', () => {
-    it('should call callback with (null, signal) on SIGINT', () => {
+  describe("signal handling", () => {
+    it("should call callback with (null, signal) on SIGINT", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       const sigHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'SIGINT',
+        (c) => c[0] === "SIGINT",
       )?.[1] as (signal: NodeJS.Signals) => void;
-      sigHandler('SIGINT');
+      sigHandler("SIGINT");
 
-      expect(cb).toHaveBeenCalledWith(null, 'SIGINT');
+      expect(cb).toHaveBeenCalledWith(null, "SIGINT");
     });
 
-    it('should call callback with (null, signal) on SIGTERM', () => {
+    it("should call callback with (null, signal) on SIGTERM", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       const sigHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'SIGTERM',
+        (c) => c[0] === "SIGTERM",
       )?.[1] as (signal: NodeJS.Signals) => void;
-      sigHandler('SIGTERM');
+      sigHandler("SIGTERM");
 
-      expect(cb).toHaveBeenCalledWith(null, 'SIGTERM');
+      expect(cb).toHaveBeenCalledWith(null, "SIGTERM");
     });
 
-    it('should call callback with (null, signal) on SIGHUP', () => {
+    it("should call callback with (null, signal) on SIGHUP", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       const sigHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'SIGHUP',
+        (c) => c[0] === "SIGHUP",
       )?.[1] as (signal: NodeJS.Signals) => void;
-      sigHandler('SIGHUP');
+      sigHandler("SIGHUP");
 
-      expect(cb).toHaveBeenCalledWith(null, 'SIGHUP');
+      expect(cb).toHaveBeenCalledWith(null, "SIGHUP");
     });
 
-    it('should remove its own listener and re-emit the signal', () => {
+    it("should remove its own listener and re-emit the signal", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       const sigHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'SIGTERM',
+        (c) => c[0] === "SIGTERM",
       )?.[1] as (signal: NodeJS.Signals) => void;
-      sigHandler('SIGTERM');
+      sigHandler("SIGTERM");
 
       expect(processRemoveListenerSpy).toHaveBeenCalledWith(
-        'SIGTERM',
+        "SIGTERM",
         sigHandler,
       );
-      expect(processKillSpy).toHaveBeenCalledWith(process.pid, 'SIGTERM');
+      expect(processKillSpy).toHaveBeenCalledWith(process.pid, "SIGTERM");
     });
   });
 
   // ── _resetForTesting ───────────────────────────────────────────
 
-  describe('_resetForTesting', () => {
-    it('should clear state so new callbacks can be registered fresh', () => {
+  describe("_resetForTesting", () => {
+    it("should clear state so new callbacks can be registered fresh", () => {
       const cb: ExitCallback = vi.fn();
       onExit(cb);
 
       // Trigger exit so cleanupDone = true
       const exitHandler = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as (code: number) => void;
       exitHandler(0);
 
@@ -292,27 +292,25 @@ describe('signal-exit', () => {
       onExit(cb2);
 
       const exitHandler2 = processOnSpy.mock.calls.find(
-        (c) => c[0] === 'exit',
+        (c) => c[0] === "exit",
       )?.[1] as (code: number) => void;
       exitHandler2(0);
 
       expect(cb2).toHaveBeenCalledOnce();
     });
 
-    it('should remove process listeners on reset', () => {
+    it("should remove process listeners on reset", () => {
       onExit(vi.fn());
       processRemoveListenerSpy.mockClear();
 
       _resetForTesting();
 
       // Should remove exit + 3 signals = 4 removeListener calls
-      const eventNames = processRemoveListenerSpy.mock.calls.map(
-        (c) => c[0],
-      );
-      expect(eventNames).toContain('exit');
-      expect(eventNames).toContain('SIGINT');
-      expect(eventNames).toContain('SIGTERM');
-      expect(eventNames).toContain('SIGHUP');
+      const eventNames = processRemoveListenerSpy.mock.calls.map((c) => c[0]);
+      expect(eventNames).toContain("exit");
+      expect(eventNames).toContain("SIGINT");
+      expect(eventNames).toContain("SIGTERM");
+      expect(eventNames).toContain("SIGHUP");
     });
   });
 });

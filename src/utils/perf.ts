@@ -115,11 +115,7 @@ export const createPerfTimer = (): PerfTimer => {
     getTimings: (): SerializedTimings => {
       const result: Record<string, readonly [number, number, number]> = {};
       timings.forEach((value: TimingEntry, key: string) => {
-        result[key] = [
-          value.elapsed,
-          value.memory,
-          value.totalMemory,
-        ] as const;
+        result[key] = [value.elapsed, value.memory, value.totalMemory] as const;
       });
       return result;
     },

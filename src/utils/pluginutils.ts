@@ -159,8 +159,7 @@ const IDENTIFIER_BODY_RE = /[^$_a-zA-Z0-9]/g;
  */
 export const makeLegalIdentifier = (str: string): string => {
   const replaced = str.replace(IDENTIFIER_BODY_RE, "_");
-  const result =
-    /^\d/.test(replaced) ? "_" + replaced : replaced;
+  const result = /^\d/.test(replaced) ? "_" + replaced : replaced;
   if (RESERVED_WORDS.has(result)) {
     return "_" + result;
   }
@@ -177,9 +176,7 @@ export const makeLegalIdentifier = (str: string): string => {
  * @param pattern - The include / exclude value.
  * @returns Array of RegExp matchers derived from the pattern.
  */
-const normalisePattern = (
-  pattern: FilterPattern,
-): ReadonlyArray<RegExp> => {
+const normalisePattern = (pattern: FilterPattern): ReadonlyArray<RegExp> => {
   if (pattern == null) {
     return [];
   }
@@ -327,12 +324,7 @@ export const dataToEsm = (
         ai += 1;
       }
       return (
-        "[" +
-        newline +
-        items.join(separator) +
-        newline +
-        closingIndent +
-        "]"
+        "[" + newline + items.join(separator) + newline + closingIndent + "]"
       );
     }
 
@@ -361,12 +353,7 @@ export const dataToEsm = (
         oi += 1;
       }
       return (
-        "{" +
-        newline +
-        entries.join(separator) +
-        newline +
-        closingIndent +
-        "}"
+        "{" + newline + entries.join(separator) + newline + closingIndent + "}"
       );
     }
 
@@ -389,7 +376,14 @@ export const dataToEsm = (
       const identifier = makeLegalIdentifier(k);
       const value = serialise(obj[k] as unknown, 0);
       lines.push(
-        "export " + declarationKind + " " + identifier + " =" + space + value + ";",
+        "export " +
+          declarationKind +
+          " " +
+          identifier +
+          " =" +
+          space +
+          value +
+          ";",
       );
       ti += 1;
     }
@@ -458,9 +452,7 @@ const isLegalIdentifier = (str: string): boolean => {
  * @param param - The AST node (pattern) to inspect.
  * @returns Array of extracted identifier names.
  */
-export const extractAssignedNames = (
-  param: AstNode,
-): ReadonlyArray<string> => {
+export const extractAssignedNames = (param: AstNode): ReadonlyArray<string> => {
   const names: Array<string> = [];
   const stack: Array<AstNode> = [param];
 

@@ -25,7 +25,7 @@ export type NullValue = null | undefined | void;
 // ============================================================
 
 /** Log severity levels. */
-export type LogLevel = 'warn' | 'info' | 'debug';
+export type LogLevel = "warn" | "info" | "debug";
 
 /** A structured log entry produced during the build. */
 export interface RollupLog {
@@ -53,7 +53,7 @@ export type LogHandler = (level: LogLevel, log: RollupLog) => void;
 
 /** Handler that also accepts error-level logs and plain strings. */
 export type LogOrStringHandler = (
-  level: LogLevel | 'error',
+  level: LogLevel | "error",
   log: RollupLog | string,
 ) => void;
 
@@ -96,21 +96,21 @@ export type SourceMapInput =
   | ExistingRawSourceMap
   | string
   | null
-  | { readonly mappings: '' };
+  | { readonly mappings: "" };
 
 // ============================================================
 // Module Types
 // ============================================================
 
 /** Supported output module formats. */
-export type ModuleFormat = 'amd' | 'cjs' | 'es' | 'iife' | 'system' | 'umd';
+export type ModuleFormat = "amd" | "cjs" | "es" | "iife" | "system" | "umd";
 
 /** Interop mode for CJS/ESM boundary handling. */
 export type InteropType =
-  | 'auto'
-  | 'esModule'
-  | 'default'
-  | 'defaultOnly'
+  | "auto"
+  | "esModule"
+  | "default"
+  | "defaultOnly"
   | boolean;
 
 /** Detailed information about a resolved module. */
@@ -134,14 +134,14 @@ export interface ModuleInfo {
   readonly hasDefaultExport: boolean | null;
   readonly meta: Readonly<Record<string, unknown>>;
   readonly syntheticNamedExports: boolean | string;
-  readonly moduleSideEffects: boolean | 'no-treeshake';
+  readonly moduleSideEffects: boolean | "no-treeshake";
 }
 
 /** The result of resolving a module identifier. */
 export interface ResolvedId {
   readonly id: string;
-  readonly external: boolean | 'absolute';
-  readonly moduleSideEffects: boolean | 'no-treeshake';
+  readonly external: boolean | "absolute";
+  readonly moduleSideEffects: boolean | "no-treeshake";
   readonly syntheticNamedExports: boolean | string;
   readonly meta: Readonly<Record<string, unknown>>;
   readonly resolvedBy: string;
@@ -158,7 +158,7 @@ export type LoadResult =
       readonly ast?: unknown;
       readonly meta?: Record<string, unknown>;
       readonly syntheticNamedExports?: boolean | string;
-      readonly moduleSideEffects?: boolean | 'no-treeshake';
+      readonly moduleSideEffects?: boolean | "no-treeshake";
     };
 
 /** Result of transforming module source code. */
@@ -172,7 +172,7 @@ export type TransformResult =
       readonly ast?: unknown;
       readonly meta?: Record<string, unknown>;
       readonly syntheticNamedExports?: boolean | string;
-      readonly moduleSideEffects?: boolean | 'no-treeshake';
+      readonly moduleSideEffects?: boolean | "no-treeshake";
     };
 
 // ============================================================
@@ -189,9 +189,9 @@ export interface RollupAstNode {
 
 /** Top-level Program AST node. */
 export interface ProgramNode extends RollupAstNode {
-  readonly type: 'Program';
+  readonly type: "Program";
   readonly body: ReadonlyArray<RollupAstNode>;
-  readonly sourceType: 'module' | 'script';
+  readonly sourceType: "module" | "script";
 }
 
 // ============================================================
@@ -200,7 +200,7 @@ export interface ProgramNode extends RollupAstNode {
 
 /** An emitted asset file. */
 export interface EmittedAsset {
-  readonly type: 'asset';
+  readonly type: "asset";
   readonly name?: string;
   readonly fileName?: string;
   readonly needsCodeReference?: boolean;
@@ -209,7 +209,7 @@ export interface EmittedAsset {
 
 /** An emitted chunk (entry point). */
 export interface EmittedChunk {
-  readonly type: 'chunk';
+  readonly type: "chunk";
   readonly id: string;
   readonly name?: string;
   readonly fileName?: string;
@@ -220,7 +220,7 @@ export interface EmittedChunk {
 
 /** An emitted prebuilt chunk with pre-rendered code. */
 export interface EmittedPrebuiltChunk {
-  readonly type: 'prebuilt-chunk';
+  readonly type: "prebuilt-chunk";
   readonly fileName: string;
   readonly code: string;
   readonly map?: SourceMapInput;
@@ -233,18 +233,20 @@ export type EmittedFile = EmittedAsset | EmittedChunk | EmittedPrebuiltChunk;
 /** Controls how entry point signatures are preserved. */
 export type PreserveEntrySignaturesOption =
   | false
-  | 'strict'
-  | 'allow-extension'
-  | 'exports-only';
+  | "strict"
+  | "allow-extension"
+  | "exports-only";
 
 /** Hash encoding character set. */
-export type HashCharacters = 'base64' | 'base36' | 'hex';
+export type HashCharacters = "base64" | "base36" | "hex";
 
 /** Wraps a hook function with optional ordering metadata. */
-export type ObjectHook<T, O = Record<string, never>> = T | ({
-  readonly handler: T;
-  readonly order?: 'pre' | 'post' | null;
-} & O);
+export type ObjectHook<T, O = Record<string, never>> =
+  | T
+  | ({
+      readonly handler: T;
+      readonly order?: "pre" | "post" | null;
+    } & O);
 
 /** Filter configuration for hook invocation. */
 export interface HookFilter {
@@ -252,10 +254,7 @@ export interface HookFilter {
 }
 
 /** Pattern(s) for filtering strings (module IDs, etc.). */
-export type StringFilter =
-  | string
-  | RegExp
-  | ReadonlyArray<string | RegExp>;
+export type StringFilter = string | RegExp | ReadonlyArray<string | RegExp>;
 
 /** Per-plugin persistent cache interface. */
 export interface PluginCache {
@@ -287,7 +286,7 @@ export interface PreRenderedChunk {
   readonly isImplicitEntry: boolean;
   readonly moduleIds: ReadonlyArray<string>;
   readonly name: string;
-  readonly type: 'chunk';
+  readonly type: "chunk";
 }
 
 /** Chunk metadata after rendering, with import/export details. */
@@ -295,9 +294,7 @@ export interface RenderedChunk extends PreRenderedChunk {
   readonly dynamicImports: ReadonlyArray<string>;
   readonly fileName: string;
   readonly implicitlyLoadedBefore: ReadonlyArray<string>;
-  readonly importedBindings: Readonly<
-    Record<string, ReadonlyArray<string>>
-  >;
+  readonly importedBindings: Readonly<Record<string, ReadonlyArray<string>>>;
   readonly imports: ReadonlyArray<string>;
   readonly modules: Readonly<Record<string, RenderedModule>>;
   readonly referencedFiles: ReadonlyArray<string>;
@@ -316,7 +313,7 @@ export interface PreRenderedAsset {
   readonly names: ReadonlyArray<string>;
   readonly originalFileNames: ReadonlyArray<string>;
   readonly source: string | Uint8Array;
-  readonly type: 'asset';
+  readonly type: "asset";
 }
 
 /** Final output asset with resolved file name. */
@@ -328,13 +325,11 @@ export interface OutputAsset {
   readonly originalFileName: string | null;
   readonly originalFileNames: ReadonlyArray<string>;
   readonly source: string | Uint8Array;
-  readonly type: 'asset';
+  readonly type: "asset";
 }
 
 /** The complete output bundle mapping file names to chunks/assets. */
-export type OutputBundle = Readonly<
-  Record<string, OutputAsset | OutputChunk>
->;
+export type OutputBundle = Readonly<Record<string, OutputAsset | OutputChunk>>;
 
 // ============================================================
 // Input Options
@@ -349,7 +344,7 @@ export interface InputOptions {
   readonly external?: ExternalOption;
   readonly input?: InputOption;
   readonly logLevel?: LogLevel;
-  readonly makeAbsoluteExternalsRelative?: boolean | 'ifRelativeSource';
+  readonly makeAbsoluteExternalsRelative?: boolean | "ifRelativeSource";
   readonly maxParallelFileOps?: number;
   readonly moduleContext?:
     | ((id: string) => string | null | undefined)
@@ -391,7 +386,7 @@ export type InputPluginOption = MaybePromise<
 >;
 
 /** Preset names for tree-shaking configuration. */
-export type TreeshakingPreset = 'smallest' | 'safest' | 'recommended';
+export type TreeshakingPreset = "smallest" | "safest" | "recommended";
 
 /** Fine-grained tree-shaking options. */
 export interface TreeshakingOptions {
@@ -400,7 +395,7 @@ export interface TreeshakingOptions {
   readonly manualPureFunctions?: ReadonlyArray<string>;
   readonly moduleSideEffects?: ModuleSideEffectsOption;
   readonly preset?: TreeshakingPreset;
-  readonly propertyReadSideEffects?: boolean | 'always';
+  readonly propertyReadSideEffects?: boolean | "always";
   readonly tryCatchDeoptimization?: boolean;
   readonly unknownGlobalSideEffects?: boolean;
 }
@@ -408,15 +403,12 @@ export interface TreeshakingOptions {
 /** Controls which modules are considered to have side effects. */
 export type ModuleSideEffectsOption =
   | boolean
-  | 'no-external'
+  | "no-external"
   | ReadonlyArray<string>
   | HasModuleSideEffects;
 
 /** Predicate for determining module side effects. */
-export type HasModuleSideEffects = (
-  id: string,
-  external: boolean,
-) => boolean;
+export type HasModuleSideEffects = (id: string, external: boolean) => boolean;
 
 // ============================================================
 // Output Options
@@ -425,22 +417,16 @@ export type HasModuleSideEffects = (
 /** Configuration options for the output (generate/write) phase. */
 export interface OutputOptions {
   readonly amd?: AmdOptions;
-  readonly assetFileNames?:
-    | string
-    | ((assetInfo: PreRenderedAsset) => string);
+  readonly assetFileNames?: string | ((assetInfo: PreRenderedAsset) => string);
   readonly banner?: string | (() => MaybePromise<string>);
-  readonly chunkFileNames?:
-    | string
-    | ((chunkInfo: PreRenderedChunk) => string);
+  readonly chunkFileNames?: string | ((chunkInfo: PreRenderedChunk) => string);
   readonly compact?: boolean;
   readonly dir?: string;
   readonly dynamicImportInCjs?: boolean;
-  readonly entryFileNames?:
-    | string
-    | ((chunkInfo: PreRenderedChunk) => string);
-  readonly esModule?: boolean | 'if-default-prop';
+  readonly entryFileNames?: string | ((chunkInfo: PreRenderedChunk) => string);
+  readonly esModule?: boolean | "if-default-prop";
   readonly experimentalMinChunkSize?: number;
-  readonly exports?: 'auto' | 'default' | 'named' | 'none';
+  readonly exports?: "auto" | "default" | "named" | "none";
   readonly extend?: boolean;
   readonly externalImportAttributes?: boolean;
   readonly externalLiveBindings?: boolean;
@@ -467,7 +453,7 @@ export interface OutputOptions {
   readonly preserveModulesRoot?: string;
   readonly reexportProtoFromExternal?: boolean;
   readonly sanitizeFileName?: boolean | ((fileName: string) => string);
-  readonly sourcemap?: boolean | 'inline' | 'hidden';
+  readonly sourcemap?: boolean | "inline" | "hidden";
   readonly sourcemapBaseUrl?: string;
   readonly sourcemapDebugIds?: boolean;
   readonly sourcemapExcludeSources?: boolean;
@@ -484,7 +470,7 @@ export interface OutputOptions {
 }
 
 /** Preset names for generated code style. */
-export type GeneratedCodePreset = 'es5' | 'es2015';
+export type GeneratedCodePreset = "es5" | "es2015";
 
 /** Fine-grained generated code options. */
 export interface GeneratedCodeOptions {
@@ -557,10 +543,7 @@ export interface RollupOptions extends InputOptions {
 
 /** The result of a generate or write operation. */
 export interface RollupOutput {
-  readonly output: readonly [
-    OutputChunk,
-    ...(OutputChunk | OutputAsset)[],
-  ];
+  readonly output: readonly [OutputChunk, ...(OutputChunk | OutputAsset)[]];
 }
 
 /** A completed build that can generate or write output. */
@@ -568,9 +551,7 @@ export interface RollupBuild {
   readonly cache: RollupCache | undefined;
   readonly close: () => Promise<void>;
   readonly closed: boolean;
-  readonly generate: (
-    outputOptions: OutputOptions,
-  ) => Promise<RollupOutput>;
+  readonly generate: (outputOptions: OutputOptions) => Promise<RollupOutput>;
   readonly getTimings?: () => SerializedTimings;
   readonly watchFiles: ReadonlyArray<string>;
   readonly write: (outputOptions: OutputOptions) => Promise<RollupOutput>;
@@ -579,9 +560,7 @@ export interface RollupBuild {
 /** Cached build state for incremental rebuilds. */
 export interface RollupCache {
   readonly modules: ReadonlyArray<ModuleJSON>;
-  readonly plugins?: Readonly<
-    Record<string, readonly [unknown, ...unknown[]]>
-  >;
+  readonly plugins?: Readonly<Record<string, readonly [unknown, ...unknown[]]>>;
 }
 
 /** Serialized module state for caching. */
@@ -593,7 +572,7 @@ export interface ModuleJSON {
   readonly transformDependencies: ReadonlyArray<string>;
   readonly meta: Readonly<Record<string, unknown>>;
   readonly syntheticNamedExports: boolean | string;
-  readonly moduleSideEffects: boolean | 'no-treeshake';
+  readonly moduleSideEffects: boolean | "no-treeshake";
 }
 
 /** Performance timing data as [total, self, children] tuples. */
@@ -606,16 +585,11 @@ export type SerializedTimings = Readonly<
 // ============================================================
 
 /** File system change event types. */
-export type ChangeEvent = 'create' | 'update' | 'delete';
+export type ChangeEvent = "create" | "update" | "delete";
 
 /** Events emitted by the file watcher during rebuilds. */
 export interface RollupWatcherEvent {
-  readonly code:
-    | 'START'
-    | 'BUNDLE_START'
-    | 'BUNDLE_END'
-    | 'END'
-    | 'ERROR';
+  readonly code: "START" | "BUNDLE_START" | "BUNDLE_END" | "END" | "ERROR";
   readonly error?: RollupLog;
   readonly input?: InputOption;
   readonly output?: ReadonlyArray<string>;
@@ -627,20 +601,14 @@ export interface RollupWatcherEvent {
 export interface RollupWatcher {
   readonly close: () => void;
   readonly on: ((
-    event: 'event',
+    event: "event",
     listener: (event: RollupWatcherEvent) => void,
   ) => RollupWatcher) &
     ((
-      event: 'change',
-      listener: (
-        id: string,
-        change: { readonly event: ChangeEvent },
-      ) => void,
+      event: "change",
+      listener: (id: string, change: { readonly event: ChangeEvent }) => void,
     ) => RollupWatcher) &
-    ((
-      event: 'restart' | 'close',
-      listener: () => void,
-    ) => RollupWatcher);
+    ((event: "restart" | "close", listener: () => void) => RollupWatcher);
 }
 
 /** Configuration for the file watcher behavior. */
@@ -663,10 +631,7 @@ export interface Plugin extends OutputPlugin {
     (this: PluginContext, error?: Error) => MaybePromise<void>
   >;
   readonly buildStart?: ObjectHook<
-    (
-      this: PluginContext,
-      options: NormalizedInputOptions,
-    ) => MaybePromise<void>
+    (this: PluginContext, options: NormalizedInputOptions) => MaybePromise<void>
   >;
   readonly load?: ObjectHook<
     (this: PluginContext, id: string) => MaybePromise<LoadResult>,
@@ -735,25 +700,16 @@ export interface Plugin extends OutputPlugin {
 /** A plugin that only participates in the output phase. */
 export interface OutputPlugin {
   readonly augmentChunkHash?: ObjectHook<
-    (
-      this: PluginContext,
-      chunk: RenderedChunk,
-    ) => MaybePromise<string | void>
+    (this: PluginContext, chunk: RenderedChunk) => MaybePromise<string | void>
   >;
   readonly banner?: ObjectHook<
-    (
-      this: PluginContext,
-      chunk: RenderedChunk,
-    ) => MaybePromise<string | void>
+    (this: PluginContext, chunk: RenderedChunk) => MaybePromise<string | void>
   >;
   readonly closeBundle?: ObjectHook<
     (this: PluginContext) => MaybePromise<void>
   >;
   readonly footer?: ObjectHook<
-    (
-      this: PluginContext,
-      chunk: RenderedChunk,
-    ) => MaybePromise<string | void>
+    (this: PluginContext, chunk: RenderedChunk) => MaybePromise<string | void>
   >;
   readonly generateBundle?: ObjectHook<
     (
@@ -764,17 +720,11 @@ export interface OutputPlugin {
     ) => MaybePromise<void>
   >;
   readonly intro?: ObjectHook<
-    (
-      this: PluginContext,
-      chunk: RenderedChunk,
-    ) => MaybePromise<string | void>
+    (this: PluginContext, chunk: RenderedChunk) => MaybePromise<string | void>
   >;
   readonly name: string;
   readonly outro?: ObjectHook<
-    (
-      this: PluginContext,
-      chunk: RenderedChunk,
-    ) => MaybePromise<string | void>
+    (this: PluginContext, chunk: RenderedChunk) => MaybePromise<string | void>
   >;
   readonly renderChunk?: ObjectHook<
     (
@@ -802,9 +752,7 @@ export interface OutputPlugin {
         readonly targetModuleId: string | null;
       },
     ) => MaybePromise<
-      | { readonly left: string; readonly right: string }
-      | null
-      | undefined
+      { readonly left: string; readonly right: string } | null | undefined
     >
   >;
   readonly renderError?: ObjectHook<
@@ -858,8 +806,8 @@ export type ResolveIdResult =
   | false
   | {
       readonly id: string;
-      readonly external?: boolean | 'absolute';
-      readonly moduleSideEffects?: boolean | 'no-treeshake';
+      readonly external?: boolean | "absolute";
+      readonly moduleSideEffects?: boolean | "no-treeshake";
       readonly syntheticNamedExports?: boolean | string;
       readonly meta?: Record<string, unknown>;
       readonly resolvedBy?: string;
@@ -890,9 +838,7 @@ export interface PluginContext extends MinimalPluginContext {
   readonly getModuleIds: () => IterableIterator<string>;
   readonly getModuleInfo: (moduleId: string) => ModuleInfo | null;
   readonly getWatchFiles: () => ReadonlyArray<string>;
-  readonly info: (
-    log: RollupLog | string | (() => RollupLog | string),
-  ) => void;
+  readonly info: (log: RollupLog | string | (() => RollupLog | string)) => void;
   readonly load: (options: {
     readonly id: string;
     readonly resolveDependencies?: boolean;
@@ -938,7 +884,7 @@ export interface NormalizedInputOptions {
   ) => boolean;
   readonly input: ReadonlyArray<string> | Readonly<Record<string, string>>;
   readonly logLevel: LogLevel;
-  readonly makeAbsoluteExternalsRelative: boolean | 'ifRelativeSource';
+  readonly makeAbsoluteExternalsRelative: boolean | "ifRelativeSource";
   readonly maxParallelFileOps: number;
   readonly moduleContext: (id: string) => string;
   readonly onLog: LogHandler;
@@ -957,7 +903,7 @@ export interface NormalizedTreeshakingOptions {
   readonly correctVarValueBeforeDeclaration: boolean;
   readonly manualPureFunctions: ReadonlyArray<string>;
   readonly moduleSideEffects: HasModuleSideEffects;
-  readonly propertyReadSideEffects: boolean | 'always';
+  readonly propertyReadSideEffects: boolean | "always";
   readonly tryCatchDeoptimization: boolean;
   readonly unknownGlobalSideEffects: boolean;
 }
@@ -965,22 +911,16 @@ export interface NormalizedTreeshakingOptions {
 /** Output options after normalization and validation. */
 export interface NormalizedOutputOptions {
   readonly amd: NormalizedAmdOptions;
-  readonly assetFileNames:
-    | string
-    | ((assetInfo: PreRenderedAsset) => string);
+  readonly assetFileNames: string | ((assetInfo: PreRenderedAsset) => string);
   readonly banner: () => MaybePromise<string>;
-  readonly chunkFileNames:
-    | string
-    | ((chunkInfo: PreRenderedChunk) => string);
+  readonly chunkFileNames: string | ((chunkInfo: PreRenderedChunk) => string);
   readonly compact: boolean;
   readonly dir: string | undefined;
   readonly dynamicImportInCjs: boolean;
-  readonly entryFileNames:
-    | string
-    | ((chunkInfo: PreRenderedChunk) => string);
-  readonly esModule: boolean | 'if-default-prop';
+  readonly entryFileNames: string | ((chunkInfo: PreRenderedChunk) => string);
+  readonly esModule: boolean | "if-default-prop";
   readonly experimentalMinChunkSize: number;
-  readonly exports: 'auto' | 'default' | 'named' | 'none';
+  readonly exports: "auto" | "default" | "named" | "none";
   readonly extend: boolean;
   readonly externalImportAttributes: boolean;
   readonly externalLiveBindings: boolean;
@@ -1006,7 +946,7 @@ export interface NormalizedOutputOptions {
   readonly preserveModules: boolean;
   readonly preserveModulesRoot: string | undefined;
   readonly sanitizeFileName: (fileName: string) => string;
-  readonly sourcemap: boolean | 'inline' | 'hidden';
+  readonly sourcemap: boolean | "inline" | "hidden";
   readonly sourcemapBaseUrl: string | undefined;
   readonly sourcemapDebugIds: boolean;
   readonly sourcemapExcludeSources: boolean;
@@ -1016,9 +956,7 @@ export interface NormalizedOutputOptions {
     | ((chunkInfo: PreRenderedChunk) => string)
     | undefined;
   readonly sourcemapIgnoreList: SourcemapIgnoreListOption;
-  readonly sourcemapPathTransform:
-    | SourcemapPathTransformOption
-    | undefined;
+  readonly sourcemapPathTransform: SourcemapPathTransformOption | undefined;
   readonly strict: boolean;
   readonly systemNullSetters: boolean;
   readonly validate: boolean;
@@ -1049,12 +987,12 @@ export interface NormalizedGeneratedCodeOptions {
 
 /** Supported buffer encoding types for file operations. */
 export type BufferEncoding =
-  | 'ascii'
-  | 'base64'
-  | 'hex'
-  | 'latin1'
-  | 'utf-8'
-  | 'utf8';
+  | "ascii"
+  | "base64"
+  | "hex"
+  | "latin1"
+  | "utf-8"
+  | "utf8";
 
 /** File stat information for the virtual file system. */
 export interface RollupFileStats {

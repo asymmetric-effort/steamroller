@@ -3,7 +3,7 @@
 // Type declarations for @asymmetric-effort/specifyjs
 // The package exports .d.ts files but the package.json exports map
 // points to incorrect type paths. These declarations bridge the gap.
-declare module '@asymmetric-effort/specifyjs' {
+declare module "@asymmetric-effort/specifyjs" {
   export const createElement: any;
   export const Fragment: symbol;
   export const Router: any;
@@ -33,7 +33,7 @@ declare module '@asymmetric-effort/specifyjs' {
   export const h: typeof createElement;
 }
 
-declare module '@asymmetric-effort/specifyjs/dom' {
+declare module "@asymmetric-effort/specifyjs/dom" {
   export function createRoot(container: HTMLElement): {
     render(element: any): void;
     unmount(): void;
@@ -41,8 +41,8 @@ declare module '@asymmetric-effort/specifyjs/dom' {
   export function render(element: any, container: HTMLElement): void;
 }
 
-declare module '@asymmetric-effort/specifyjs/build' {
-  import type { Plugin } from 'vite';
+declare module "@asymmetric-effort/specifyjs/build" {
+  import type { Plugin } from "vite";
   export function specifyJsSeoPlugin(config: {
     siteUrl: string;
     title?: string;

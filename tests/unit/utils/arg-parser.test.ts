@@ -166,7 +166,10 @@ describe("parseArgs", () => {
     });
 
     it("merges multiple dot-notation flags", () => {
-      const result = parseArgs(["--server.host=localhost", "--server.port=3000"]);
+      const result = parseArgs([
+        "--server.host=localhost",
+        "--server.port=3000",
+      ]);
       expect(result["server"]).toEqual({ host: "localhost", port: 3000 });
     });
 
@@ -178,7 +181,9 @@ describe("parseArgs", () => {
 
   describe("array accumulation", () => {
     it("accumulates repeated --flag values into array", () => {
-      const result = parseArgs(["--tag", "a", "--tag", "b"], { array: ["tag"] });
+      const result = parseArgs(["--tag", "a", "--tag", "b"], {
+        array: ["tag"],
+      });
       expect(result["tag"]).toEqual(["a", "b"]);
     });
 
@@ -225,7 +230,9 @@ describe("parseArgs", () => {
     });
 
     it("interleaves positionals with flags", () => {
-      const result = parseArgs(["hello", "--verbose", "world"], { boolean: ["verbose"] });
+      const result = parseArgs(["hello", "--verbose", "world"], {
+        boolean: ["verbose"],
+      });
       expect(result._).toEqual(["hello", "world"]);
       expect(result["verbose"]).toBe(true);
     });
@@ -239,7 +246,9 @@ describe("parseArgs", () => {
 
   describe("-- separator", () => {
     it("stops flag parsing after --", () => {
-      const result = parseArgs(["--verbose", "--", "--not-a-flag"], { boolean: ["verbose"] });
+      const result = parseArgs(["--verbose", "--", "--not-a-flag"], {
+        boolean: ["verbose"],
+      });
       expect(result["verbose"]).toBe(true);
       expect(result._).toEqual(["--not-a-flag"]);
     });
@@ -365,13 +374,19 @@ describe("parseArgs", () => {
         [
           "build",
           "--verbose",
-          "-o", "dist",
+          "-o",
+          "dist",
           "--config.entry=src/index.ts",
           "--minify",
-          "--target", "es2022",
-          "--plugin", "a",
-          "--plugin", "b",
-          "--", "extra1", "extra2",
+          "--target",
+          "es2022",
+          "--plugin",
+          "a",
+          "--plugin",
+          "b",
+          "--",
+          "extra1",
+          "extra2",
         ],
         {
           boolean: ["verbose", "minify"],

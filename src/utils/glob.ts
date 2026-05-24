@@ -432,7 +432,11 @@ const singleGlobToRegexStr = (pattern: string): string => {
     if (ch === "\\" && i + 1 < len) {
       const nextCh = pattern[i + 1] as string;
       // If next char is a glob special char or regex special char, treat as escape
-      if (GLOB_CHARS.has(nextCh) || "^$+.()|".includes(nextCh) || nextCh === "\\") {
+      if (
+        GLOB_CHARS.has(nextCh) ||
+        "^$+.()|".includes(nextCh) ||
+        nextCh === "\\"
+      ) {
         parts.push(escapeRegex(nextCh));
         i += 2;
         continue;

@@ -5,10 +5,10 @@
 Steamroller is currently in pre-1.0 development. Security updates are applied to the latest
 release on the `main` branch only.
 
-| Version       | Supported          |
-|---------------|--------------------|
-| latest / main | Yes                |
-| < latest      | No                 |
+| Version       | Supported |
+| ------------- | --------- |
+| latest / main | Yes       |
+| < latest      | No        |
 
 Once steamroller reaches 1.0, this table will be updated to reflect the supported version
 range.
@@ -33,7 +33,7 @@ Please include "SECURITY" in the subject line to ensure prompt triage.
 ### What to Expect
 
 | Step                  | Timeline                          |
-|-----------------------|-----------------------------------|
+| --------------------- | --------------------------------- |
 | Acknowledgement       | Within 48 hours of report receipt |
 | Triage and assessment | Within 7 days                     |
 | Fix for Critical/High | Target within 30 days             |

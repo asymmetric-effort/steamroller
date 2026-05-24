@@ -115,7 +115,9 @@ describe("decodeEscapeSequence", () => {
     });
 
     it("should throw on hex escape with invalid second digit", () => {
-      expect(() => decodeEscapeSequence("\\xAG", 0, false)).toThrow(SyntaxError);
+      expect(() => decodeEscapeSequence("\\xAG", 0, false)).toThrow(
+        SyntaxError,
+      );
     });
   });
 
@@ -133,11 +135,15 @@ describe("decodeEscapeSequence", () => {
     });
 
     it("should throw on unicode escape with too few digits", () => {
-      expect(() => decodeEscapeSequence("\\u041", 0, false)).toThrow(SyntaxError);
+      expect(() => decodeEscapeSequence("\\u041", 0, false)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on unicode escape with invalid digits", () => {
-      expect(() => decodeEscapeSequence("\\uGGGG", 0, false)).toThrow(SyntaxError);
+      expect(() => decodeEscapeSequence("\\uGGGG", 0, false)).toThrow(
+        SyntaxError,
+      );
     });
   });
 
@@ -161,19 +167,27 @@ describe("decodeEscapeSequence", () => {
     });
 
     it("should throw on code point out of range", () => {
-      expect(() => decodeEscapeSequence("\\u{110000}", 0, false)).toThrow(SyntaxError);
+      expect(() => decodeEscapeSequence("\\u{110000}", 0, false)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on unterminated code point escape", () => {
-      expect(() => decodeEscapeSequence("\\u{41", 0, false)).toThrow(SyntaxError);
+      expect(() => decodeEscapeSequence("\\u{41", 0, false)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on empty code point escape", () => {
-      expect(() => decodeEscapeSequence("\\u{}", 0, false)).toThrow(SyntaxError);
+      expect(() => decodeEscapeSequence("\\u{}", 0, false)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on invalid hex in code point escape", () => {
-      expect(() => decodeEscapeSequence("\\u{GG}", 0, false)).toThrow(SyntaxError);
+      expect(() => decodeEscapeSequence("\\u{GG}", 0, false)).toThrow(
+        SyntaxError,
+      );
     });
   });
 
@@ -358,7 +372,11 @@ describe("scanStringLiteral", () => {
 
   describe("escape sequences in strings", () => {
     it("should handle all simple escapes", () => {
-      const result = scanStringLiteral('"\\n\\r\\t\\b\\f\\v\\0\\\\\\\'"', 0, false);
+      const result = scanStringLiteral(
+        '"\\n\\r\\t\\b\\f\\v\\0\\\\\\\'"',
+        0,
+        false,
+      );
       expect(result.token.value).toBe("\n\r\t\b\f\v\0\\'");
     });
 
@@ -407,19 +425,27 @@ describe("scanStringLiteral", () => {
     });
 
     it("should throw on string with unescaped newline", () => {
-      expect(() => scanStringLiteral('"hello\nworld"', 0, false)).toThrow(SyntaxError);
+      expect(() => scanStringLiteral('"hello\nworld"', 0, false)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on string with unescaped CR", () => {
-      expect(() => scanStringLiteral('"hello\rworld"', 0, false)).toThrow(SyntaxError);
+      expect(() => scanStringLiteral('"hello\rworld"', 0, false)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on string with unescaped LS", () => {
-      expect(() => scanStringLiteral('"hello\u2028world"', 0, false)).toThrow(SyntaxError);
+      expect(() => scanStringLiteral('"hello\u2028world"', 0, false)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on string with unescaped PS", () => {
-      expect(() => scanStringLiteral('"hello\u2029world"', 0, false)).toThrow(SyntaxError);
+      expect(() => scanStringLiteral('"hello\u2029world"', 0, false)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on invalid hex escape in string", () => {
@@ -427,7 +453,9 @@ describe("scanStringLiteral", () => {
     });
 
     it("should throw on invalid unicode escape in string", () => {
-      expect(() => scanStringLiteral('"\\uZZZZ"', 0, false)).toThrow(SyntaxError);
+      expect(() => scanStringLiteral('"\\uZZZZ"', 0, false)).toThrow(
+        SyntaxError,
+      );
     });
   });
 
@@ -607,19 +635,27 @@ describe("scanTemplateLiteral", () => {
     });
 
     it("should throw on unterminated template after escape", () => {
-      expect(() => scanTemplateLiteral("`hello\\", 0, true)).toThrow(SyntaxError);
+      expect(() => scanTemplateLiteral("`hello\\", 0, true)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on invalid hex escape in template", () => {
-      expect(() => scanTemplateLiteral("`\\xGG`", 0, true)).toThrow(SyntaxError);
+      expect(() => scanTemplateLiteral("`\\xGG`", 0, true)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on invalid unicode escape in template", () => {
-      expect(() => scanTemplateLiteral("`\\uZZZZ`", 0, true)).toThrow(SyntaxError);
+      expect(() => scanTemplateLiteral("`\\uZZZZ`", 0, true)).toThrow(
+        SyntaxError,
+      );
     });
 
     it("should throw on unterminated template tail", () => {
-      expect(() => scanTemplateLiteral("} hello", 0, false)).toThrow(SyntaxError);
+      expect(() => scanTemplateLiteral("} hello", 0, false)).toThrow(
+        SyntaxError,
+      );
     });
   });
 

@@ -18,7 +18,7 @@ export class LruCache<K, V> {
 
   constructor(maxSize: number) {
     if (maxSize < 1 || !Number.isInteger(maxSize)) {
-      throw new Error('LruCache: maxSize must be a positive integer');
+      throw new Error("LruCache: maxSize must be a positive integer");
     }
     this.maxSize = maxSize;
     this.cache = new Map<K, V>();

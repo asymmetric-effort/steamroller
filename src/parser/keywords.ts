@@ -59,7 +59,10 @@ const strictReserved = (tokenType: number): KeywordInfo => ({
 /**
  * Internal keyword lookup map. Populated eagerly at module load time.
  */
-const keywordMap: ReadonlyMap<string, KeywordInfo> = new Map<string, KeywordInfo>([
+const keywordMap: ReadonlyMap<string, KeywordInfo> = new Map<
+  string,
+  KeywordInfo
+>([
   // Reserved keywords (ES5)
   ["break", reserved(TokenType.Break)],
   ["case", reserved(TokenType.Case)],

@@ -42,7 +42,7 @@ const isHexDigit = (code: number): boolean => {
   return (
     (code >= 0x30 && code <= 0x39) || // 0-9
     (code >= 0x41 && code <= 0x46) || // A-F
-    (code >= 0x61 && code <= 0x66)    // a-f
+    (code >= 0x61 && code <= 0x66) // a-f
   );
 };
 
@@ -165,7 +165,11 @@ export const decodeEscapeSequence = (
  */
 const decodeHexEscape = (source: string, pos: number): EscapeResult => {
   const hex = source.slice(pos + 2, pos + 4);
-  if (hex.length < 2 || !isHexDigit(hex.charCodeAt(0)) || !isHexDigit(hex.charCodeAt(1))) {
+  if (
+    hex.length < 2 ||
+    !isHexDigit(hex.charCodeAt(0)) ||
+    !isHexDigit(hex.charCodeAt(1))
+  ) {
     throw new SyntaxError("Invalid hex escape sequence");
   }
   return { char: String.fromCharCode(parseInt(hex, 16)), length: 4 };
@@ -225,9 +229,15 @@ const decodeUnicodeEscape = (source: string, pos: number): EscapeResult => {
  * @returns The decoded character and length consumed.
  * @throws {SyntaxError} If octal escapes are used in strict mode.
  */
-const decodeOctalEscape = (source: string, pos: number, strict: boolean): EscapeResult => {
+const decodeOctalEscape = (
+  source: string,
+  pos: number,
+  strict: boolean,
+): EscapeResult => {
   if (strict) {
-    throw new SyntaxError("Octal escape sequences are not allowed in strict mode");
+    throw new SyntaxError(
+      "Octal escape sequences are not allowed in strict mode",
+    );
   }
 
   const first = source.charCodeAt(pos + 1) - 0x30;
@@ -279,7 +289,13 @@ export const scanStringLiteral = (
       // Found closing quote
       const value = parts.join("");
       const raw = source.slice(start, pos + 1);
-      const token = createToken(TokenType.StringLiteral, start, pos + 1, value, raw);
+      const token = createToken(
+        TokenType.StringLiteral,
+        start,
+        pos + 1,
+        value,
+        raw,
+      );
       return { token, end: pos + 1 };
     }
 
@@ -340,7 +356,9 @@ export const scanTemplateLiteral = (
       const cooked = cookedParts.join("");
       const rawContent = source.slice(start + 1, pos);
       const raw = source.slice(start, pos + 1);
-      const tokenType = isHead ? TokenType.TemplateNoSub : TokenType.TemplateTail;
+      const tokenType = isHead
+        ? TokenType.TemplateNoSub
+        : TokenType.TemplateTail;
       const token = createToken(tokenType, start, pos + 1, cooked, raw);
       return { token, end: pos + 1 };
     }
@@ -349,7 +367,9 @@ export const scanTemplateLiteral = (
     if (ch === "$" && source[pos + 1] === "{") {
       const cooked = cookedParts.join("");
       const raw = source.slice(start, pos + 2);
-      const tokenType = isHead ? TokenType.TemplateHead : TokenType.TemplateMiddle;
+      const tokenType = isHead
+        ? TokenType.TemplateHead
+        : TokenType.TemplateMiddle;
       const token = createToken(tokenType, start, pos + 2, cooked, raw);
       return { token, end: pos + 2 };
     }

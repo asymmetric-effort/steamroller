@@ -30,6 +30,7 @@ All of these must pass — the pre-commit and pre-push hooks enforce them automa
 ## Definition of Done
 
 All feature work must include:
+
 - ≥98% test coverage (happy and sad paths)
 - Unit, integration, and e2e tests
 - Documentation for public APIs
@@ -49,6 +50,7 @@ See https://coding-standards.asymmetric-effort.com for full reference.
 ## Commit Messages
 
 Use conventional commits:
+
 - `feat:` — new feature
 - `fix:` — bug fix
 - `test:` — test additions

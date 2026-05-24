@@ -10,22 +10,22 @@
  * @module parser/lexer
  */
 
-import type { Token } from './token.js';
-import { createToken } from './token.js';
-import { TokenType } from './token-types.js';
-import { lookupKeyword } from './keywords.js';
-import { scanNumericLiteral } from './lexer-numeric.js';
-import { scanStringLiteral, scanTemplateLiteral } from './lexer-string.js';
-import { isRegExpStart, scanRegExpLiteral } from './lexer-regex.js';
-import { scanPunctuator } from './lexer-punctuator.js';
+import type { Token } from "./token.js";
+import { createToken } from "./token.js";
+import { TokenType } from "./token-types.js";
+import { lookupKeyword } from "./keywords.js";
+import { scanNumericLiteral } from "./lexer-numeric.js";
+import { scanStringLiteral, scanTemplateLiteral } from "./lexer-string.js";
+import { isRegExpStart, scanRegExpLiteral } from "./lexer-regex.js";
+import { scanPunctuator } from "./lexer-punctuator.js";
 import {
   skipWhitespace,
   scanLineComment,
   scanBlockComment,
   scanHashbang,
   isLineTerminator,
-} from './lexer-whitespace.js';
-import { tokenTypeName } from './token-types.js';
+} from "./lexer-whitespace.js";
+import { tokenTypeName } from "./token-types.js";
 
 /**
  * Snapshot of lexer state for save/restore lookahead.
@@ -106,7 +106,7 @@ const isDigit = (code: number): boolean => {
  * @returns A frozen EOF token.
  */
 const createEofToken = (pos: number): Token => {
-  return createToken(TokenType.EOF, pos, pos, '', '');
+  return createToken(TokenType.EOF, pos, pos, "", "");
 };
 
 /**
@@ -313,9 +313,10 @@ export class Lexer {
 
     // Dot followed by digit is a numeric literal (.5)
     if (code === 0x2e) {
-      const nextCode = this.pos + 1 < this.source.length
-        ? this.source.charCodeAt(this.pos + 1)
-        : -1;
+      const nextCode =
+        this.pos + 1 < this.source.length
+          ? this.source.charCodeAt(this.pos + 1)
+          : -1;
       if (isDigit(nextCode)) {
         const result = scanNumericLiteral(this.source, this.pos, this.strict);
         this.pos = result.end;
@@ -439,9 +440,10 @@ export class Lexer {
         break;
       }
 
-      const c1 = this.pos + 1 < this.source.length
-        ? this.source.charCodeAt(this.pos + 1)
-        : -1;
+      const c1 =
+        this.pos + 1 < this.source.length
+          ? this.source.charCodeAt(this.pos + 1)
+          : -1;
 
       if (c1 === 0x2f) {
         // Line comment //

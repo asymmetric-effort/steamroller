@@ -176,7 +176,7 @@ export const TokenType = {
 } as const;
 
 /** Union type of all valid token type numeric values. */
-export type TokenTypeValue = typeof TokenType[keyof typeof TokenType];
+export type TokenTypeValue = (typeof TokenType)[keyof typeof TokenType];
 
 /**
  * Returns the name of a token type given its numeric value.

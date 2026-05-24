@@ -48,8 +48,8 @@ watcher.close();
 
 ### Parameters
 
-| Parameter      | Type                              | Description              |
-| -------------- | --------------------------------- | ------------------------ |
+| Parameter      | Type                                         | Description         |
+| -------------- | -------------------------------------------- | ------------------- |
 | `watchOptions` | `RollupWatchOptions \| RollupWatchOptions[]` | Watch configuration |
 
 ### Returns
@@ -76,8 +76,8 @@ export default defineConfig({
 
 ### Parameters
 
-| Parameter | Type                              | Description               |
-| --------- | --------------------------------- | ------------------------- |
+| Parameter | Type                               | Description             |
+| --------- | ---------------------------------- | ----------------------- |
 | `config`  | `RollupOptions \| RollupOptions[]` | Configuration object(s) |
 
 ### Returns

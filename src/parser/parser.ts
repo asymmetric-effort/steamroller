@@ -8,24 +8,24 @@
  * @module parser/parser
  */
 
-import type * as AST from '../ast/types.js';
-import { Lexer } from './lexer.js';
-import { TokenType } from './token-types.js';
-import { tokenTypeName } from './token-types.js';
+import type * as AST from "../ast/types.js";
+import { Lexer } from "./lexer.js";
+import { TokenType } from "./token-types.js";
+import { tokenTypeName } from "./token-types.js";
 import {
   parseFunctionDeclaration,
   parseClassDeclaration,
   parseImportDeclaration,
   parseExportDeclaration,
-} from './declarations.js';
-import type { ParserContext } from './declarations.js';
+} from "./declarations.js";
+import type { ParserContext } from "./declarations.js";
 
 /**
  * Options for the parser.
  */
 export interface ParseOptions {
   /** Whether to parse as module or script. Defaults to 'module'. */
-  readonly sourceType?: 'module' | 'script';
+  readonly sourceType?: "module" | "script";
   /** Whether to allow a hashbang (#!) at the start of the source. */
   readonly allowHashBang?: boolean;
   /** The ECMAScript version to target. Defaults to 2024. */
@@ -42,7 +42,7 @@ export class Parser implements ParserContext {
   /** The lexer producing the token stream. */
   lexer: Lexer;
   /** Whether parsing as module or script. */
-  sourceType: 'module' | 'script';
+  sourceType: "module" | "script";
 
   /**
    * Create a new Parser for the given source text.
@@ -51,9 +51,9 @@ export class Parser implements ParserContext {
    * @param options - Optional parse configuration.
    */
   constructor(source: string, options?: ParseOptions) {
-    const sourceType = options?.sourceType ?? 'module';
+    const sourceType = options?.sourceType ?? "module";
     const allowHashBang = options?.allowHashBang ?? false;
-    const isStrict = sourceType === 'module';
+    const isStrict = sourceType === "module";
 
     this.sourceType = sourceType;
     this.lexer = new Lexer(source, isStrict, allowHashBang);
@@ -80,7 +80,7 @@ export class Parser implements ParserContext {
     const end = this.lexer.token.end;
 
     return Object.freeze({
-      type: 'Program' as const,
+      type: "Program" as const,
       start,
       end,
       body: Object.freeze(body),
@@ -105,7 +105,7 @@ export class Parser implements ParserContext {
     if (token.type === TokenType.Semicolon) {
       this.lexer.next();
       return Object.freeze({
-        type: 'EmptyStatement' as const,
+        type: "EmptyStatement" as const,
         start: token.start,
         end: token.end,
       });
@@ -157,7 +157,10 @@ export class Parser implements ParserContext {
     this.lexer.expect(TokenType.LeftBrace);
 
     const body: Array<AST.Statement> = [];
-    while (!this.lexer.is(TokenType.RightBrace) && !this.lexer.is(TokenType.EOF)) {
+    while (
+      !this.lexer.is(TokenType.RightBrace) &&
+      !this.lexer.is(TokenType.EOF)
+    ) {
       const stmt = this.parseStatement() as AST.Statement;
       body.push(stmt);
     }
@@ -165,7 +168,7 @@ export class Parser implements ParserContext {
     const endToken = this.lexer.expect(TokenType.RightBrace);
 
     return Object.freeze({
-      type: 'BlockStatement' as const,
+      type: "BlockStatement" as const,
       body: Object.freeze(body),
       start,
       end: endToken.end,
@@ -185,17 +188,20 @@ export class Parser implements ParserContext {
     if (token.type === TokenType.Identifier) {
       this.lexer.next();
       return Object.freeze({
-        type: 'Identifier' as const,
+        type: "Identifier" as const,
         name: token.value as string,
         start: token.start,
         end: token.end,
       });
     }
 
-    if (token.type === TokenType.NumericLiteral || token.type === TokenType.StringLiteral) {
+    if (
+      token.type === TokenType.NumericLiteral ||
+      token.type === TokenType.StringLiteral
+    ) {
       this.lexer.next();
       return Object.freeze({
-        type: 'Literal' as const,
+        type: "Literal" as const,
         value: token.value as string | number,
         raw: token.raw,
         start: token.start,
@@ -206,7 +212,7 @@ export class Parser implements ParserContext {
     if (token.type === TokenType.True || token.type === TokenType.False) {
       this.lexer.next();
       return Object.freeze({
-        type: 'Literal' as const,
+        type: "Literal" as const,
         value: token.value as boolean,
         raw: token.raw,
         start: token.start,
@@ -217,7 +223,7 @@ export class Parser implements ParserContext {
     if (token.type === TokenType.Null) {
       this.lexer.next();
       return Object.freeze({
-        type: 'Literal' as const,
+        type: "Literal" as const,
         value: null,
         raw: token.raw,
         start: token.start,

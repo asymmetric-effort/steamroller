@@ -36,7 +36,10 @@ export interface SourceLocation {
  */
 export const isReference = (node: AstNode, parent: AstNode): boolean => {
   if (parent.type === "MemberExpression") {
-    return parent.object === node || (parent.computed === true && parent.property === node);
+    return (
+      parent.object === node ||
+      (parent.computed === true && parent.property === node)
+    );
   }
 
   if (parent.type === "Property") {
@@ -70,7 +73,10 @@ export const isReference = (node: AstNode, parent: AstNode): boolean => {
  * @param index - The byte offset to locate.
  * @returns The line/column position, or null if the index is out of bounds.
  */
-export const locateCharacter = (source: string, index: number): SourceLocation | null => {
+export const locateCharacter = (
+  source: string,
+  index: number,
+): SourceLocation | null => {
   if (index < 0 || index > source.length) {
     return null;
   }

@@ -28,15 +28,21 @@ describe("path utilities", () => {
     });
 
     it("should handle UNC paths", () => {
-      expect(normalizePath("\\\\server\\share\\file.txt")).toBe("//server/share/file.txt");
+      expect(normalizePath("\\\\server\\share\\file.txt")).toBe(
+        "//server/share/file.txt",
+      );
     });
 
     it("should handle drive letters", () => {
-      expect(normalizePath("C:\\Users\\docs\\file.txt")).toBe("C:/Users/docs/file.txt");
+      expect(normalizePath("C:\\Users\\docs\\file.txt")).toBe(
+        "C:/Users/docs/file.txt",
+      );
     });
 
     it("should handle mixed separators", () => {
-      expect(normalizePath("foo/bar\\baz/qux\\file.ts")).toBe("foo/bar/baz/qux/file.ts");
+      expect(normalizePath("foo/bar\\baz/qux\\file.ts")).toBe(
+        "foo/bar/baz/qux/file.ts",
+      );
     });
 
     it("should handle empty string", () => {
@@ -275,7 +281,7 @@ describe("path utilities", () => {
       expect(sanitizeFileName("file:name.txt")).toBe("file_name.txt");
     });
 
-    it("should replace \" with underscore", () => {
+    it('should replace " with underscore', () => {
       expect(sanitizeFileName('file"name.txt')).toBe("file_name.txt");
     });
 

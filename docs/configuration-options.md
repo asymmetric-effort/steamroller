@@ -31,7 +31,7 @@ input: { main: "src/index.ts", cli: "src/cli.ts" }
 An array of plugins to use during bundling.
 
 ```typescript
-plugins: [resolve(), commonjs()]
+plugins: [resolve(), commonjs()];
 ```
 
 **Type:** `(Plugin | null | false | undefined)[]`
@@ -44,10 +44,10 @@ Modules to treat as external (not included in the bundle).
 
 ```typescript
 // Array of module IDs
-external: ["lodash", "react"]
+external: ["lodash", "react"];
 
 // Function
-external: (id) => id.startsWith("node:")
+external: (id) => id.startsWith("node:");
 ```
 
 **Type:** `string[] | RegExp[] | ((id: string) => boolean)`

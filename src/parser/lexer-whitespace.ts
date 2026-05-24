@@ -8,7 +8,7 @@
  * @module parser/lexer-whitespace
  */
 
-import { TokenType } from './token-types.js';
+import { TokenType } from "./token-types.js";
 
 /**
  * Check if a character code is whitespace (Unicode-aware).
@@ -25,18 +25,18 @@ export const isWhitespace = (charCode: number): boolean => {
   if (charCode === 0x20 || charCode === 0x09) {
     return true;
   }
-  if (charCode === 0x0B || charCode === 0x0C) {
+  if (charCode === 0x0b || charCode === 0x0c) {
     return true;
   }
-  if (charCode === 0xA0 || charCode === 0xFEFF) {
+  if (charCode === 0xa0 || charCode === 0xfeff) {
     return true;
   }
   // Unicode category Zs (space separators)
   if (
     charCode === 0x1680 ||
-    (charCode >= 0x2000 && charCode <= 0x200A) ||
-    charCode === 0x202F ||
-    charCode === 0x205F ||
+    (charCode >= 0x2000 && charCode <= 0x200a) ||
+    charCode === 0x202f ||
+    charCode === 0x205f ||
     charCode === 0x3000
   ) {
     return true;
@@ -55,8 +55,8 @@ export const isWhitespace = (charCode: number): boolean => {
  */
 export const isLineTerminator = (charCode: number): boolean => {
   return (
-    charCode === 0x0A ||
-    charCode === 0x0D ||
+    charCode === 0x0a ||
+    charCode === 0x0d ||
     charCode === 0x2028 ||
     charCode === 0x2029
   );
@@ -82,7 +82,10 @@ export interface SkipWhitespaceResult {
  * @param pos    - The starting position.
  * @returns The new position and whether a line terminator was crossed.
  */
-export const skipWhitespace = (source: string, pos: number): SkipWhitespaceResult => {
+export const skipWhitespace = (
+  source: string,
+  pos: number,
+): SkipWhitespaceResult => {
   const len = source.length;
   let hadLineTerminator = false;
   let i = pos;
@@ -94,7 +97,7 @@ export const skipWhitespace = (source: string, pos: number): SkipWhitespaceResul
     } else if (isLineTerminator(ch)) {
       hadLineTerminator = true;
       // Handle CRLF as single terminator
-      if (ch === 0x0D && i + 1 < len && source.charCodeAt(i + 1) === 0x0A) {
+      if (ch === 0x0d && i + 1 < len && source.charCodeAt(i + 1) === 0x0a) {
         i += 2;
       } else {
         i++;
@@ -127,7 +130,10 @@ export interface LineCommentResult {
  * @param start  - Position of the first `/` character.
  * @returns The end position and comment text.
  */
-export const scanLineComment = (source: string, start: number): LineCommentResult => {
+export const scanLineComment = (
+  source: string,
+  start: number,
+): LineCommentResult => {
   const len = source.length;
   // Skip past the //
   let i = start + 2;
@@ -167,7 +173,10 @@ export interface BlockCommentResult {
  * @returns The end position, comment text, and line terminator flag.
  * @throws Error if the block comment is unterminated.
  */
-export const scanBlockComment = (source: string, start: number): BlockCommentResult => {
+export const scanBlockComment = (
+  source: string,
+  start: number,
+): BlockCommentResult => {
   const len = source.length;
   // Skip past /*
   let i = start + 2;
@@ -175,14 +184,18 @@ export const scanBlockComment = (source: string, start: number): BlockCommentRes
 
   while (i < len) {
     const ch = source.charCodeAt(i);
-    if (ch === 0x2A /* * */ && i + 1 < len && source.charCodeAt(i + 1) === 0x2F /* / */) {
+    if (
+      ch === 0x2a /* * */ &&
+      i + 1 < len &&
+      source.charCodeAt(i + 1) === 0x2f /* / */
+    ) {
       const value = source.slice(start + 2, i);
       return Object.freeze({ end: i + 2, value, hadLineTerminator });
     }
     if (isLineTerminator(ch)) {
       hadLineTerminator = true;
       // Handle CRLF as single terminator
-      if (ch === 0x0D && i + 1 < len && source.charCodeAt(i + 1) === 0x0A) {
+      if (ch === 0x0d && i + 1 < len && source.charCodeAt(i + 1) === 0x0a) {
         i += 2;
       } else {
         i++;
@@ -215,7 +228,11 @@ export interface HashbangResult {
  * @returns The hashbang result, or null if none present.
  */
 export const scanHashbang = (source: string): HashbangResult | null => {
-  if (source.length < 2 || source.charCodeAt(0) !== 0x23 /* # */ || source.charCodeAt(1) !== 0x21 /* ! */) {
+  if (
+    source.length < 2 ||
+    source.charCodeAt(0) !== 0x23 /* # */ ||
+    source.charCodeAt(1) !== 0x21 /* ! */
+  ) {
     return null;
   }
 
@@ -237,7 +254,7 @@ export const scanHashbang = (source: string): HashbangResult | null => {
 /**
  * Recognized PURE annotation strings found in block comments.
  */
-export type PureAnnotation = '@__PURE__' | '#__PURE__' | '@__NO_SIDE_EFFECTS__';
+export type PureAnnotation = "@__PURE__" | "#__PURE__" | "@__NO_SIDE_EFFECTS__";
 
 /**
  * Check if a block comment contains a PURE annotation.
@@ -248,9 +265,15 @@ export type PureAnnotation = '@__PURE__' | '#__PURE__' | '@__NO_SIDE_EFFECTS__';
  * @param commentValue - The comment text (without delimiters).
  * @returns The annotation string, or null if none found.
  */
-export const getPureAnnotation = (commentValue: string): PureAnnotation | null => {
+export const getPureAnnotation = (
+  commentValue: string,
+): PureAnnotation | null => {
   const trimmed = commentValue.trim();
-  if (trimmed === '@__PURE__' || trimmed === '#__PURE__' || trimmed === '@__NO_SIDE_EFFECTS__') {
+  if (
+    trimmed === "@__PURE__" ||
+    trimmed === "#__PURE__" ||
+    trimmed === "@__NO_SIDE_EFFECTS__"
+  ) {
     return trimmed as PureAnnotation;
   }
   return null;
@@ -311,7 +334,10 @@ export const shouldInsertSemicolon = (context: AsiContext): boolean => {
   }
 
   // Rule 2: closing brace with a line terminator before it
-  if (context.currentTokenType === TokenType.RightBrace && context.hadLineTerminatorBefore) {
+  if (
+    context.currentTokenType === TokenType.RightBrace &&
+    context.hadLineTerminatorBefore
+  ) {
     return true;
   }
 

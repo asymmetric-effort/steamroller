@@ -7,7 +7,7 @@
  * @module async-utils
  */
 
-import { createSemaphore } from './semaphore.js';
+import { createSemaphore } from "./semaphore.js";
 
 /**
  * Yield to the event loop so other microtasks and I/O callbacks
@@ -64,6 +64,6 @@ export const runParallel = async <T>(
  */
 export const checkAborted = (signal?: AbortSignal): void => {
   if (signal?.aborted) {
-    throw new Error('Operation aborted');
+    throw new Error("Operation aborted");
   }
 };

@@ -8,9 +8,9 @@
  * @module parser/lexer-numeric
  */
 
-import type { Token } from './token.js';
-import { TokenType } from './token-types.js';
-import { createToken } from './token.js';
+import type { Token } from "./token.js";
+import { TokenType } from "./token-types.js";
+import { createToken } from "./token.js";
 
 /**
  * Result of scanning a numeric literal from source text.
@@ -52,18 +52,26 @@ const isBinaryDigit = (code: number): boolean =>
  * Validates numeric separator (`_`) placement within a digit sequence.
  * Throws if the separator appears at the start, end, or consecutively.
  */
-const validateSeparators = (raw: string, digitsStart: number, digitsEnd: number): void => {
+const validateSeparators = (
+  raw: string,
+  digitsStart: number,
+  digitsEnd: number,
+): void => {
   for (let i = digitsStart; i < digitsEnd; i++) {
     if (raw.charCodeAt(i) === 0x5f) {
       /* underscore */
       if (i === digitsStart) {
-        throw new SyntaxError('Numeric separator cannot appear at the start of a number');
+        throw new SyntaxError(
+          "Numeric separator cannot appear at the start of a number",
+        );
       }
       if (i === digitsEnd - 1) {
-        throw new SyntaxError('Numeric separator cannot appear at the end of a number');
+        throw new SyntaxError(
+          "Numeric separator cannot appear at the end of a number",
+        );
       }
       if (raw.charCodeAt(i + 1) === 0x5f) {
-        throw new SyntaxError('Numeric separator must not be consecutive');
+        throw new SyntaxError("Numeric separator must not be consecutive");
       }
     }
   }
@@ -91,7 +99,7 @@ const scanDigits = (
     }
   }
   if (pos === start) {
-    throw new SyntaxError('Expected digit after numeric prefix');
+    throw new SyntaxError("Expected digit after numeric prefix");
   }
   validateSeparators(source, start, pos);
   return pos;
@@ -153,7 +161,9 @@ export const scanNumericLiteral = (
     if (next >= 0x30 && next <= 0x37) {
       /* '0'..'7' */
       if (strict) {
-        throw new SyntaxError('Legacy octal literals are not allowed in strict mode');
+        throw new SyntaxError(
+          "Legacy octal literals are not allowed in strict mode",
+        );
       }
       pos++;
       while (pos < source.length && isOctalDigit(source.charCodeAt(pos))) {
@@ -161,7 +171,13 @@ export const scanNumericLiteral = (
       }
       const raw = source.slice(start, pos);
       const value = parseInt(raw, 8);
-      const token = createToken(TokenType.NumericLiteral, start, pos, value, raw);
+      const token = createToken(
+        TokenType.NumericLiteral,
+        start,
+        pos,
+        value,
+        raw,
+      );
       return Object.freeze({ token, end: pos });
     }
 
@@ -182,7 +198,7 @@ export const scanNumericLiteral = (
     /* Now scan optional exponent */
     pos = scanOptionalExponent(source, pos);
     const raw = source.slice(start, pos);
-    const value = parseFloat(raw.replace(/_/g, ''));
+    const value = parseFloat(raw.replace(/_/g, ""));
     const token = createToken(TokenType.NumericLiteral, start, pos, value, raw);
     return Object.freeze({ token, end: pos });
   }
@@ -192,7 +208,7 @@ export const scanNumericLiteral = (
   if (posAfterExp !== pos) {
     pos = posAfterExp;
     const raw = source.slice(start, pos);
-    const value = parseFloat(raw.replace(/_/g, ''));
+    const value = parseFloat(raw.replace(/_/g, ""));
     const token = createToken(TokenType.NumericLiteral, start, pos, value, raw);
     return Object.freeze({ token, end: pos });
   }
@@ -201,7 +217,7 @@ export const scanNumericLiteral = (
   if (pos < source.length && source.charCodeAt(pos) === 0x6e) {
     /* 'n' */
     const raw = source.slice(start, pos + 1);
-    const digitStr = source.slice(start, pos).replace(/_/g, '');
+    const digitStr = source.slice(start, pos).replace(/_/g, "");
     const value = BigInt(digitStr);
     pos++;
     const token = createToken(TokenType.BigIntLiteral, start, pos, value, raw);
@@ -210,7 +226,7 @@ export const scanNumericLiteral = (
 
   /* ---- Plain decimal integer ---- */
   const raw = source.slice(start, pos);
-  const value = parseFloat(raw.replace(/_/g, ''));
+  const value = parseFloat(raw.replace(/_/g, ""));
   const token = createToken(TokenType.NumericLiteral, start, pos, value, raw);
   return Object.freeze({ token, end: pos });
 };
@@ -228,7 +244,7 @@ const scanDecimalAfterDot = (
   pos = scanDigits(source, pos, isDecimalDigit);
   pos = scanOptionalExponent(source, pos);
   const raw = source.slice(start, pos);
-  const value = parseFloat(raw.replace(/_/g, ''));
+  const value = parseFloat(raw.replace(/_/g, ""));
   const token = createToken(TokenType.NumericLiteral, start, pos, value, raw);
   return Object.freeze({ token, end: pos });
 };
@@ -273,7 +289,7 @@ const finishInteger = (
     /* 'n' */
     const raw = source.slice(start, pos + 1);
     /* Strip prefix (0x, 0o, 0b) and separators for BigInt parsing */
-    const digitStr = source.slice(start, pos).replace(/_/g, '');
+    const digitStr = source.slice(start, pos).replace(/_/g, "");
     const value = BigInt(digitStr);
     pos++;
     const token = createToken(TokenType.BigIntLiteral, start, pos, value, raw);
@@ -281,7 +297,7 @@ const finishInteger = (
   }
 
   const raw = source.slice(start, pos);
-  const digitStr = raw.slice(2).replace(/_/g, '');
+  const digitStr = raw.slice(2).replace(/_/g, "");
   const value = parseInt(digitStr, radix);
   const token = createToken(TokenType.NumericLiteral, start, pos, value, raw);
   return Object.freeze({ token, end: pos });

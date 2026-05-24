@@ -210,7 +210,10 @@ describe("generateCodeFrame", () => {
   });
 
   it("pads line numbers consistently", () => {
-    const longSource = Array.from({ length: 100 }, (_, i) => `line ${i + 1}`).join("\n");
+    const longSource = Array.from(
+      { length: 100 },
+      (_, i) => `line ${i + 1}`,
+    ).join("\n");
     const frame = generateCodeFrame(longSource, 50, 0);
     // Line numbers should be padded to same width
     const frameLines = frame.split("\n");

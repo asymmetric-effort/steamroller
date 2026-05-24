@@ -46,15 +46,15 @@ npm install steamroller
 ### JavaScript API
 
 ```typescript
-import { rollup } from 'steamroller';
+import { rollup } from "steamroller";
 
 const bundle = await rollup({
-  input: 'src/main.js',
+  input: "src/main.js",
 });
 
 await bundle.write({
-  file: 'dist/bundle.js',
-  format: 'es',
+  file: "dist/bundle.js",
+  format: "es",
 });
 
 await bundle.close();
@@ -71,10 +71,10 @@ npx steamroller src/main.js --file dist/bundle.js --format es
 ```javascript
 // steamroller.config.mjs
 export default {
-  input: 'src/main.js',
+  input: "src/main.js",
   output: {
-    file: 'dist/bundle.js',
-    format: 'es',
+    file: "dist/bundle.js",
+    format: "es",
   },
 };
 ```

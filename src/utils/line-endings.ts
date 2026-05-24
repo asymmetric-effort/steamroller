@@ -4,7 +4,7 @@
  * with source map compatibility.
  */
 
-type LineEnding = '\n' | '\r\n';
+type LineEnding = "\n" | "\r\n";
 
 /**
  * Detect the predominant line ending in source text.
@@ -12,8 +12,8 @@ type LineEnding = '\n' | '\r\n';
  * line endings or when LF and CRLF counts are equal.
  */
 export const detectLineEnding = (source: string): LineEnding => {
-  const crlfCount = countMatches(source, '\r\n');
-  const totalLfCount = countMatches(source, '\n');
+  const crlfCount = countMatches(source, "\r\n");
+  const totalLfCount = countMatches(source, "\n");
   const lfOnly = totalLfCount - crlfCount;
   const crCount = countCrOnly(source);
 
@@ -21,9 +21,9 @@ export const detectLineEnding = (source: string): LineEnding => {
   const crlfSide = crlfCount + crCount;
 
   if (crlfSide > lfOnly) {
-    return '\r\n';
+    return "\r\n";
   }
-  return '\n';
+  return "\n";
 };
 
 /**
@@ -32,11 +32,11 @@ export const detectLineEnding = (source: string): LineEnding => {
  */
 export const normalizeLineEndings = (
   source: string,
-  target: LineEnding = '\n',
+  target: LineEnding = "\n",
 ): string => {
   /* Replace CRLF first, then standalone CR, to avoid double-replacing */
-  const unified = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  if (target === '\n') {
+  const unified = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  if (target === "\n") {
     return unified;
   }
   return unified.replace(/\n/g, target);
@@ -70,14 +70,14 @@ export const getLineOffsets = (source: string): ReadonlyArray<number> => {
   const offsets: Array<number> = [0];
   for (let i = 0; i < source.length; i++) {
     const ch = source[i];
-    if (ch === '\r') {
-      if (i + 1 < source.length && source[i + 1] === '\n') {
+    if (ch === "\r") {
+      if (i + 1 < source.length && source[i + 1] === "\n") {
         offsets.push(i + 2);
         i++; /* skip the \n of CRLF */
       } else {
         offsets.push(i + 1);
       }
-    } else if (ch === '\n') {
+    } else if (ch === "\n") {
       offsets.push(i + 1);
     }
   }
@@ -110,7 +110,10 @@ const countMatches = (haystack: string, needle: string): number => {
 const countCrOnly = (source: string): number => {
   let count = 0;
   for (let i = 0; i < source.length; i++) {
-    if (source[i] === '\r' && (i + 1 >= source.length || source[i + 1] !== '\n')) {
+    if (
+      source[i] === "\r" &&
+      (i + 1 >= source.length || source[i + 1] !== "\n")
+    ) {
       count++;
     }
   }

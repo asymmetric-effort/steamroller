@@ -193,10 +193,7 @@ describe("dataToEsm", () => {
   });
 
   it("uses custom indent", () => {
-    const result = dataToEsm(
-      { nested: { deep: true } },
-      { indent: "  " },
-    );
+    const result = dataToEsm({ nested: { deep: true } }, { indent: "  " });
     expect(result).toContain("  deep: true");
   });
 
@@ -255,7 +252,10 @@ describe("dataToEsm", () => {
   });
 
   it("quotes reserved-word keys in objects", () => {
-    const result = dataToEsm({ nested: { class: "x" } }, { namedExports: false });
+    const result = dataToEsm(
+      { nested: { class: "x" } },
+      { namedExports: false },
+    );
     expect(result).toContain('"class"');
   });
 

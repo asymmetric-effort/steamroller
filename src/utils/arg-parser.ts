@@ -97,10 +97,7 @@ const isStringFlag = (
 /**
  * Check whether a flag name is configured as an array flag.
  */
-const isArrayFlag = (
-  name: string,
-  arrays: ReadonlyArray<string>,
-): boolean => {
+const isArrayFlag = (name: string, arrays: ReadonlyArray<string>): boolean => {
   return arrays.includes(name);
 };
 
@@ -156,7 +153,12 @@ const setValue = (
 
   for (const part of parts.slice(0, lastIndex)) {
     const existing = current.ref[part];
-    if (existing === undefined || existing === null || typeof existing !== "object" || Array.isArray(existing)) {
+    if (
+      existing === undefined ||
+      existing === null ||
+      typeof existing !== "object" ||
+      Array.isArray(existing)
+    ) {
       current.ref[part] = {};
     }
     stack.push({ obj: current.ref, key: part });
@@ -287,7 +289,12 @@ export const parseArgs = (
             setValue(result, name, coerceValue(next, name, strings), arrays);
           }
         } else {
-          setValue(result, name, isStringFlag(name, strings) ? "" : true, arrays);
+          setValue(
+            result,
+            name,
+            isStringFlag(name, strings) ? "" : true,
+            arrays,
+          );
         }
         continue;
       }
@@ -343,10 +350,20 @@ export const parseArgs = (
         if (isArrayFlag(firstName, arrays) && val.includes(",")) {
           const parts = val.split(",");
           for (const part of parts) {
-            setValue(result, firstName, coerceValue(part, firstName, strings), arrays);
+            setValue(
+              result,
+              firstName,
+              coerceValue(part, firstName, strings),
+              arrays,
+            );
           }
         } else {
-          setValue(result, firstName, coerceValue(val, firstName, strings), arrays);
+          setValue(
+            result,
+            firstName,
+            coerceValue(val, firstName, strings),
+            arrays,
+          );
         }
         continue;
       }
@@ -363,7 +380,12 @@ export const parseArgs = (
 
       /* Unknown first char: treat the rest as the value */
       const restValue = chars.slice(1);
-      setValue(result, firstName, coerceValue(restValue, firstName, strings), arrays);
+      setValue(
+        result,
+        firstName,
+        coerceValue(restValue, firstName, strings),
+        arrays,
+      );
       continue;
     }
 

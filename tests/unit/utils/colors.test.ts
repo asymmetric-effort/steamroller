@@ -7,7 +7,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /** Helper to dynamically import the colors module with a fresh module cache. */
-const importColors = async (): Promise<typeof import("../../../src/utils/colors")> => {
+const importColors = async (): Promise<
+  typeof import("../../../src/utils/colors")
+> => {
   vi.resetModules();
   return import("../../../src/utils/colors");
 };
@@ -321,9 +323,7 @@ describe("colors", () => {
       delete process.env["NO_COLOR"];
       const { red, bold, underline } = await importColors();
       const result = red(bold(underline("deep")));
-      expect(result).toBe(
-        "\x1b[31m\x1b[1m\x1b[4mdeep\x1b[24m\x1b[22m\x1b[39m",
-      );
+      expect(result).toBe("\x1b[31m\x1b[1m\x1b[4mdeep\x1b[24m\x1b[22m\x1b[39m");
     });
 
     it("should return plain text for nested calls when colors disabled", async () => {

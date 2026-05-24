@@ -500,9 +500,15 @@ describe("matchGlob", () => {
   });
 
   it("handles complex patterns", () => {
-    expect(matchGlob("src/**/test/*.{spec,test}.ts", "src/utils/test/foo.spec.ts")).toBe(true);
-    expect(matchGlob("src/**/test/*.{spec,test}.ts", "src/utils/test/foo.test.ts")).toBe(true);
-    expect(matchGlob("src/**/test/*.{spec,test}.ts", "src/utils/test/foo.ts")).toBe(false);
+    expect(
+      matchGlob("src/**/test/*.{spec,test}.ts", "src/utils/test/foo.spec.ts"),
+    ).toBe(true);
+    expect(
+      matchGlob("src/**/test/*.{spec,test}.ts", "src/utils/test/foo.test.ts"),
+    ).toBe(true);
+    expect(
+      matchGlob("src/**/test/*.{spec,test}.ts", "src/utils/test/foo.ts"),
+    ).toBe(false);
   });
 
   it("matches range patterns in braces", () => {

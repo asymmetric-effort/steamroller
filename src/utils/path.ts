@@ -9,9 +9,28 @@
 
 /** Windows reserved device names that are invalid as filenames. */
 const RESERVED_NAMES: ReadonlySet<string> = new Set([
-  "CON", "PRN", "AUX", "NUL",
-  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-  "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+  "CON",
+  "PRN",
+  "AUX",
+  "NUL",
+  "COM1",
+  "COM2",
+  "COM3",
+  "COM4",
+  "COM5",
+  "COM6",
+  "COM7",
+  "COM8",
+  "COM9",
+  "LPT1",
+  "LPT2",
+  "LPT3",
+  "LPT4",
+  "LPT5",
+  "LPT6",
+  "LPT7",
+  "LPT8",
+  "LPT9",
 ]);
 
 /** Characters that are reserved or unsafe on one or more platforms. */
@@ -59,8 +78,12 @@ export const isAbsolute = (filePath: string): boolean => {
  * @returns The relative path from `from` to `to`.
  */
 export const relativePath = (from: string, to: string): string => {
-  const fromParts = normalizePath(from).split("/").filter((p) => p !== "");
-  const toParts = normalizePath(to).split("/").filter((p) => p !== "");
+  const fromParts = normalizePath(from)
+    .split("/")
+    .filter((p) => p !== "");
+  const toParts = normalizePath(to)
+    .split("/")
+    .filter((p) => p !== "");
 
   let commonLength = 0;
   const maxLength = Math.min(fromParts.length, toParts.length);
@@ -142,7 +165,9 @@ export const sanitizeFileName = (name: string): string => {
   const ext = name.substring(baseName.length);
   const upperBase = baseName.toUpperCase();
 
-  const sanitizedBase = RESERVED_NAMES.has(upperBase) ? `_${baseName}` : baseName;
+  const sanitizedBase = RESERVED_NAMES.has(upperBase)
+    ? `_${baseName}`
+    : baseName;
   const sanitizedName = `${sanitizedBase}${ext}`;
   return sanitizedName.replace(RESERVED_CHARS_RE, "_");
 };
@@ -157,7 +182,10 @@ export const sanitizeFileName = (name: string): string => {
  * @param id2 - The second identifier.
  * @returns A warning message string if the identifiers differ only by case, or null.
  */
-export const warnOnCaseDifference = (id1: string, id2: string): string | null => {
+export const warnOnCaseDifference = (
+  id1: string,
+  id2: string,
+): string | null => {
   if (id1 === id2) {
     return null;
   }

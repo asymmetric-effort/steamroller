@@ -20,7 +20,10 @@ export interface RollupOptions {
  */
 export type RollupOptionsFunction = (
   commandLineArgs: Record<string, unknown>,
-) => RollupOptions | ReadonlyArray<RollupOptions> | Promise<RollupOptions | ReadonlyArray<RollupOptions>>;
+) =>
+  | RollupOptions
+  | ReadonlyArray<RollupOptions>
+  | Promise<RollupOptions | ReadonlyArray<RollupOptions>>;
 
 // NOTE: defineConfig uses function overloads, which require the
 // `function` keyword in TypeScript. This is an acceptable exception
@@ -33,7 +36,9 @@ export function defineConfig(
   options: ReadonlyArray<RollupOptions>,
 ): ReadonlyArray<RollupOptions>;
 /** Accept a function that produces configuration. */
-export function defineConfig(options: RollupOptionsFunction): RollupOptionsFunction;
+export function defineConfig(
+  options: RollupOptionsFunction,
+): RollupOptionsFunction;
 /**
  * Identity helper that returns its input unchanged.
  *

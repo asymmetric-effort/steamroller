@@ -7,9 +7,9 @@
  * @module parser/lexer-regex
  */
 
-import type { Token } from './token.js';
-import { TokenType } from './token-types.js';
-import { createToken } from './token.js';
+import type { Token } from "./token.js";
+import { TokenType } from "./token-types.js";
+import { createToken } from "./token.js";
 
 /**
  * Result of scanning a regex literal from source.
@@ -22,7 +22,7 @@ export interface ScanResult {
 }
 
 /** Set of valid ES2024 regex flag characters. */
-const VALID_FLAGS = new Set(['d', 'g', 'i', 'm', 's', 'u', 'v', 'y']);
+const VALID_FLAGS = new Set(["d", "g", "i", "m", "s", "u", "v", "y"]);
 
 /**
  * Token types after which `/` is the division operator (not a regex start).
@@ -89,7 +89,7 @@ const validateFlags = (flags: string, start: number): void => {
     }
     seen.add(flag);
   }
-  if (seen.has('u') && seen.has('v')) {
+  if (seen.has("u") && seen.has("v")) {
     throw new SyntaxError(
       `Regular expression flags 'u' and 'v' are mutually exclusive at position ${start}`,
     );
@@ -117,7 +117,7 @@ export const scanRegExpLiteral = (
 
   // Handle empty regex special case: // is a line comment, not a regex.
   // An empty regex literal is not valid in JS (it would be a comment).
-  if (pos < length && source[pos] === '/') {
+  if (pos < length && source[pos] === "/") {
     throw new SyntaxError(
       `Empty regular expression pattern at position ${start}`,
     );
@@ -127,7 +127,7 @@ export const scanRegExpLiteral = (
   while (pos < length) {
     const ch = source[pos];
 
-    if (ch === '\\') {
+    if (ch === "\\") {
       // Escape: skip the next character
       pos += 1;
       if (pos >= length) {
@@ -140,26 +140,26 @@ export const scanRegExpLiteral = (
     }
 
     if (inCharClass) {
-      if (ch === ']') {
+      if (ch === "]") {
         inCharClass = false;
       }
       pos += 1;
       continue;
     }
 
-    if (ch === '[') {
+    if (ch === "[") {
       inCharClass = true;
       pos += 1;
       continue;
     }
 
-    if (ch === '/') {
+    if (ch === "/") {
       // End of pattern
       break;
     }
 
     // Newline terminates regex (unterminated)
-    if (ch === '\n' || ch === '\r') {
+    if (ch === "\n" || ch === "\r") {
       throw new SyntaxError(
         `Unterminated regular expression at position ${start}`,
       );

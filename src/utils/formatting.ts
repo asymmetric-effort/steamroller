@@ -3,7 +3,7 @@
  * milliseconds, date/time, and timezone.
  */
 
-const BYTE_UNITS: ReadonlyArray<string> = ['B', 'kB', 'MB', 'GB', 'TB', 'PB'];
+const BYTE_UNITS: ReadonlyArray<string> = ["B", "kB", "MB", "GB", "TB", "PB"];
 const BYTES_PER_UNIT = 1000;
 
 /**
@@ -19,7 +19,7 @@ export const prettyBytes = (bytes: number): string => {
   const absolute = Math.abs(bytes);
 
   if (absolute === 0) {
-    return '0 B';
+    return "0 B";
   }
 
   const exponent = Math.min(
@@ -31,7 +31,7 @@ export const prettyBytes = (bytes: number): string => {
   const formatted = value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
   const unit = BYTE_UNITS[exponent] as string;
 
-  return `${negative ? '-' : ''}${formatted} ${unit}`;
+  return `${negative ? "-" : ""}${formatted} ${unit}`;
 };
 
 interface ParsedMs {
@@ -79,7 +79,7 @@ export const prettyMs = (ms: number): string => {
   const absolute = Math.abs(ms);
 
   if (absolute < MS_PER_SECOND) {
-    return `${negative ? '-' : ''}${Math.round(absolute)}ms`;
+    return `${negative ? "-" : ""}${Math.round(absolute)}ms`;
   }
 
   const parsed = parseMs(absolute);
@@ -93,7 +93,7 @@ export const prettyMs = (ms: number): string => {
     parts.push(`${parsed.seconds}s`);
   }
 
-  return `${negative ? '-' : ''}${parts.join(' ')}`;
+  return `${negative ? "-" : ""}${parts.join(" ")}`;
 };
 
 /**

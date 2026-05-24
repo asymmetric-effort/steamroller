@@ -17,7 +17,9 @@ describe("VERSION", () => {
 
   it("matches the version in package.json", () => {
     const pkgPath = resolve(__dirname, "../../package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { version: string };
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+      version: string;
+    };
     expect(VERSION).toBe(pkg.version);
   });
 

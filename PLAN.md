@@ -60,15 +60,15 @@ Rollup is a JavaScript module bundler that:
 
 ### Rollup's Architecture (Reference)
 
-| Component | Rollup Implementation | Lines | Steamroller Approach |
-|---|---|---|---|
-| JS/JSX Parser | Rust/SWC via N-API | ~2MB binary | Pure TypeScript |
-| Content Hashing (xxHash) | Rust via N-API | included in binary | Pure TypeScript |
-| AST Buffer Conversion | JavaScript | ~2,361 | Not needed (parse directly to ESTree) |
-| Module Graph / Tree-Shaking / Codegen | JavaScript | ~24,406 | TypeScript |
-| CLI | JavaScript | ~9,615 | TypeScript |
-| Watch Mode | JavaScript | ~866 | TypeScript |
-| Config Loading | JavaScript | ~572 | TypeScript |
+| Component                             | Rollup Implementation | Lines              | Steamroller Approach                  |
+| ------------------------------------- | --------------------- | ------------------ | ------------------------------------- |
+| JS/JSX Parser                         | Rust/SWC via N-API    | ~2MB binary        | Pure TypeScript                       |
+| Content Hashing (xxHash)              | Rust via N-API        | included in binary | Pure TypeScript                       |
+| AST Buffer Conversion                 | JavaScript            | ~2,361             | Not needed (parse directly to ESTree) |
+| Module Graph / Tree-Shaking / Codegen | JavaScript            | ~24,406            | TypeScript                            |
+| CLI                                   | JavaScript            | ~9,615             | TypeScript                            |
+| Watch Mode                            | JavaScript            | ~866               | TypeScript                            |
+| Config Loading                        | JavaScript            | ~572               | TypeScript                            |
 
 ### Rollup's Dependencies (All MIT-Compatible)
 
@@ -426,6 +426,7 @@ The parser is the largest and most complex component. Rollup uses a Rust/SWC-bas
 ### Estimated Complexity
 
 This is the largest single component. A full ES2024+JSX parser is approximately 8,000–15,000 lines of TypeScript. Key challenges:
+
 - Correct ASI (automatic semicolon insertion) — many edge cases
 - Cover expression parsing ambiguities (arrow functions vs parenthesized expressions, async arrows, etc.)
 - Regex vs division context sensitivity
@@ -465,6 +466,7 @@ This is the largest single component. A full ES2024+JSX parser is approximately 
 ### 2.2 ModuleInfo Interface
 
 Full `ModuleInfo` compatibility:
+
 - [ ] `id`, `code`, `ast`, `isEntry`, `isExternal`, `isIncluded`
 - [ ] `hasDefaultExport`, `exports`, `exportedBindings`
 - [ ] `importedIds`, `importedIdResolutions`
@@ -793,54 +795,55 @@ Reimplement `magic-string` functionality (MIT, currently bundled by rollup):
 
 ### 6.2 Build Phase Hooks (9 hooks)
 
-| # | Hook | Type | Semantics |
-|---|------|------|-----------|
-| 1 | `options` | async | sequential |
-| 2 | `buildStart` | async | parallel |
-| 3 | `resolveId` | async | first |
-| 4 | `resolveDynamicImport` | async | first |
-| 5 | `load` | async | first |
-| 6 | `shouldTransformCachedModule` | async | first |
-| 7 | `transform` | async | sequential |
-| 8 | `moduleParsed` | async | parallel |
-| 9 | `buildEnd` | async | parallel |
+| #   | Hook                          | Type  | Semantics  |
+| --- | ----------------------------- | ----- | ---------- |
+| 1   | `options`                     | async | sequential |
+| 2   | `buildStart`                  | async | parallel   |
+| 3   | `resolveId`                   | async | first      |
+| 4   | `resolveDynamicImport`        | async | first      |
+| 5   | `load`                        | async | first      |
+| 6   | `shouldTransformCachedModule` | async | first      |
+| 7   | `transform`                   | async | sequential |
+| 8   | `moduleParsed`                | async | parallel   |
+| 9   | `buildEnd`                    | async | parallel   |
 
 ### 6.3 Output Generation Hooks (14 hooks)
 
-| # | Hook | Type | Semantics |
-|---|------|------|-----------|
-| 10 | `outputOptions` | sync | sequential |
-| 11 | `renderStart` | async | parallel |
-| 12 | `renderDynamicImport` | sync | first |
-| 13 | `resolveFileUrl` | sync | first |
-| 14 | `resolveImportMeta` | sync | first |
-| 15 | `banner` | async | sequential |
-| 16 | `footer` | async | sequential |
-| 17 | `intro` | async | sequential |
-| 18 | `outro` | async | sequential |
-| 19 | `renderChunk` | async | sequential |
-| 20 | `augmentChunkHash` | sync | sequential |
-| 21 | `generateBundle` | async | sequential |
-| 22 | `writeBundle` | async | parallel |
-| 23 | `renderError` | async | parallel |
-| 24 | `closeBundle` | async | parallel |
+| #   | Hook                  | Type  | Semantics  |
+| --- | --------------------- | ----- | ---------- |
+| 10  | `outputOptions`       | sync  | sequential |
+| 11  | `renderStart`         | async | parallel   |
+| 12  | `renderDynamicImport` | sync  | first      |
+| 13  | `resolveFileUrl`      | sync  | first      |
+| 14  | `resolveImportMeta`   | sync  | first      |
+| 15  | `banner`              | async | sequential |
+| 16  | `footer`              | async | sequential |
+| 17  | `intro`               | async | sequential |
+| 18  | `outro`               | async | sequential |
+| 19  | `renderChunk`         | async | sequential |
+| 20  | `augmentChunkHash`    | sync  | sequential |
+| 21  | `generateBundle`      | async | sequential |
+| 22  | `writeBundle`         | async | parallel   |
+| 23  | `renderError`         | async | parallel   |
+| 24  | `closeBundle`         | async | parallel   |
 
 ### 6.4 Watch Hooks (2 hooks)
 
-| # | Hook | Type | Semantics |
-|---|------|------|-----------|
-| 25 | `watchChange` | async | parallel |
-| 26 | `closeWatcher` | async | parallel |
+| #   | Hook           | Type  | Semantics |
+| --- | -------------- | ----- | --------- |
+| 25  | `watchChange`  | async | parallel  |
+| 26  | `closeWatcher` | async | parallel  |
 
 ### 6.5 Cross-Cutting Hooks (1 hook)
 
-| # | Hook | Type | Semantics |
-|---|------|------|-----------|
-| 27 | `onLog` | sync | sequential |
+| #   | Hook    | Type | Semantics  |
+| --- | ------- | ---- | ---------- |
+| 27  | `onLog` | sync | sequential |
 
 ### 6.6 Plugin Context (`this.*`)
 
 Module operations:
+
 - [ ] `this.addWatchFile(id: string): void`
 - [ ] `this.load(options: {id, resolveDependencies?, ...ModuleOptions}): Promise<ModuleInfo>`
 - [ ] `this.resolve(source, importer?, {attributes?, custom?, isEntry?, skipSelf?}): Promise<ResolvedId | null>`
@@ -850,20 +853,24 @@ Module operations:
 - [ ] `this.getWatchFiles(): string[]`
 
 Asset/chunk emission:
+
 - [ ] `this.emitFile(emittedFile: EmittedFile): string` (returns referenceId)
 - [ ] `this.getFileName(referenceId: string): string`
 - [ ] `this.setAssetSource(referenceId: string, source: string | Uint8Array): void`
 
 Source maps:
+
 - [ ] `this.getCombinedSourcemap(): SourceMap` (only in `transform` hook via `TransformPluginContext`)
 
 Logging:
+
 - [ ] `this.error(error, pos?): never`
 - [ ] `this.warn(log, pos?): void`
 - [ ] `this.info(log, pos?): void`
 - [ ] `this.debug(log, pos?): void`
 
 Metadata:
+
 - [ ] `this.meta: {rollupVersion: string, watchMode: boolean}`
 - [ ] `this.cache: PluginCache` with `get<T>(id, cb?)`, `set(id, value)`, `has(id)`, `delete(id)`
 - [ ] `this.fs: RollupFsModule`
@@ -1176,10 +1183,14 @@ Metadata:
 
 ```typescript
 export function rollup(options: RollupOptions): Promise<RollupBuild>;
-export function watch(config: RollupWatchOptions | RollupWatchOptions[]): RollupWatcher;
+export function watch(
+  config: RollupWatchOptions | RollupWatchOptions[],
+): RollupWatcher;
 export function defineConfig(options: RollupOptions): RollupOptions;
 export function defineConfig(options: RollupOptions[]): RollupOptions[];
-export function defineConfig(optionsFunction: RollupOptionsFunction): RollupOptionsFunction;
+export function defineConfig(
+  optionsFunction: RollupOptionsFunction,
+): RollupOptionsFunction;
 export const VERSION: string;
 ```
 
@@ -1187,7 +1198,10 @@ export const VERSION: string;
 
 ```typescript
 export function parseAst(input: string, options?: ParseAstOptions): ProgramNode;
-export function parseAstAsync(input: string, options?: ParseAstAsyncOptions): Promise<ProgramNode>;
+export function parseAstAsync(
+  input: string,
+  options?: ParseAstAsyncOptions,
+): Promise<ProgramNode>;
 ```
 
 ### Entry: `steamroller/loadConfigFile`
@@ -1196,8 +1210,8 @@ export function parseAstAsync(input: string, options?: ParseAstAsyncOptions): Pr
 export function loadConfigFile(
   fileName: string,
   commandOptions: any,
-  watchMode?: boolean
-): Promise<{options: MergedRollupOptions[]; warnings: BatchWarnings}>;
+  watchMode?: boolean,
+): Promise<{ options: MergedRollupOptions[]; warnings: BatchWarnings }>;
 ```
 
 ### Entry: `steamroller/getLogFilter`
@@ -1212,85 +1226,85 @@ export function getLogFilter(filters: string[]): (log: RollupLog) => boolean;
 
 ### Full Input Options List
 
-| Option | Type | Default |
-|---|---|---|
-| `input` | `string \| string[] \| Record<string,string>` | required |
-| `plugins` | `InputPluginOption` | `[]` |
-| `external` | `ExternalOption` | `[]` |
-| `cache` | `boolean \| RollupCache` | `true` |
-| `context` | `string` | `"undefined"` |
-| `experimentalCacheExpiry` | `number` | — |
-| `experimentalLogSideEffects` | `boolean` | `false` |
-| `fs` | `RollupFsModule` | Node.js fs |
-| `jsx` | `false \| JsxPreset \| JsxOptions` | `false` |
-| `logLevel` | `LogLevelOption` | `"info"` |
-| `makeAbsoluteExternalsRelative` | `boolean \| "ifRelativeSource"` | `"ifRelativeSource"` |
-| `maxParallelFileOps` | `number` | `1000` |
-| `moduleContext` | `function \| Record<string,string>` | — |
-| `onLog` | `LogHandlerWithDefault` | — |
-| `onwarn` | `WarningHandlerWithDefault` | — |
-| `perf` | `boolean` | `false` |
-| `preserveEntrySignatures` | `PreserveEntrySignaturesOption` | `"exports-only"` |
-| `preserveSymlinks` | `boolean` | `false` |
-| `shimMissingExports` | `boolean` | `false` |
-| `strictDeprecations` | `boolean` | `false` |
-| `treeshake` | `boolean \| TreeshakingPreset \| TreeshakingOptions` | `true` |
-| `watch` | `WatcherOptions \| false` | — |
+| Option                          | Type                                                 | Default              |
+| ------------------------------- | ---------------------------------------------------- | -------------------- |
+| `input`                         | `string \| string[] \| Record<string,string>`        | required             |
+| `plugins`                       | `InputPluginOption`                                  | `[]`                 |
+| `external`                      | `ExternalOption`                                     | `[]`                 |
+| `cache`                         | `boolean \| RollupCache`                             | `true`               |
+| `context`                       | `string`                                             | `"undefined"`        |
+| `experimentalCacheExpiry`       | `number`                                             | —                    |
+| `experimentalLogSideEffects`    | `boolean`                                            | `false`              |
+| `fs`                            | `RollupFsModule`                                     | Node.js fs           |
+| `jsx`                           | `false \| JsxPreset \| JsxOptions`                   | `false`              |
+| `logLevel`                      | `LogLevelOption`                                     | `"info"`             |
+| `makeAbsoluteExternalsRelative` | `boolean \| "ifRelativeSource"`                      | `"ifRelativeSource"` |
+| `maxParallelFileOps`            | `number`                                             | `1000`               |
+| `moduleContext`                 | `function \| Record<string,string>`                  | —                    |
+| `onLog`                         | `LogHandlerWithDefault`                              | —                    |
+| `onwarn`                        | `WarningHandlerWithDefault`                          | —                    |
+| `perf`                          | `boolean`                                            | `false`              |
+| `preserveEntrySignatures`       | `PreserveEntrySignaturesOption`                      | `"exports-only"`     |
+| `preserveSymlinks`              | `boolean`                                            | `false`              |
+| `shimMissingExports`            | `boolean`                                            | `false`              |
+| `strictDeprecations`            | `boolean`                                            | `false`              |
+| `treeshake`                     | `boolean \| TreeshakingPreset \| TreeshakingOptions` | `true`               |
+| `watch`                         | `WatcherOptions \| false`                            | —                    |
 
 ### Full Output Options List
 
-| Option | Type | Default |
-|---|---|---|
-| `format` | `ModuleFormat` | `"es"` |
-| `file` | `string` | — |
-| `dir` | `string` | — |
-| `name` | `string` | — |
-| `globals` | `GlobalsOption` | `{}` |
-| `plugins` | `OutputPluginOption` | `[]` |
-| `assetFileNames` | `string \| function` | `"assets/[name]-[hash][extname]"` |
-| `banner` | `AddonHook` | — |
-| `chunkFileNames` | `string \| function` | `"[name]-[hash].js"` |
-| `compact` | `boolean` | `false` |
-| `dynamicImportInCjs` | `boolean` | `true` |
-| `entryFileNames` | `string \| function` | `"[name].js"` |
-| `esModule` | `boolean \| "if-default-prop"` | `"if-default-prop"` |
-| `experimentalMinChunkSize` | `number` | `1` |
-| `exports` | `"auto" \| "default" \| "named" \| "none"` | `"auto"` |
-| `extend` | `boolean` | `false` |
-| `externalImportAttributes` | `boolean` | `true` |
-| `externalLiveBindings` | `boolean` | `true` |
-| `footer` | `AddonHook` | — |
-| `freeze` | `boolean` | `true` |
-| `generatedCode` | `"es5" \| "es2015" \| GeneratedCodeOptions` | `"es5"` |
-| `hashCharacters` | `HashCharacters` | `"base64"` |
-| `hoistTransitiveImports` | `boolean` | `true` |
-| `importAttributesKey` | `ImportAttributesKey` | `"assert"` |
-| `indent` | `boolean \| string` | `true` |
-| `inlineDynamicImports` | `boolean` | `false` |
-| `interop` | `InteropType \| GetInterop` | `"default"` |
-| `intro` | `AddonHook` | — |
-| `manualChunks` | `ManualChunksOption` | — |
-| `minifyInternalExports` | `boolean` | format-dependent |
-| `noConflict` | `boolean` | `false` |
-| `outro` | `AddonHook` | — |
-| `paths` | `Record<string,string> \| function` | — |
-| `preserveModules` | `boolean` | `false` |
-| `preserveModulesRoot` | `string` | — |
-| `reexportProtoFromExternal` | `boolean` | `true` |
-| `sanitizeFileName` | `boolean \| function` | `true` |
-| `sourcemap` | `boolean \| "inline" \| "hidden"` | `false` |
-| `sourcemapBaseUrl` | `string` | — |
-| `sourcemapDebugIds` | `boolean` | `false` |
-| `sourcemapExcludeSources` | `boolean` | `false` |
-| `sourcemapFile` | `string` | — |
-| `sourcemapFileNames` | `string \| function` | — |
-| `sourcemapIgnoreList` | `boolean \| function` | — |
-| `sourcemapPathTransform` | `function` | — |
-| `strict` | `boolean` | `true` |
-| `systemNullSetters` | `boolean` | `true` |
-| `validate` | `boolean` | `false` |
-| `virtualDirname` | `string` | `"_virtual"` |
-| `amd` | `AmdOptions` | — |
+| Option                      | Type                                        | Default                           |
+| --------------------------- | ------------------------------------------- | --------------------------------- |
+| `format`                    | `ModuleFormat`                              | `"es"`                            |
+| `file`                      | `string`                                    | —                                 |
+| `dir`                       | `string`                                    | —                                 |
+| `name`                      | `string`                                    | —                                 |
+| `globals`                   | `GlobalsOption`                             | `{}`                              |
+| `plugins`                   | `OutputPluginOption`                        | `[]`                              |
+| `assetFileNames`            | `string \| function`                        | `"assets/[name]-[hash][extname]"` |
+| `banner`                    | `AddonHook`                                 | —                                 |
+| `chunkFileNames`            | `string \| function`                        | `"[name]-[hash].js"`              |
+| `compact`                   | `boolean`                                   | `false`                           |
+| `dynamicImportInCjs`        | `boolean`                                   | `true`                            |
+| `entryFileNames`            | `string \| function`                        | `"[name].js"`                     |
+| `esModule`                  | `boolean \| "if-default-prop"`              | `"if-default-prop"`               |
+| `experimentalMinChunkSize`  | `number`                                    | `1`                               |
+| `exports`                   | `"auto" \| "default" \| "named" \| "none"`  | `"auto"`                          |
+| `extend`                    | `boolean`                                   | `false`                           |
+| `externalImportAttributes`  | `boolean`                                   | `true`                            |
+| `externalLiveBindings`      | `boolean`                                   | `true`                            |
+| `footer`                    | `AddonHook`                                 | —                                 |
+| `freeze`                    | `boolean`                                   | `true`                            |
+| `generatedCode`             | `"es5" \| "es2015" \| GeneratedCodeOptions` | `"es5"`                           |
+| `hashCharacters`            | `HashCharacters`                            | `"base64"`                        |
+| `hoistTransitiveImports`    | `boolean`                                   | `true`                            |
+| `importAttributesKey`       | `ImportAttributesKey`                       | `"assert"`                        |
+| `indent`                    | `boolean \| string`                         | `true`                            |
+| `inlineDynamicImports`      | `boolean`                                   | `false`                           |
+| `interop`                   | `InteropType \| GetInterop`                 | `"default"`                       |
+| `intro`                     | `AddonHook`                                 | —                                 |
+| `manualChunks`              | `ManualChunksOption`                        | —                                 |
+| `minifyInternalExports`     | `boolean`                                   | format-dependent                  |
+| `noConflict`                | `boolean`                                   | `false`                           |
+| `outro`                     | `AddonHook`                                 | —                                 |
+| `paths`                     | `Record<string,string> \| function`         | —                                 |
+| `preserveModules`           | `boolean`                                   | `false`                           |
+| `preserveModulesRoot`       | `string`                                    | —                                 |
+| `reexportProtoFromExternal` | `boolean`                                   | `true`                            |
+| `sanitizeFileName`          | `boolean \| function`                       | `true`                            |
+| `sourcemap`                 | `boolean \| "inline" \| "hidden"`           | `false`                           |
+| `sourcemapBaseUrl`          | `string`                                    | —                                 |
+| `sourcemapDebugIds`         | `boolean`                                   | `false`                           |
+| `sourcemapExcludeSources`   | `boolean`                                   | `false`                           |
+| `sourcemapFile`             | `string`                                    | —                                 |
+| `sourcemapFileNames`        | `string \| function`                        | —                                 |
+| `sourcemapIgnoreList`       | `boolean \| function`                       | —                                 |
+| `sourcemapPathTransform`    | `function`                                  | —                                 |
+| `strict`                    | `boolean`                                   | `true`                            |
+| `systemNullSetters`         | `boolean`                                   | `true`                            |
+| `validate`                  | `boolean`                                   | `false`                           |
+| `virtualDirname`            | `string`                                    | `"_virtual"`                      |
+| `amd`                       | `AmdOptions`                                | —                                 |
 
 ---
 
@@ -1336,45 +1350,45 @@ Per Asymmetric Effort coding standards, minimum 98% coverage across unit, integr
 
 ### Unit Tests (`tests/unit/`)
 
-| Component | Key Test Areas |
-|---|---|
-| Lexer | All token types, edge cases (ASI, regex vs division, template literals, Unicode escapes, numeric separators, BigInt) |
-| Parser | Every AST node type, error recovery, JSX, import attributes, destructuring, async/await, generators, classes, optional chaining, nullish coalescing |
-| Scope analysis | All scope types, hoisting, TDZ, closures, class fields, static blocks |
-| Tree-shaking | Side effect detection, pure annotations, all preset behaviors, multi-pass convergence |
-| Code generator | All 6 formats, all interop modes, all generatedCode options, compact mode |
-| Source maps | VLQ encode/decode, MagicString operations, map composition, all sourcemap options |
-| Plugin driver | Hook execution order, first/sequential/parallel semantics, hook modifiers, plugin context methods |
-| xxHash | Correctness against reference implementation, all 3 encodings |
-| CLI args | All flags, negation, dot notation, comma separation, env vars |
-| Config loader | All config formats, merging, validation |
-| Chunk splitter | Dynamic imports, multiple entries, manualChunks, preserveModules |
+| Component      | Key Test Areas                                                                                                                                      |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lexer          | All token types, edge cases (ASI, regex vs division, template literals, Unicode escapes, numeric separators, BigInt)                                |
+| Parser         | Every AST node type, error recovery, JSX, import attributes, destructuring, async/await, generators, classes, optional chaining, nullish coalescing |
+| Scope analysis | All scope types, hoisting, TDZ, closures, class fields, static blocks                                                                               |
+| Tree-shaking   | Side effect detection, pure annotations, all preset behaviors, multi-pass convergence                                                               |
+| Code generator | All 6 formats, all interop modes, all generatedCode options, compact mode                                                                           |
+| Source maps    | VLQ encode/decode, MagicString operations, map composition, all sourcemap options                                                                   |
+| Plugin driver  | Hook execution order, first/sequential/parallel semantics, hook modifiers, plugin context methods                                                   |
+| xxHash         | Correctness against reference implementation, all 3 encodings                                                                                       |
+| CLI args       | All flags, negation, dot notation, comma separation, env vars                                                                                       |
+| Config loader  | All config formats, merging, validation                                                                                                             |
+| Chunk splitter | Dynamic imports, multiple entries, manualChunks, preserveModules                                                                                    |
 
 ### Integration Tests (`tests/integration/`)
 
-| Scenario | Description |
-|---|---|
-| Basic bundling | Single entry, multiple modules, ES output |
-| Tree-shaking | Dead code elimination with various module patterns |
-| Code splitting | Dynamic imports, shared chunks, manual chunks |
-| All formats | Same input → all 6 output formats, verify correctness |
-| External deps | External marking, globals, interop |
-| Circular deps | Warning emission, correct output ordering |
-| Source maps | Accuracy through transform chains |
-| Plugin hooks | Full hook lifecycle with test plugins |
-| Cache | Rebuild with cache, cache invalidation |
-| Emitted files | Assets, chunks, prebuilt chunks |
+| Scenario       | Description                                           |
+| -------------- | ----------------------------------------------------- |
+| Basic bundling | Single entry, multiple modules, ES output             |
+| Tree-shaking   | Dead code elimination with various module patterns    |
+| Code splitting | Dynamic imports, shared chunks, manual chunks         |
+| All formats    | Same input → all 6 output formats, verify correctness |
+| External deps  | External marking, globals, interop                    |
+| Circular deps  | Warning emission, correct output ordering             |
+| Source maps    | Accuracy through transform chains                     |
+| Plugin hooks   | Full hook lifecycle with test plugins                 |
+| Cache          | Rebuild with cache, cache invalidation                |
+| Emitted files  | Assets, chunks, prebuilt chunks                       |
 
 ### E2E Tests (`tests/e2e/`)
 
-| Scenario | Description |
-|---|---|
-| CLI | All flag combinations, config file loading, stdin |
-| Watch mode | File change detection, rebuild, event sequence |
-| Compatibility | Same input through rollup and steamroller, diff outputs |
-| Plugin ecosystem | Official @rollup/plugin-* compatibility |
-| Real projects | Bundle actual open-source libraries (see targets below) |
-| Performance | Benchmarks against rollup (see §24 for budget) |
+| Scenario         | Description                                             |
+| ---------------- | ------------------------------------------------------- |
+| CLI              | All flag combinations, config file loading, stdin       |
+| Watch mode       | File change detection, rebuild, event sequence          |
+| Compatibility    | Same input through rollup and steamroller, diff outputs |
+| Plugin ecosystem | Official @rollup/plugin-\* compatibility                |
+| Real projects    | Bundle actual open-source libraries (see targets below) |
+| Performance      | Benchmarks against rollup (see §24 for budget)          |
 
 ### Fuzz Testing (`tests/fuzz/`)
 
@@ -1395,14 +1409,14 @@ Per Asymmetric Effort coding standards, minimum 98% coverage across unit, integr
 
 Test steamroller as a drop-in bundler for these open-source projects:
 
-| Project | Why | Complexity |
-|---|---|---|
-| `d3` | Large library, deep re-exports, tree-shaking critical | High |
-| `three.js` | Very large (1000+ modules), ES modules | High |
-| `svelte` (compiler output) | Uses rollup directly | Medium |
-| `preact` | Small but exercises all export patterns | Low |
-| `lodash-es` | Hundreds of small modules, tree-shaking showcase | Medium |
-| A Vite-based app | Validates Vite integration path | High |
+| Project                    | Why                                                   | Complexity |
+| -------------------------- | ----------------------------------------------------- | ---------- |
+| `d3`                       | Large library, deep re-exports, tree-shaking critical | High       |
+| `three.js`                 | Very large (1000+ modules), ES modules                | High       |
+| `svelte` (compiler output) | Uses rollup directly                                  | Medium     |
+| `preact`                   | Small but exercises all export patterns               | Low        |
+| `lodash-es`                | Hundreds of small modules, tree-shaking showcase      | Medium     |
+| A Vite-based app           | Validates Vite integration path                       | High       |
 
 ### Regression Testing
 
@@ -1456,6 +1470,7 @@ Steamroller versions are **independent** of rollup versions. The MVP targets fea
 ### Tag-Based Releases
 
 Per coding standards, releases use git tags:
+
 - [ ] Tags follow `v{MAJOR}.{MINOR}.{PATCH}` format (e.g., `v1.0.0`)
 - [ ] Each tag triggers CI/CD publish pipeline
 - [ ] `CHANGELOG.md` updated with every release
@@ -1534,77 +1549,77 @@ Rollup uses a structured error/warning system with specific codes that plugins a
 
 ### Error Codes (exhaustive list)
 
-| Code | Trigger |
-|---|---|
-| `ALREADY_CLOSED` | Calling `generate()`/`write()` after `close()` |
-| `AMBIGUOUS_EXTERNAL_NAMESPACES` | Multiple externals re-export the same name |
-| `ANONYMOUS_PLUGIN_CACHE` | Plugin uses cache without `name` property |
-| `ASSET_NOT_FINALISED` | `getFileName()` called before asset source is set |
-| `ASSET_NOT_FOUND` | Invalid reference ID passed to `getFileName()` |
-| `ASSET_SOURCE_ALREADY_SET` | `setAssetSource()` called twice |
-| `ASSET_SOURCE_MISSING` | Asset emitted without setting source |
-| `BAD_LOADER` | `load` hook returned non-string, non-null |
-| `CANNOT_CALL_NAMESPACE` | Namespace import used as function call |
-| `CANNOT_EMIT_FROM_OPTIONS_HOOK` | `emitFile()` called in `options` hook |
-| `CHUNK_NOT_GENERATED` | `getFileName()` called before chunk generated |
-| `CHUNK_INVALID` | Invalid emitted chunk configuration |
-| `CIRCULAR_DEPENDENCY` | Circular import chain detected (warning) |
-| `CIRCULAR_REEXPORT` | Circular re-export chain |
-| `CONST_REASSIGN` | Assignment to `const` variable detected |
-| `CYCLIC_CROSS_CHUNK_REEXPORT` | Cyclic cross-chunk re-export |
-| `DEPRECATED_FEATURE` | Use of deprecated option or behavior |
-| `DUPLICATE_ARGUMENT_NAME` | Duplicate parameter name in strict mode |
-| `DUPLICATE_EXPORT` | Same name exported twice |
-| `DUPLICATE_PLUGIN_NAME` | Two plugins share the same `name` |
-| `EMPTY_BUNDLE` | Bundle has no chunks |
-| `EVAL` | Use of `eval()` detected (warning) |
-| `EXTERNAL_MODULES_CANNOT_BE_INCLUDED_IN_MANUAL_CHUNKS` | External module in `manualChunks` |
-| `EXTERNAL_MODULES_CANNOT_BE_TRANSFORMED_TO_MODULES` | External marked as non-external by plugin |
-| `EXTERNAL_SYNTHETIC_EXPORTS` | `syntheticNamedExports` on external module |
-| `FILE_NAME_CONFLICT` | Two emitted files have the same `fileName` |
-| `FILE_NOT_FOUND` | Referenced file does not exist |
-| `FIRST_SIDE_EFFECT` | First side effect detected in module (with `experimentalLogSideEffects`) |
-| `ILLEGAL_IDENTIFIER_AS_NAME` | Non-identifier used as UMD/IIFE `name` |
-| `ILLEGAL_REASSIGNMENT` | Reassignment of import binding |
-| `IMPORT_ATTRIBUTES_KEY_NOT_SUPPORTED` | Import attributes not supported in format |
-| `INCONSISTENT_IMPORT_ATTRIBUTES` | Same module imported with different attributes |
-| `INVALID_ANNOTATION` | Malformed pure annotation |
-| `INVALID_CHUNK` | Invalid chunk configuration |
-| `INVALID_CONFIG_MODULE_FORMAT` | Config file format issues |
-| `INVALID_EXPORT_OPTION` | Invalid `exports` option value for the actual exports |
-| `INVALID_EXTERNAL_ID` | External module ID issues |
-| `INVALID_IMPORT_ATTRIBUTE` | Invalid import attribute |
-| `INVALID_LOG_POSITION` | Position argument in logging outside valid range |
-| `INVALID_OPTION` | Invalid configuration option value |
-| `INVALID_PLUGIN_HOOK` | Plugin returned wrong type from hook |
-| `INVALID_ROLLUP_PHASE` | Hook called in wrong build phase |
-| `INVALID_SETASSETSOURCE` | Invalid `setAssetSource()` call |
-| `MISSING_EXPORT` | Imported binding not exported by source module |
-| `MISSING_GLOBAL_NAME` | External used in IIFE/UMD without `globals` mapping (warning) |
-| `MISSING_IMPLICIT_DEPENDANT` | Implicit dependency not found |
-| `MISSING_JSX_EXPORT` | JSX factory/fragment not exported |
-| `MISSING_NAME_OPTION_FOR_IIFE_EXPORT` | IIFE/UMD format without `name` |
-| `MISSING_NODE_BUILTINS` | Node.js built-in imported without marking external (warning) |
-| `MISSING_OPTION` | Required option not provided |
-| `MIXED_EXPORTS` | Module has both default and named exports (warning) |
-| `MODULE_LEVEL_DIRECTIVE` | Module-level directive (like `"use strict"`) in unexpected position |
-| `NAMESPACE_CONFLICT` | Conflicting re-exports in namespace |
-| `NO_TRANSFORM_MAP_OR_AST_WITHOUT_CODE` | Plugin returned map/AST without code from transform |
-| `OPTIMIZE_CHUNK_STATUS` | Chunk optimization status |
-| `PARSE_ERROR` | JavaScript parse error |
-| `PLUGIN_ERROR` | Uncaught error in plugin hook |
-| `RESERVED_NAMESPACE` | Assignment to reserved namespace |
-| `SHIMMED_EXPORT` | Export shimmed with `void 0` (when `shimMissingExports: true`) |
-| `SOURCEMAP_BROKEN` | Source map chain broken by plugin |
-| `SOURCEMAP_ERROR` | Source map processing error |
-| `SYNTHETIC_NAMED_EXPORTS_NEED_NAMESPACE_EXPORT` | `syntheticNamedExports` without default/namespace export |
-| `THIS_IS_UNDEFINED` | Top-level `this` rewritten to `undefined` (warning) |
-| `UNEXPECTED_NAMED_IMPORT` | Named import from module with only default export |
-| `UNKNOWN_OPTION` | Unrecognized configuration option (warning) |
-| `UNRESOLVED_ENTRY` | Entry point could not be resolved |
-| `UNRESOLVED_IMPORT` | Import could not be resolved (warning/error depending on context) |
-| `UNUSED_EXTERNAL_IMPORT` | External import binding not used (warning) |
-| `VALIDATION_ERROR` | Output validation failed (when `validate: true`) |
+| Code                                                   | Trigger                                                                  |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `ALREADY_CLOSED`                                       | Calling `generate()`/`write()` after `close()`                           |
+| `AMBIGUOUS_EXTERNAL_NAMESPACES`                        | Multiple externals re-export the same name                               |
+| `ANONYMOUS_PLUGIN_CACHE`                               | Plugin uses cache without `name` property                                |
+| `ASSET_NOT_FINALISED`                                  | `getFileName()` called before asset source is set                        |
+| `ASSET_NOT_FOUND`                                      | Invalid reference ID passed to `getFileName()`                           |
+| `ASSET_SOURCE_ALREADY_SET`                             | `setAssetSource()` called twice                                          |
+| `ASSET_SOURCE_MISSING`                                 | Asset emitted without setting source                                     |
+| `BAD_LOADER`                                           | `load` hook returned non-string, non-null                                |
+| `CANNOT_CALL_NAMESPACE`                                | Namespace import used as function call                                   |
+| `CANNOT_EMIT_FROM_OPTIONS_HOOK`                        | `emitFile()` called in `options` hook                                    |
+| `CHUNK_NOT_GENERATED`                                  | `getFileName()` called before chunk generated                            |
+| `CHUNK_INVALID`                                        | Invalid emitted chunk configuration                                      |
+| `CIRCULAR_DEPENDENCY`                                  | Circular import chain detected (warning)                                 |
+| `CIRCULAR_REEXPORT`                                    | Circular re-export chain                                                 |
+| `CONST_REASSIGN`                                       | Assignment to `const` variable detected                                  |
+| `CYCLIC_CROSS_CHUNK_REEXPORT`                          | Cyclic cross-chunk re-export                                             |
+| `DEPRECATED_FEATURE`                                   | Use of deprecated option or behavior                                     |
+| `DUPLICATE_ARGUMENT_NAME`                              | Duplicate parameter name in strict mode                                  |
+| `DUPLICATE_EXPORT`                                     | Same name exported twice                                                 |
+| `DUPLICATE_PLUGIN_NAME`                                | Two plugins share the same `name`                                        |
+| `EMPTY_BUNDLE`                                         | Bundle has no chunks                                                     |
+| `EVAL`                                                 | Use of `eval()` detected (warning)                                       |
+| `EXTERNAL_MODULES_CANNOT_BE_INCLUDED_IN_MANUAL_CHUNKS` | External module in `manualChunks`                                        |
+| `EXTERNAL_MODULES_CANNOT_BE_TRANSFORMED_TO_MODULES`    | External marked as non-external by plugin                                |
+| `EXTERNAL_SYNTHETIC_EXPORTS`                           | `syntheticNamedExports` on external module                               |
+| `FILE_NAME_CONFLICT`                                   | Two emitted files have the same `fileName`                               |
+| `FILE_NOT_FOUND`                                       | Referenced file does not exist                                           |
+| `FIRST_SIDE_EFFECT`                                    | First side effect detected in module (with `experimentalLogSideEffects`) |
+| `ILLEGAL_IDENTIFIER_AS_NAME`                           | Non-identifier used as UMD/IIFE `name`                                   |
+| `ILLEGAL_REASSIGNMENT`                                 | Reassignment of import binding                                           |
+| `IMPORT_ATTRIBUTES_KEY_NOT_SUPPORTED`                  | Import attributes not supported in format                                |
+| `INCONSISTENT_IMPORT_ATTRIBUTES`                       | Same module imported with different attributes                           |
+| `INVALID_ANNOTATION`                                   | Malformed pure annotation                                                |
+| `INVALID_CHUNK`                                        | Invalid chunk configuration                                              |
+| `INVALID_CONFIG_MODULE_FORMAT`                         | Config file format issues                                                |
+| `INVALID_EXPORT_OPTION`                                | Invalid `exports` option value for the actual exports                    |
+| `INVALID_EXTERNAL_ID`                                  | External module ID issues                                                |
+| `INVALID_IMPORT_ATTRIBUTE`                             | Invalid import attribute                                                 |
+| `INVALID_LOG_POSITION`                                 | Position argument in logging outside valid range                         |
+| `INVALID_OPTION`                                       | Invalid configuration option value                                       |
+| `INVALID_PLUGIN_HOOK`                                  | Plugin returned wrong type from hook                                     |
+| `INVALID_ROLLUP_PHASE`                                 | Hook called in wrong build phase                                         |
+| `INVALID_SETASSETSOURCE`                               | Invalid `setAssetSource()` call                                          |
+| `MISSING_EXPORT`                                       | Imported binding not exported by source module                           |
+| `MISSING_GLOBAL_NAME`                                  | External used in IIFE/UMD without `globals` mapping (warning)            |
+| `MISSING_IMPLICIT_DEPENDANT`                           | Implicit dependency not found                                            |
+| `MISSING_JSX_EXPORT`                                   | JSX factory/fragment not exported                                        |
+| `MISSING_NAME_OPTION_FOR_IIFE_EXPORT`                  | IIFE/UMD format without `name`                                           |
+| `MISSING_NODE_BUILTINS`                                | Node.js built-in imported without marking external (warning)             |
+| `MISSING_OPTION`                                       | Required option not provided                                             |
+| `MIXED_EXPORTS`                                        | Module has both default and named exports (warning)                      |
+| `MODULE_LEVEL_DIRECTIVE`                               | Module-level directive (like `"use strict"`) in unexpected position      |
+| `NAMESPACE_CONFLICT`                                   | Conflicting re-exports in namespace                                      |
+| `NO_TRANSFORM_MAP_OR_AST_WITHOUT_CODE`                 | Plugin returned map/AST without code from transform                      |
+| `OPTIMIZE_CHUNK_STATUS`                                | Chunk optimization status                                                |
+| `PARSE_ERROR`                                          | JavaScript parse error                                                   |
+| `PLUGIN_ERROR`                                         | Uncaught error in plugin hook                                            |
+| `RESERVED_NAMESPACE`                                   | Assignment to reserved namespace                                         |
+| `SHIMMED_EXPORT`                                       | Export shimmed with `void 0` (when `shimMissingExports: true`)           |
+| `SOURCEMAP_BROKEN`                                     | Source map chain broken by plugin                                        |
+| `SOURCEMAP_ERROR`                                      | Source map processing error                                              |
+| `SYNTHETIC_NAMED_EXPORTS_NEED_NAMESPACE_EXPORT`        | `syntheticNamedExports` without default/namespace export                 |
+| `THIS_IS_UNDEFINED`                                    | Top-level `this` rewritten to `undefined` (warning)                      |
+| `UNEXPECTED_NAMED_IMPORT`                              | Named import from module with only default export                        |
+| `UNKNOWN_OPTION`                                       | Unrecognized configuration option (warning)                              |
+| `UNRESOLVED_ENTRY`                                     | Entry point could not be resolved                                        |
+| `UNRESOLVED_IMPORT`                                    | Import could not be resolved (warning/error depending on context)        |
+| `UNUSED_EXTERNAL_IMPORT`                               | External import binding not used (warning)                               |
+| `VALIDATION_ERROR`                                     | Output validation failed (when `validate: true`)                         |
 
 ### Implementation Requirements
 
@@ -1621,14 +1636,14 @@ Rollup uses a structured error/warning system with specific codes that plugins a
 
 ### Performance Budget
 
-| Scenario | Target | Rationale |
-|---|---|---|
-| Small project (< 50 modules, < 10K LOC) | < 3x rollup wall time | Acceptable for dev workflows |
-| Medium project (50–500 modules, 10K–100K LOC) | < 5x rollup wall time | Noticeable but tolerable |
-| Large project (500+ modules, 100K+ LOC) | < 8x rollup wall time | Stretch goal; may require optimization passes |
-| Parse single file (10K LOC) | < 50ms | Parser is the hot path |
-| Watch mode incremental rebuild | < 2x rollup rebuild time | Critical for DX |
-| Memory usage | < 2x rollup peak RSS | Prevent OOM on large projects |
+| Scenario                                      | Target                   | Rationale                                     |
+| --------------------------------------------- | ------------------------ | --------------------------------------------- |
+| Small project (< 50 modules, < 10K LOC)       | < 3x rollup wall time    | Acceptable for dev workflows                  |
+| Medium project (50–500 modules, 10K–100K LOC) | < 5x rollup wall time    | Noticeable but tolerable                      |
+| Large project (500+ modules, 100K+ LOC)       | < 8x rollup wall time    | Stretch goal; may require optimization passes |
+| Parse single file (10K LOC)                   | < 50ms                   | Parser is the hot path                        |
+| Watch mode incremental rebuild                | < 2x rollup rebuild time | Critical for DX                               |
+| Memory usage                                  | < 2x rollup peak RSS     | Prevent OOM on large projects                 |
 
 ### Parser Optimization Strategy
 
@@ -1681,32 +1696,32 @@ The parser is the primary performance bottleneck (replacing Rust native code wit
 
 ## 25. Risk Register
 
-| Risk | Impact | Likelihood | Mitigation |
-|---|---|---|---|
-| Parser correctness | High — incorrect AST breaks everything downstream | Medium | Exhaustive test suite against Test262; fuzz testing with AFL/libFuzzer-style harness; differential testing against acorn/SWC output on real-world codebases |
-| Parser performance | High — pure TS parser will be slower than Rust/native | High | Concrete budget (see §24); profile against Test262; optimize top 10 hot functions; WASM escape hatch post-MVP if needed |
-| Tree-shaking edge cases | High — incorrect elimination breaks user code | Medium | Port rollup's own tree-shaking test fixtures; differential testing; `experimentalLogSideEffects` for debugging |
-| Source map accuracy | Medium — incorrect maps degrade debugging experience | Medium | Validate maps with `source-map` library; visual verification in Chrome/Firefox DevTools; snapshot tests for VLQ output |
-| Plugin compatibility | High — plugins are rollup's primary value proposition | Medium | Test against top 20 official plugins; maintain compatibility test suite; exact error code parity (see §23) |
-| Vite compatibility | High — Vite is rollup's largest consumer | Medium | Test steamroller as Vite's bundler; monitor Vite's rollup usage patterns; test with Vite's own test suite |
-| Undocumented rollup behaviors | Medium — plugins may rely on behaviors not in docs | Medium | Differential testing at scale; run real-world projects through both bundlers; community bug reports |
-| Cross-platform inconsistencies | Medium — path handling, case sensitivity, fs.watch differences | Medium | CI matrix: Linux + macOS + Windows; path normalization layer (see §22); platform-specific test fixtures |
-| Error code mismatch | Medium — tools/plugins inspect error codes programmatically | Medium | Catalog all rollup error codes (see §23); test that every error path emits correct code string |
-| Scope creep | Medium — rollup continues releasing new features | Certain | MVP targets v4.60.4 parity; post-MVP steamroller may diverge intentionally |
-| ES spec evolution | Low — new syntax requires parser updates | Low | Modular parser grammar; each syntax feature is a self-contained module; Test262 subset as regression suite |
-| npm name squatting | Low — `steamroller` name may be taken | Low | Check npm registry early; have fallback names ready |
+| Risk                           | Impact                                                         | Likelihood | Mitigation                                                                                                                                                  |
+| ------------------------------ | -------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parser correctness             | High — incorrect AST breaks everything downstream              | Medium     | Exhaustive test suite against Test262; fuzz testing with AFL/libFuzzer-style harness; differential testing against acorn/SWC output on real-world codebases |
+| Parser performance             | High — pure TS parser will be slower than Rust/native          | High       | Concrete budget (see §24); profile against Test262; optimize top 10 hot functions; WASM escape hatch post-MVP if needed                                     |
+| Tree-shaking edge cases        | High — incorrect elimination breaks user code                  | Medium     | Port rollup's own tree-shaking test fixtures; differential testing; `experimentalLogSideEffects` for debugging                                              |
+| Source map accuracy            | Medium — incorrect maps degrade debugging experience           | Medium     | Validate maps with `source-map` library; visual verification in Chrome/Firefox DevTools; snapshot tests for VLQ output                                      |
+| Plugin compatibility           | High — plugins are rollup's primary value proposition          | Medium     | Test against top 20 official plugins; maintain compatibility test suite; exact error code parity (see §23)                                                  |
+| Vite compatibility             | High — Vite is rollup's largest consumer                       | Medium     | Test steamroller as Vite's bundler; monitor Vite's rollup usage patterns; test with Vite's own test suite                                                   |
+| Undocumented rollup behaviors  | Medium — plugins may rely on behaviors not in docs             | Medium     | Differential testing at scale; run real-world projects through both bundlers; community bug reports                                                         |
+| Cross-platform inconsistencies | Medium — path handling, case sensitivity, fs.watch differences | Medium     | CI matrix: Linux + macOS + Windows; path normalization layer (see §22); platform-specific test fixtures                                                     |
+| Error code mismatch            | Medium — tools/plugins inspect error codes programmatically    | Medium     | Catalog all rollup error codes (see §23); test that every error path emits correct code string                                                              |
+| Scope creep                    | Medium — rollup continues releasing new features               | Certain    | MVP targets v4.60.4 parity; post-MVP steamroller may diverge intentionally                                                                                  |
+| ES spec evolution              | Low — new syntax requires parser updates                       | Low        | Modular parser grammar; each syntax feature is a self-contained module; Test262 subset as regression suite                                                  |
+| npm name squatting             | Low — `steamroller` name may be taken                          | Low        | Check npm registry early; have fallback names ready                                                                                                         |
 
 ---
 
 ## Appendix A: Rollup Native Code Functions (to reimplement in TypeScript)
 
-| Function | Purpose | Steamroller Approach |
-|---|---|---|
-| `parse(code, allowReturnOutsideFunction, jsx)` | Synchronous JS/JSX parsing to ESTree AST | Pure TypeScript recursive descent parser |
-| `parseAsync(code, allowReturnOutsideFunction, jsx, signal)` | Async parsing with AbortSignal | Same parser, wrapped in Promise with signal checking |
-| `xxhashBase64Url(buffer)` | 128-bit xxHash, base64url encoded | Pure TypeScript xxHash128 implementation |
-| `xxhashBase36(buffer)` | 128-bit xxHash, base36 encoded | Same hash, base36 encoding |
-| `xxhashBase16(buffer)` | 128-bit xxHash, hex encoded | Same hash, hex encoding |
+| Function                                                    | Purpose                                  | Steamroller Approach                                 |
+| ----------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------- |
+| `parse(code, allowReturnOutsideFunction, jsx)`              | Synchronous JS/JSX parsing to ESTree AST | Pure TypeScript recursive descent parser             |
+| `parseAsync(code, allowReturnOutsideFunction, jsx, signal)` | Async parsing with AbortSignal           | Same parser, wrapped in Promise with signal checking |
+| `xxhashBase64Url(buffer)`                                   | 128-bit xxHash, base64url encoded        | Pure TypeScript xxHash128 implementation             |
+| `xxhashBase36(buffer)`                                      | 128-bit xxHash, base36 encoded           | Same hash, base36 encoding                           |
+| `xxhashBase16(buffer)`                                      | 128-bit xxHash, hex encoded              | Same hash, hex encoding                              |
 
 ## Appendix B: Bundled Library Reimplementations (Complete)
 
@@ -1714,61 +1729,61 @@ All 30 of rollup's bundled dependencies must be replaced with zero-dependency im
 
 ### Core Libraries
 
-| Library | Purpose in Rollup | Steamroller Approach | Est. Lines |
-|---|---|---|---|
-| `magic-string` | String manipulation with source map tracking | Reimplement core API | ~500 |
-| `@jridgewell/sourcemap-codec` | VLQ encode/decode for source maps | Reimplement | ~200 |
-| `@rollup/pluginutils` | Plugin utility functions (`createFilter`, `dataToEsm`, `addExtension`, `attachScopes`, `extractAssignedNames`, `makeLegalIdentifier`) | Reimplement all exports | ~400 |
+| Library                       | Purpose in Rollup                                                                                                                     | Steamroller Approach    | Est. Lines |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ---------- |
+| `magic-string`                | String manipulation with source map tracking                                                                                          | Reimplement core API    | ~500       |
+| `@jridgewell/sourcemap-codec` | VLQ encode/decode for source maps                                                                                                     | Reimplement             | ~200       |
+| `@rollup/pluginutils`         | Plugin utility functions (`createFilter`, `dataToEsm`, `addExtension`, `attachScopes`, `extractAssignedNames`, `makeLegalIdentifier`) | Reimplement all exports | ~400       |
 
 ### File Watching Stack
 
-| Library | Purpose in Rollup | Steamroller Approach | Est. Lines |
-|---|---|---|---|
-| `chokidar` | Cross-platform file watching | Use Node.js `fs.watch` / `fs.watchFile` with platform-specific handling | ~600 |
-| `readdirp` | Recursive directory reading | `fs.readdir` with `{recursive: true}` (Node 18.17+) or manual recursion | ~100 |
-| `anymatch` | Glob matching for watch include/exclude | Inline into watcher using our glob matcher | ~50 |
-| `binary-extensions` | List of binary file extensions | Static array constant | ~10 |
-| `is-binary-path` | Check if file path is binary | Check extension against static list | ~10 |
-| `normalize-path` | Convert backslash paths to forward slash | `path.replace(/\\/g, '/')` | ~5 |
+| Library             | Purpose in Rollup                        | Steamroller Approach                                                    | Est. Lines |
+| ------------------- | ---------------------------------------- | ----------------------------------------------------------------------- | ---------- |
+| `chokidar`          | Cross-platform file watching             | Use Node.js `fs.watch` / `fs.watchFile` with platform-specific handling | ~600       |
+| `readdirp`          | Recursive directory reading              | `fs.readdir` with `{recursive: true}` (Node 18.17+) or manual recursion | ~100       |
+| `anymatch`          | Glob matching for watch include/exclude  | Inline into watcher using our glob matcher                              | ~50        |
+| `binary-extensions` | List of binary file extensions           | Static array constant                                                   | ~10        |
+| `is-binary-path`    | Check if file path is binary             | Check extension against static list                                     | ~10        |
+| `normalize-path`    | Convert backslash paths to forward slash | `path.replace(/\\/g, '/')`                                              | ~5         |
 
 ### Glob/Pattern Matching Stack
 
-| Library | Purpose in Rollup | Steamroller Approach | Est. Lines |
-|---|---|---|---|
-| `picomatch` | Glob pattern matching engine | Reimplement glob-to-regex conversion | ~300 |
-| `braces` | Brace expansion (`{a,b,c}`) | Reimplement | ~150 |
-| `fill-range` | Numeric/alpha range expansion (`{1..5}`) | Reimplement | ~80 |
-| `to-regex-range` | Numeric range to regex | Reimplement | ~60 |
-| `is-number` | Check if value is a number | `typeof v === 'number' && !isNaN(v)` | ~5 |
-| `glob-parent` | Extract non-glob parent directory | Scan for first glob character | ~30 |
-| `is-extglob` | Detect extglob patterns | Regex check | ~5 |
-| `is-glob` | Detect glob patterns | Character scan | ~20 |
+| Library          | Purpose in Rollup                        | Steamroller Approach                 | Est. Lines |
+| ---------------- | ---------------------------------------- | ------------------------------------ | ---------- |
+| `picomatch`      | Glob pattern matching engine             | Reimplement glob-to-regex conversion | ~300       |
+| `braces`         | Brace expansion (`{a,b,c}`)              | Reimplement                          | ~150       |
+| `fill-range`     | Numeric/alpha range expansion (`{1..5}`) | Reimplement                          | ~80        |
+| `to-regex-range` | Numeric range to regex                   | Reimplement                          | ~60        |
+| `is-number`      | Check if value is a number               | `typeof v === 'number' && !isNaN(v)` | ~5         |
+| `glob-parent`    | Extract non-glob parent directory        | Scan for first glob character        | ~30        |
+| `is-extglob`     | Detect extglob patterns                  | Regex check                          | ~5         |
+| `is-glob`        | Detect glob patterns                     | Character scan                       | ~20        |
 
 ### CLI Stack
 
-| Library | Purpose in Rollup | Steamroller Approach | Est. Lines |
-|---|---|---|---|
-| `yargs-parser` | CLI argument parsing | Custom argument parser | ~400 |
-| `picocolors` | Terminal color output | ANSI escape codes with `process.stdout.isTTY` detection | ~50 |
-| `pretty-bytes` | Human-readable byte sizes | Reimplement | ~30 |
-| `pretty-ms` | Human-readable millisecond durations | Reimplement | ~30 |
-| `parse-ms` | Parse milliseconds into components | Reimplement | ~20 |
-| `date-time` | Formatted date/time strings | `Intl.DateTimeFormat` or manual formatting | ~15 |
-| `time-zone` | Timezone abbreviation | `Intl.DateTimeFormat` with `timeZoneName: 'short'` | ~10 |
+| Library        | Purpose in Rollup                    | Steamroller Approach                                    | Est. Lines |
+| -------------- | ------------------------------------ | ------------------------------------------------------- | ---------- |
+| `yargs-parser` | CLI argument parsing                 | Custom argument parser                                  | ~400       |
+| `picocolors`   | Terminal color output                | ANSI escape codes with `process.stdout.isTTY` detection | ~50        |
+| `pretty-bytes` | Human-readable byte sizes            | Reimplement                                             | ~30        |
+| `pretty-ms`    | Human-readable millisecond durations | Reimplement                                             | ~30        |
+| `parse-ms`     | Parse milliseconds into components   | Reimplement                                             | ~20        |
+| `date-time`    | Formatted date/time strings          | `Intl.DateTimeFormat` or manual formatting              | ~15        |
+| `time-zone`    | Timezone abbreviation                | `Intl.DateTimeFormat` with `timeZoneName: 'short'`      | ~10        |
 
 ### Utility Libraries
 
-| Library | Purpose in Rollup | Steamroller Approach | Est. Lines |
-|---|---|---|---|
-| `signal-exit` | Reliable process exit handling | `process.on('exit'/'SIGINT'/'SIGTERM'/'SIGHUP')` with cleanup | ~60 |
-| `is-reference` | Detect AST identifier references vs declarations | Reimplement (check parent node type) | ~50 |
-| `locate-character` | Map byte offset to line/column | Reimplement (scan for newlines) | ~30 |
-| `flru` | LRU cache for internal caching | Reimplement simple LRU with Map | ~40 |
-| `builtin-modules` | List of Node.js built-in module names | Static array from `module.builtinModules` at build time | ~10 |
-| `tslib` | TypeScript runtime helpers | Not needed — compile with `importHelpers: false`, inline helpers | 0 |
+| Library            | Purpose in Rollup                                | Steamroller Approach                                             | Est. Lines |
+| ------------------ | ------------------------------------------------ | ---------------------------------------------------------------- | ---------- |
+| `signal-exit`      | Reliable process exit handling                   | `process.on('exit'/'SIGINT'/'SIGTERM'/'SIGHUP')` with cleanup    | ~60        |
+| `is-reference`     | Detect AST identifier references vs declarations | Reimplement (check parent node type)                             | ~50        |
+| `locate-character` | Map byte offset to line/column                   | Reimplement (scan for newlines)                                  | ~30        |
+| `flru`             | LRU cache for internal caching                   | Reimplement simple LRU with Map                                  | ~40        |
+| `builtin-modules`  | List of Node.js built-in module names            | Static array from `module.builtinModules` at build time          | ~10        |
+| `tslib`            | TypeScript runtime helpers                       | Not needed — compile with `importHelpers: false`, inline helpers | 0          |
 
 **Total estimated reimplementation: ~3,350 lines**
 
 ---
 
-*MVP targets feature parity with rollup v4.60.4. After v1.0.0, steamroller versions are independent and may diverge from rollup's feature trajectory.*
+_MVP targets feature parity with rollup v4.60.4. After v1.0.0, steamroller versions are independent and may diverge from rollup's feature trajectory._

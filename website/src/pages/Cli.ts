@@ -1,135 +1,249 @@
-import { createElement, useHead } from '@asymmetric-effort/specifyjs';
+import { createElement, useHead } from "@asymmetric-effort/specifyjs";
 
 export function Cli(): ReturnType<typeof createElement> {
   useHead({
-    title: 'CLI Reference \u2014 Steamroller',
-    description: 'Command-line interface reference for Steamroller. All flags, options, and usage examples.',
-    canonical: 'https://steamroller.asymmetric-effort.com/#/cli',
+    title: "CLI Reference \u2014 Steamroller",
+    description:
+      "Command-line interface reference for Steamroller. All flags, options, and usage examples.",
+    canonical: "https://steamroller.asymmetric-effort.com/#/cli",
   });
 
-  return createElement('div', null,
-    createElement('h1', null, 'CLI Reference'),
-    createElement('p', { className: 'page-subtitle' }, 'Steamroller provides a full-featured command-line interface with 80+ flags.'),
+  return createElement(
+    "div",
+    null,
+    createElement("h1", null, "CLI Reference"),
+    createElement(
+      "p",
+      { className: "page-subtitle" },
+      "Steamroller provides a full-featured command-line interface with 80+ flags.",
+    ),
 
-    createElement('section', { className: 'section' },
-      createElement('h2', null, 'Basic Usage'),
-      createElement('pre', null,
-        createElement('code', null,
-          '# Bundle with inline options\n' +
-          'npx steamroller src/main.js --file dist/bundle.js --format es\n\n' +
-          '# Use a config file\n' +
-          'npx steamroller -c\n\n' +
-          '# Watch mode\n' +
-          'npx steamroller -c -w',
+    createElement(
+      "section",
+      { className: "section" },
+      createElement("h2", null, "Basic Usage"),
+      createElement(
+        "pre",
+        null,
+        createElement(
+          "code",
+          null,
+          "# Bundle with inline options\n" +
+            "npx steamroller src/main.js --file dist/bundle.js --format es\n\n" +
+            "# Use a config file\n" +
+            "npx steamroller -c\n\n" +
+            "# Watch mode\n" +
+            "npx steamroller -c -w",
         ),
       ),
     ),
 
-    createElement('section', { className: 'section' },
-      createElement('h2', null, 'Core Options'),
-      createElement('table', { className: 'table' },
-        createElement('thead', null,
-          createElement('tr', null,
-            createElement('th', null, 'Flag'),
-            createElement('th', null, 'Description'),
+    createElement(
+      "section",
+      { className: "section" },
+      createElement("h2", null, "Core Options"),
+      createElement(
+        "table",
+        { className: "table" },
+        createElement(
+          "thead",
+          null,
+          createElement(
+            "tr",
+            null,
+            createElement("th", null, "Flag"),
+            createElement("th", null, "Description"),
           ),
         ),
-        createElement('tbody', null,
-          flagRow('-i, --input <file>', 'Entry point file'),
-          flagRow('-o, --file <output>', 'Output file (stdout if absent)'),
-          flagRow('-d, --dir <dirname>', 'Output directory for code splitting'),
-          flagRow('-f, --format <fmt>', 'Output format: es, cjs, umd, amd, iife, system'),
-          flagRow('-n, --name <name>', 'Name for UMD/IIFE export'),
-          flagRow('-e, --external <ids>', 'Comma-separated external module IDs'),
-          flagRow('-g, --globals <pairs>', 'moduleID:Global mapping for externals'),
-          flagRow('-c, --config <file>', 'Config file (auto-discovers if unspecified)'),
-          flagRow('-p, --plugin <plugin>', 'Add plugin (repeatable)'),
-          flagRow('-w, --watch', 'Watch mode'),
-          flagRow('-m, --sourcemap', 'Generate source maps'),
+        createElement(
+          "tbody",
+          null,
+          flagRow("-i, --input <file>", "Entry point file"),
+          flagRow("-o, --file <output>", "Output file (stdout if absent)"),
+          flagRow("-d, --dir <dirname>", "Output directory for code splitting"),
+          flagRow(
+            "-f, --format <fmt>",
+            "Output format: es, cjs, umd, amd, iife, system",
+          ),
+          flagRow("-n, --name <name>", "Name for UMD/IIFE export"),
+          flagRow(
+            "-e, --external <ids>",
+            "Comma-separated external module IDs",
+          ),
+          flagRow(
+            "-g, --globals <pairs>",
+            "moduleID:Global mapping for externals",
+          ),
+          flagRow(
+            "-c, --config <file>",
+            "Config file (auto-discovers if unspecified)",
+          ),
+          flagRow("-p, --plugin <plugin>", "Add plugin (repeatable)"),
+          flagRow("-w, --watch", "Watch mode"),
+          flagRow("-m, --sourcemap", "Generate source maps"),
         ),
       ),
     ),
 
-    createElement('section', { className: 'section' },
-      createElement('h2', null, 'Tree-Shaking Options'),
-      createElement('table', { className: 'table' },
-        createElement('thead', null,
-          createElement('tr', null,
-            createElement('th', null, 'Flag'),
-            createElement('th', null, 'Description'),
+    createElement(
+      "section",
+      { className: "section" },
+      createElement("h2", null, "Tree-Shaking Options"),
+      createElement(
+        "table",
+        { className: "table" },
+        createElement(
+          "thead",
+          null,
+          createElement(
+            "tr",
+            null,
+            createElement("th", null, "Flag"),
+            createElement("th", null, "Description"),
           ),
         ),
-        createElement('tbody', null,
-          flagRow('--no-treeshake', 'Disable tree-shaking'),
-          flagRow('--treeshake.manualPureFunctions <names>', 'Functions to treat as pure'),
-          flagRow('--no-treeshake.moduleSideEffects', 'Assume all modules side-effect-free'),
-          flagRow('--no-treeshake.propertyReadSideEffects', 'Assume property reads are pure'),
-        ),
-      ),
-    ),
-
-    createElement('section', { className: 'section' },
-      createElement('h2', null, 'Output Options'),
-      createElement('table', { className: 'table' },
-        createElement('thead', null,
-          createElement('tr', null,
-            createElement('th', null, 'Flag'),
-            createElement('th', null, 'Description'),
+        createElement(
+          "tbody",
+          null,
+          flagRow("--no-treeshake", "Disable tree-shaking"),
+          flagRow(
+            "--treeshake.manualPureFunctions <names>",
+            "Functions to treat as pure",
+          ),
+          flagRow(
+            "--no-treeshake.moduleSideEffects",
+            "Assume all modules side-effect-free",
+          ),
+          flagRow(
+            "--no-treeshake.propertyReadSideEffects",
+            "Assume property reads are pure",
           ),
         ),
-        createElement('tbody', null,
-          flagRow('--compact', 'Minify wrapper code'),
-          flagRow('--banner <text>', 'Code at top of bundle (outside wrapper)'),
-          flagRow('--footer <text>', 'Code at bottom of bundle'),
-          flagRow('--intro <text>', 'Code inside wrapper at top'),
-          flagRow('--outro <text>', 'Code inside wrapper at bottom'),
-          flagRow('--exports <mode>', 'auto, default, named, none'),
-          flagRow('--generatedCode <preset>', 'es5 or es2015'),
-          flagRow('--no-esModule', 'Omit __esModule property'),
-          flagRow('--no-freeze', 'Do not Object.freeze namespace objects'),
-          flagRow('--no-strict', 'Omit "use strict"'),
-        ),
       ),
     ),
 
-    createElement('section', { className: 'section' },
-      createElement('h2', null, 'Logging & Diagnostics'),
-      createElement('table', { className: 'table' },
-        createElement('thead', null,
-          createElement('tr', null,
-            createElement('th', null, 'Flag'),
-            createElement('th', null, 'Description'),
+    createElement(
+      "section",
+      { className: "section" },
+      createElement("h2", null, "Output Options"),
+      createElement(
+        "table",
+        { className: "table" },
+        createElement(
+          "thead",
+          null,
+          createElement(
+            "tr",
+            null,
+            createElement("th", null, "Flag"),
+            createElement("th", null, "Description"),
           ),
         ),
-        createElement('tbody', null,
-          flagRow('--silent', 'Suppress all output'),
-          flagRow('--logLevel <level>', 'debug, info, warn'),
-          flagRow('--failAfterWarnings', 'Exit code 1 on warnings'),
-          flagRow('--perf', 'Display performance timings'),
-          flagRow('--validate', 'Validate output is valid JS'),
-          flagRow('--filterLogs <filter>', 'Filter log messages'),
+        createElement(
+          "tbody",
+          null,
+          flagRow("--compact", "Minify wrapper code"),
+          flagRow("--banner <text>", "Code at top of bundle (outside wrapper)"),
+          flagRow("--footer <text>", "Code at bottom of bundle"),
+          flagRow("--intro <text>", "Code inside wrapper at top"),
+          flagRow("--outro <text>", "Code inside wrapper at bottom"),
+          flagRow("--exports <mode>", "auto, default, named, none"),
+          flagRow("--generatedCode <preset>", "es5 or es2015"),
+          flagRow("--no-esModule", "Omit __esModule property"),
+          flagRow("--no-freeze", "Do not Object.freeze namespace objects"),
+          flagRow("--no-strict", 'Omit "use strict"'),
         ),
       ),
     ),
 
-    createElement('section', { className: 'section' },
-      createElement('h2', null, 'Config File'),
-      createElement('p', null, 'Steamroller discovers config files in this order:'),
-      createElement('ol', null,
-        createElement('li', null, createElement('code', null, 'steamroller.config.mjs')),
-        createElement('li', null, createElement('code', null, 'steamroller.config.cjs')),
-        createElement('li', null, createElement('code', null, 'steamroller.config.js')),
-        createElement('li', null, createElement('code', null, 'rollup.config.mjs'), ' (migration)'),
-        createElement('li', null, createElement('code', null, 'rollup.config.cjs'), ' (migration)'),
-        createElement('li', null, createElement('code', null, 'rollup.config.js'), ' (migration)'),
+    createElement(
+      "section",
+      { className: "section" },
+      createElement("h2", null, "Logging & Diagnostics"),
+      createElement(
+        "table",
+        { className: "table" },
+        createElement(
+          "thead",
+          null,
+          createElement(
+            "tr",
+            null,
+            createElement("th", null, "Flag"),
+            createElement("th", null, "Description"),
+          ),
+        ),
+        createElement(
+          "tbody",
+          null,
+          flagRow("--silent", "Suppress all output"),
+          flagRow("--logLevel <level>", "debug, info, warn"),
+          flagRow("--failAfterWarnings", "Exit code 1 on warnings"),
+          flagRow("--perf", "Display performance timings"),
+          flagRow("--validate", "Validate output is valid JS"),
+          flagRow("--filterLogs <filter>", "Filter log messages"),
+        ),
+      ),
+    ),
+
+    createElement(
+      "section",
+      { className: "section" },
+      createElement("h2", null, "Config File"),
+      createElement(
+        "p",
+        null,
+        "Steamroller discovers config files in this order:",
+      ),
+      createElement(
+        "ol",
+        null,
+        createElement(
+          "li",
+          null,
+          createElement("code", null, "steamroller.config.mjs"),
+        ),
+        createElement(
+          "li",
+          null,
+          createElement("code", null, "steamroller.config.cjs"),
+        ),
+        createElement(
+          "li",
+          null,
+          createElement("code", null, "steamroller.config.js"),
+        ),
+        createElement(
+          "li",
+          null,
+          createElement("code", null, "rollup.config.mjs"),
+          " (migration)",
+        ),
+        createElement(
+          "li",
+          null,
+          createElement("code", null, "rollup.config.cjs"),
+          " (migration)",
+        ),
+        createElement(
+          "li",
+          null,
+          createElement("code", null, "rollup.config.js"),
+          " (migration)",
+        ),
       ),
     ),
   );
 }
 
-function flagRow(flag: string, description: string): ReturnType<typeof createElement> {
-  return createElement('tr', null,
-    createElement('td', null, createElement('code', null, flag)),
-    createElement('td', null, description),
+function flagRow(
+  flag: string,
+  description: string,
+): ReturnType<typeof createElement> {
+  return createElement(
+    "tr",
+    null,
+    createElement("td", null, createElement("code", null, flag)),
+    createElement("td", null, description),
   );
 }

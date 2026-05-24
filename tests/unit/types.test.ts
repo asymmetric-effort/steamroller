@@ -4,7 +4,7 @@
  * module, tests verify that types compile correctly, key type relationships
  * hold, and discriminated unions work as expected.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 import type {
   MaybeArray,
   MaybePromise,
@@ -86,7 +86,7 @@ import type {
   RollupFileStats,
   RollupDirectoryEntry,
   RollupFsModule,
-} from '../../src/types.js';
+} from "../../src/types.js";
 
 // ============================================================
 // Helper: compile-time type assertion
@@ -100,47 +100,47 @@ const assertType = <T>(_value: T): void => {
   /* intentionally empty - compile-time only */
 };
 
-describe('types', () => {
+describe("types", () => {
   // ==========================================================
   // Utility Types
   // ==========================================================
-  describe('utility types', () => {
-    it('MaybeArray accepts a single value', () => {
+  describe("utility types", () => {
+    it("MaybeArray accepts a single value", () => {
       const single: MaybeArray<number> = 42;
       assertType<MaybeArray<number>>(single);
       expect(single).toBe(42);
     });
 
-    it('MaybeArray accepts a readonly array', () => {
+    it("MaybeArray accepts a readonly array", () => {
       const arr: MaybeArray<number> = [1, 2, 3] as const;
       assertType<MaybeArray<number>>(arr);
       expect(Array.isArray(arr)).toBe(true);
     });
 
-    it('MaybePromise accepts a plain value', () => {
-      const plain: MaybePromise<string> = 'hello';
+    it("MaybePromise accepts a plain value", () => {
+      const plain: MaybePromise<string> = "hello";
       assertType<MaybePromise<string>>(plain);
-      expect(plain).toBe('hello');
+      expect(plain).toBe("hello");
     });
 
-    it('MaybePromise accepts a Promise', () => {
-      const promised: MaybePromise<string> = Promise.resolve('hello');
+    it("MaybePromise accepts a Promise", () => {
+      const promised: MaybePromise<string> = Promise.resolve("hello");
       assertType<MaybePromise<string>>(promised);
       expect(promised).toBeInstanceOf(Promise);
     });
 
-    it('PartialNull makes all properties nullable', () => {
+    it("PartialNull makes all properties nullable", () => {
       interface Sample {
         readonly a: number;
         readonly b: string;
       }
-      const partial: PartialNull<Sample> = { a: null, b: 'test' };
+      const partial: PartialNull<Sample> = { a: null, b: "test" };
       assertType<PartialNull<Sample>>(partial);
       expect(partial.a).toBeNull();
-      expect(partial.b).toBe('test');
+      expect(partial.b).toBe("test");
     });
 
-    it('NullValue accepts null, undefined, and void', () => {
+    it("NullValue accepts null, undefined, and void", () => {
       const n: NullValue = null;
       const u: NullValue = undefined;
       assertType<NullValue>(n);
@@ -153,35 +153,35 @@ describe('types', () => {
   // ==========================================================
   // Log Types
   // ==========================================================
-  describe('log types', () => {
-    it('LogLevel accepts valid levels', () => {
-      const levels: ReadonlyArray<LogLevel> = ['warn', 'info', 'debug'];
+  describe("log types", () => {
+    it("LogLevel accepts valid levels", () => {
+      const levels: ReadonlyArray<LogLevel> = ["warn", "info", "debug"];
       expect(levels).toHaveLength(3);
     });
 
-    it('RollupLog has required message and optional fields', () => {
+    it("RollupLog has required message and optional fields", () => {
       const log: RollupLog = {
-        message: 'test warning',
-        code: 'UNUSED_IMPORT',
-        id: '/src/foo.ts',
+        message: "test warning",
+        code: "UNUSED_IMPORT",
+        id: "/src/foo.ts",
         pos: 42,
-        loc: { file: '/src/foo.ts', line: 3, column: 7 },
+        loc: { file: "/src/foo.ts", line: 3, column: 7 },
         frame: '  import { unused } from "bar";',
-        stack: 'Error: test',
-        plugin: 'test-plugin',
-        pluginCode: 'CUSTOM',
-        url: 'https://example.com',
-        exporter: 'bar',
-        reexporter: 'baz',
+        stack: "Error: test",
+        plugin: "test-plugin",
+        pluginCode: "CUSTOM",
+        url: "https://example.com",
+        exporter: "bar",
+        reexporter: "baz",
       };
       assertType<RollupLog>(log);
-      expect(log.message).toBe('test warning');
+      expect(log.message).toBe("test warning");
       expect(log.loc?.line).toBe(3);
     });
 
-    it('RollupLog accepts arbitrary extra properties', () => {
+    it("RollupLog accepts arbitrary extra properties", () => {
       const log: RollupLog = {
-        message: 'custom',
+        message: "custom",
         customField: 123,
         anotherField: { nested: true },
       };
@@ -189,27 +189,27 @@ describe('types', () => {
       expect(log.customField).toBe(123);
     });
 
-    it('RollupLog minimal form with only message', () => {
-      const log: RollupLog = { message: 'minimal' };
+    it("RollupLog minimal form with only message", () => {
+      const log: RollupLog = { message: "minimal" };
       assertType<RollupLog>(log);
       expect(log.code).toBeUndefined();
     });
 
-    it('LogHandler matches expected signature', () => {
+    it("LogHandler matches expected signature", () => {
       const handler: LogHandler = (level, log) => {
         assertType<LogLevel>(level);
         assertType<RollupLog>(log);
       };
-      handler('warn', { message: 'test' });
+      handler("warn", { message: "test" });
       expect(true).toBe(true);
     });
 
-    it('LogOrStringHandler accepts error level and strings', () => {
+    it("LogOrStringHandler accepts error level and strings", () => {
       const handler: LogOrStringHandler = (_level, _log) => {
         /* no-op */
       };
-      handler('error', 'string message');
-      handler('warn', { message: 'log object' });
+      handler("error", "string message");
+      handler("warn", { message: "log object" });
       expect(true).toBe(true);
     });
   });
@@ -217,72 +217,72 @@ describe('types', () => {
   // ==========================================================
   // Source Map Types
   // ==========================================================
-  describe('source map types', () => {
-    it('SourceMapSegment accepts 1-element tuple', () => {
+  describe("source map types", () => {
+    it("SourceMapSegment accepts 1-element tuple", () => {
       const seg: SourceMapSegment = [0] as const;
       assertType<SourceMapSegment>(seg);
       expect(seg).toHaveLength(1);
     });
 
-    it('SourceMapSegment accepts 4-element tuple', () => {
+    it("SourceMapSegment accepts 4-element tuple", () => {
       const seg: SourceMapSegment = [0, 1, 2, 3] as const;
       assertType<SourceMapSegment>(seg);
       expect(seg).toHaveLength(4);
     });
 
-    it('SourceMapSegment accepts 5-element tuple', () => {
+    it("SourceMapSegment accepts 5-element tuple", () => {
       const seg: SourceMapSegment = [0, 1, 2, 3, 4] as const;
       assertType<SourceMapSegment>(seg);
       expect(seg).toHaveLength(5);
     });
 
-    it('ExistingDecodedSourceMap has version 3', () => {
+    it("ExistingDecodedSourceMap has version 3", () => {
       const map: ExistingDecodedSourceMap = {
         mappings: [[[0, 1, 2, 3]]],
-        names: ['foo'],
-        sources: ['input.ts'],
+        names: ["foo"],
+        sources: ["input.ts"],
         version: 3,
       };
       assertType<ExistingDecodedSourceMap>(map);
       expect(map.version).toBe(3);
     });
 
-    it('ExistingDecodedSourceMap with all optional fields', () => {
+    it("ExistingDecodedSourceMap with all optional fields", () => {
       const map: ExistingDecodedSourceMap = {
-        file: 'output.js',
+        file: "output.js",
         mappings: [],
         names: [],
-        sourceRoot: '/src',
-        sources: ['a.ts'],
-        sourcesContent: ['const x = 1;', null],
+        sourceRoot: "/src",
+        sources: ["a.ts"],
+        sourcesContent: ["const x = 1;", null],
         version: 3,
         x_google_ignoreList: [0],
       };
       assertType<ExistingDecodedSourceMap>(map);
-      expect(map.file).toBe('output.js');
+      expect(map.file).toBe("output.js");
     });
 
-    it('ExistingRawSourceMap has string mappings', () => {
+    it("ExistingRawSourceMap has string mappings", () => {
       const map: ExistingRawSourceMap = {
-        mappings: 'AAAA',
+        mappings: "AAAA",
         names: [],
-        sources: ['input.ts'],
+        sources: ["input.ts"],
         version: 3,
       };
       assertType<ExistingRawSourceMap>(map);
-      expect(typeof map.mappings).toBe('string');
+      expect(typeof map.mappings).toBe("string");
     });
 
-    it('SourceMapInput accepts various forms', () => {
+    it("SourceMapInput accepts various forms", () => {
       const raw: SourceMapInput = {
-        mappings: 'AAAA',
+        mappings: "AAAA",
         names: [],
         sources: [],
         version: 3,
       };
       const str: SourceMapInput = '{"mappings":""}';
       const nul: SourceMapInput = null;
-      const empty: SourceMapInput = { mappings: '' as const };
+      const empty: SourceMapInput = { mappings: "" as const };
       assertType<SourceMapInput>(raw);
       assertType<SourceMapInput>(str);
       assertType<SourceMapInput>(nul);
@@ -297,102 +297,102 @@ describe('types', () => {
   // ==========================================================
   // Module Types
   // ==========================================================
-  describe('module types', () => {
-    it('ModuleFormat accepts all valid formats', () => {
+  describe("module types", () => {
+    it("ModuleFormat accepts all valid formats", () => {
       const formats: ReadonlyArray<ModuleFormat> = [
-        'amd',
-        'cjs',
-        'es',
-        'iife',
-        'system',
-        'umd',
+        "amd",
+        "cjs",
+        "es",
+        "iife",
+        "system",
+        "umd",
       ];
       expect(formats).toHaveLength(6);
     });
 
-    it('InteropType accepts string and boolean values', () => {
+    it("InteropType accepts string and boolean values", () => {
       const values: ReadonlyArray<InteropType> = [
-        'auto',
-        'esModule',
-        'default',
-        'defaultOnly',
+        "auto",
+        "esModule",
+        "default",
+        "defaultOnly",
         true,
         false,
       ];
       expect(values).toHaveLength(6);
     });
 
-    it('ModuleInfo has all required fields', () => {
+    it("ModuleInfo has all required fields", () => {
       const resolvedId: ResolvedId = {
-        id: '/src/dep.ts',
+        id: "/src/dep.ts",
         external: false,
         moduleSideEffects: true,
         syntheticNamedExports: false,
         meta: {},
-        resolvedBy: 'rollup',
+        resolvedBy: "rollup",
       };
 
       const info: ModuleInfo = {
-        id: '/src/main.ts',
-        code: 'export const x = 1;',
+        id: "/src/main.ts",
+        code: "export const x = 1;",
         ast: null,
         isEntry: true,
         isExternal: false,
         isIncluded: true,
-        importedIds: ['/src/dep.ts'],
+        importedIds: ["/src/dep.ts"],
         importedIdResolutions: [resolvedId],
         dynamicallyImportedIds: [],
         dynamicallyImportedIdResolutions: [],
         importers: [],
         dynamicImporters: [],
-        exportedBindings: { '.': ['x'] },
-        exports: ['x'],
+        exportedBindings: { ".": ["x"] },
+        exports: ["x"],
         hasDefaultExport: false,
         meta: {},
         syntheticNamedExports: false,
         moduleSideEffects: true,
       };
       assertType<ModuleInfo>(info);
-      expect(info.id).toBe('/src/main.ts');
+      expect(info.id).toBe("/src/main.ts");
       expect(info.isEntry).toBe(true);
     });
 
-    it('ResolvedId with absolute external', () => {
+    it("ResolvedId with absolute external", () => {
       const resolved: ResolvedId = {
-        id: 'https://cdn.example.com/lib.js',
-        external: 'absolute',
-        moduleSideEffects: 'no-treeshake',
-        syntheticNamedExports: 'default',
+        id: "https://cdn.example.com/lib.js",
+        external: "absolute",
+        moduleSideEffects: "no-treeshake",
+        syntheticNamedExports: "default",
         meta: { custom: true },
-        resolvedBy: 'custom-plugin',
+        resolvedBy: "custom-plugin",
       };
       assertType<ResolvedId>(resolved);
-      expect(resolved.external).toBe('absolute');
+      expect(resolved.external).toBe("absolute");
     });
 
-    it('LoadResult accepts string, null, undefined, and object forms', () => {
-      const strResult: LoadResult = 'export const x = 1;';
+    it("LoadResult accepts string, null, undefined, and object forms", () => {
+      const strResult: LoadResult = "export const x = 1;";
       const nullResult: LoadResult = null;
       const undefResult: LoadResult = undefined;
       const objResult: LoadResult = {
-        code: 'export const x = 1;',
+        code: "export const x = 1;",
         map: null,
         ast: null,
-        meta: { key: 'value' },
+        meta: { key: "value" },
         syntheticNamedExports: true,
-        moduleSideEffects: 'no-treeshake',
+        moduleSideEffects: "no-treeshake",
       };
       assertType<LoadResult>(strResult);
       assertType<LoadResult>(nullResult);
       assertType<LoadResult>(undefResult);
       assertType<LoadResult>(objResult);
-      expect(strResult).toBe('export const x = 1;');
+      expect(strResult).toBe("export const x = 1;");
     });
 
-    it('TransformResult accepts all valid forms', () => {
+    it("TransformResult accepts all valid forms", () => {
       const result: TransformResult = {
-        code: 'transformed',
-        map: { mappings: 'AAAA', names: [], sources: [], version: 3 },
+        code: "transformed",
+        map: { mappings: "AAAA", names: [], sources: [], version: 3 },
       };
       assertType<TransformResult>(result);
       expect(result).toBeDefined();
@@ -402,61 +402,61 @@ describe('types', () => {
   // ==========================================================
   // AST Types
   // ==========================================================
-  describe('AST types', () => {
-    it('RollupAstNode has required fields', () => {
+  describe("AST types", () => {
+    it("RollupAstNode has required fields", () => {
       const node: RollupAstNode = {
-        type: 'Identifier',
+        type: "Identifier",
         start: 0,
         end: 5,
-        name: 'hello',
+        name: "hello",
       };
       assertType<RollupAstNode>(node);
-      expect(node.type).toBe('Identifier');
+      expect(node.type).toBe("Identifier");
     });
 
-    it('ProgramNode extends RollupAstNode', () => {
+    it("ProgramNode extends RollupAstNode", () => {
       const program: ProgramNode = {
-        type: 'Program',
+        type: "Program",
         start: 0,
         end: 100,
-        body: [{ type: 'ExpressionStatement', start: 0, end: 10 }],
-        sourceType: 'module',
+        body: [{ type: "ExpressionStatement", start: 0, end: 10 }],
+        sourceType: "module",
       };
       assertType<ProgramNode>(program);
       assertType<RollupAstNode>(program);
-      expect(program.sourceType).toBe('module');
+      expect(program.sourceType).toBe("module");
     });
 
-    it('ProgramNode accepts script sourceType', () => {
+    it("ProgramNode accepts script sourceType", () => {
       const program: ProgramNode = {
-        type: 'Program',
+        type: "Program",
         start: 0,
         end: 0,
         body: [],
-        sourceType: 'script',
+        sourceType: "script",
       };
-      expect(program.sourceType).toBe('script');
+      expect(program.sourceType).toBe("script");
     });
   });
 
   // ==========================================================
   // Plugin Types (Emitted Files)
   // ==========================================================
-  describe('emitted file types', () => {
+  describe("emitted file types", () => {
     it('EmittedAsset has type "asset"', () => {
       const asset: EmittedAsset = {
-        type: 'asset',
-        name: 'styles.css',
-        source: 'body { color: red; }',
+        type: "asset",
+        name: "styles.css",
+        source: "body { color: red; }",
       };
       assertType<EmittedFile>(asset);
-      expect(asset.type).toBe('asset');
+      expect(asset.type).toBe("asset");
     });
 
-    it('EmittedAsset with Uint8Array source', () => {
+    it("EmittedAsset with Uint8Array source", () => {
       const asset: EmittedAsset = {
-        type: 'asset',
-        fileName: 'binary.dat',
+        type: "asset",
+        fileName: "binary.dat",
         needsCodeReference: true,
         source: new Uint8Array([1, 2, 3]),
       };
@@ -466,55 +466,51 @@ describe('types', () => {
 
     it('EmittedChunk has type "chunk"', () => {
       const chunk: EmittedChunk = {
-        type: 'chunk',
-        id: '/src/worker.ts',
-        name: 'worker',
-        implicitlyLoadedAfterOneOf: ['/src/main.ts'],
-        preserveSignature: 'strict',
+        type: "chunk",
+        id: "/src/worker.ts",
+        name: "worker",
+        implicitlyLoadedAfterOneOf: ["/src/main.ts"],
+        preserveSignature: "strict",
       };
       assertType<EmittedFile>(chunk);
-      expect(chunk.type).toBe('chunk');
+      expect(chunk.type).toBe("chunk");
     });
 
     it('EmittedPrebuiltChunk has type "prebuilt-chunk"', () => {
       const prebuilt: EmittedPrebuiltChunk = {
-        type: 'prebuilt-chunk',
-        fileName: 'vendor.js',
-        code: 'var vendor = {};',
+        type: "prebuilt-chunk",
+        fileName: "vendor.js",
+        code: "var vendor = {};",
         map: null,
-        exports: ['vendor'],
+        exports: ["vendor"],
       };
       assertType<EmittedFile>(prebuilt);
-      expect(prebuilt.type).toBe('prebuilt-chunk');
+      expect(prebuilt.type).toBe("prebuilt-chunk");
     });
 
-    it('EmittedFile discriminated union works', () => {
+    it("EmittedFile discriminated union works", () => {
       const files: ReadonlyArray<EmittedFile> = [
-        { type: 'asset', source: 'css' },
-        { type: 'chunk', id: 'main' },
-        { type: 'prebuilt-chunk', fileName: 'v.js', code: '' },
+        { type: "asset", source: "css" },
+        { type: "chunk", id: "main" },
+        { type: "prebuilt-chunk", fileName: "v.js", code: "" },
       ];
 
       const types = files.map((f) => f.type);
-      expect(types).toEqual(['asset', 'chunk', 'prebuilt-chunk']);
+      expect(types).toEqual(["asset", "chunk", "prebuilt-chunk"]);
     });
 
-    it('PreserveEntrySignaturesOption accepts all values', () => {
+    it("PreserveEntrySignaturesOption accepts all values", () => {
       const values: ReadonlyArray<PreserveEntrySignaturesOption> = [
         false,
-        'strict',
-        'allow-extension',
-        'exports-only',
+        "strict",
+        "allow-extension",
+        "exports-only",
       ];
       expect(values).toHaveLength(4);
     });
 
-    it('HashCharacters accepts all encodings', () => {
-      const values: ReadonlyArray<HashCharacters> = [
-        'base64',
-        'base36',
-        'hex',
-      ];
+    it("HashCharacters accepts all encodings", () => {
+      const values: ReadonlyArray<HashCharacters> = ["base64", "base36", "hex"];
       expect(values).toHaveLength(3);
     });
   });
@@ -522,25 +518,25 @@ describe('types', () => {
   // ==========================================================
   // ObjectHook / HookFilter / StringFilter
   // ==========================================================
-  describe('hook types', () => {
-    it('ObjectHook accepts a plain function', () => {
+  describe("hook types", () => {
+    it("ObjectHook accepts a plain function", () => {
       const hook: ObjectHook<() => void> = () => {
         /* no-op */
       };
       assertType<ObjectHook<() => void>>(hook);
-      expect(typeof hook).toBe('function');
+      expect(typeof hook).toBe("function");
     });
 
-    it('ObjectHook accepts object form with handler and order', () => {
+    it("ObjectHook accepts object form with handler and order", () => {
       const hook: ObjectHook<() => string> = {
-        handler: () => 'result',
-        order: 'pre',
+        handler: () => "result",
+        order: "pre",
       };
       assertType<ObjectHook<() => string>>(hook);
-      expect(typeof hook).toBe('object');
+      expect(typeof hook).toBe("object");
     });
 
-    it('ObjectHook accepts null order', () => {
+    it("ObjectHook accepts null order", () => {
       const hook: ObjectHook<() => void> = {
         handler: () => {
           /* no-op */
@@ -550,20 +546,20 @@ describe('types', () => {
       expect(hook.order).toBeNull();
     });
 
-    it('HookFilter has optional id field', () => {
+    it("HookFilter has optional id field", () => {
       const filter: HookFilter = { id: /\.ts$/ };
       assertType<HookFilter>(filter);
       expect(filter.id).toBeDefined();
     });
 
-    it('StringFilter accepts various forms', () => {
-      const str: StringFilter = '*.ts';
+    it("StringFilter accepts various forms", () => {
+      const str: StringFilter = "*.ts";
       const regex: StringFilter = /\.ts$/;
-      const arr: StringFilter = ['*.ts', /\.js$/];
+      const arr: StringFilter = ["*.ts", /\.js$/];
       assertType<StringFilter>(str);
       assertType<StringFilter>(regex);
       assertType<StringFilter>(arr);
-      expect(str).toBe('*.ts');
+      expect(str).toBe("*.ts");
       expect(regex).toBeInstanceOf(RegExp);
       expect(Array.isArray(arr)).toBe(true);
     });
@@ -572,8 +568,8 @@ describe('types', () => {
   // ==========================================================
   // PluginCache
   // ==========================================================
-  describe('PluginCache', () => {
-    it('PluginCache has get, set, has, delete methods', () => {
+  describe("PluginCache", () => {
+    it("PluginCache has get, set, has, delete methods", () => {
       const cache: PluginCache = {
         get: <T = unknown>(_id: string): T => null as T,
         set: <T = unknown>(_id: string, _value: T): void => {
@@ -583,20 +579,20 @@ describe('types', () => {
         delete: (_id: string): boolean => false,
       };
       assertType<PluginCache>(cache);
-      expect(cache.has('key')).toBe(false);
+      expect(cache.has("key")).toBe(false);
     });
   });
 
   // ==========================================================
   // Output Types
   // ==========================================================
-  describe('output types', () => {
-    it('RenderedModule has all fields', () => {
+  describe("output types", () => {
+    it("RenderedModule has all fields", () => {
       const mod: RenderedModule = {
-        code: 'const x = 1;',
+        code: "const x = 1;",
         originalLength: 100,
-        removedExports: ['unused'],
-        renderedExports: ['x'],
+        removedExports: ["unused"],
+        renderedExports: ["x"],
         renderedLength: 12,
       };
       assertType<RenderedModule>(mod);
@@ -605,40 +601,40 @@ describe('types', () => {
 
     it('PreRenderedChunk has type "chunk"', () => {
       const chunk: PreRenderedChunk = {
-        exports: ['main'],
-        facadeModuleId: '/src/main.ts',
+        exports: ["main"],
+        facadeModuleId: "/src/main.ts",
         isDynamicEntry: false,
         isEntry: true,
         isImplicitEntry: false,
-        moduleIds: ['/src/main.ts'],
-        name: 'main',
-        type: 'chunk',
+        moduleIds: ["/src/main.ts"],
+        name: "main",
+        type: "chunk",
       };
       assertType<PreRenderedChunk>(chunk);
-      expect(chunk.type).toBe('chunk');
+      expect(chunk.type).toBe("chunk");
     });
 
-    it('RenderedChunk extends PreRenderedChunk', () => {
+    it("RenderedChunk extends PreRenderedChunk", () => {
       const chunk: RenderedChunk = {
         exports: [],
         facadeModuleId: null,
         isDynamicEntry: false,
         isEntry: true,
         isImplicitEntry: false,
-        moduleIds: ['/src/main.ts'],
-        name: 'main',
-        type: 'chunk',
+        moduleIds: ["/src/main.ts"],
+        name: "main",
+        type: "chunk",
         dynamicImports: [],
-        fileName: 'main.js',
+        fileName: "main.js",
         implicitlyLoadedBefore: [],
         importedBindings: {},
         imports: [],
         modules: {
-          '/src/main.ts': {
-            code: 'const x = 1;',
+          "/src/main.ts": {
+            code: "const x = 1;",
             originalLength: 20,
             removedExports: [],
-            renderedExports: ['x'],
+            renderedExports: ["x"],
             renderedLength: 12,
           },
         },
@@ -646,10 +642,10 @@ describe('types', () => {
       };
       assertType<RenderedChunk>(chunk);
       assertType<PreRenderedChunk>(chunk);
-      expect(chunk.fileName).toBe('main.js');
+      expect(chunk.fileName).toBe("main.js");
     });
 
-    it('OutputChunk extends RenderedChunk', () => {
+    it("OutputChunk extends RenderedChunk", () => {
       const chunk: OutputChunk = {
         exports: [],
         facadeModuleId: null,
@@ -657,55 +653,55 @@ describe('types', () => {
         isEntry: true,
         isImplicitEntry: false,
         moduleIds: [],
-        name: 'main',
-        type: 'chunk',
+        name: "main",
+        type: "chunk",
         dynamicImports: [],
-        fileName: 'main.js',
+        fileName: "main.js",
         implicitlyLoadedBefore: [],
         importedBindings: {},
         imports: [],
         modules: {},
         referencedFiles: [],
-        code: 'const x = 1;',
+        code: "const x = 1;",
         map: null,
         sourcemapFileName: null,
-        preliminaryFileName: 'main-[hash].js',
+        preliminaryFileName: "main-[hash].js",
       };
       assertType<OutputChunk>(chunk);
-      expect(chunk.code).toBe('const x = 1;');
+      expect(chunk.code).toBe("const x = 1;");
     });
 
     it('OutputAsset has type "asset"', () => {
       const asset: OutputAsset = {
-        fileName: 'style.css',
-        name: 'style',
-        names: ['style'],
+        fileName: "style.css",
+        name: "style",
+        names: ["style"],
         needsCodeReference: false,
-        originalFileName: 'src/style.css',
-        originalFileNames: ['src/style.css'],
-        source: 'body{}',
-        type: 'asset',
+        originalFileName: "src/style.css",
+        originalFileNames: ["src/style.css"],
+        source: "body{}",
+        type: "asset",
       };
       assertType<OutputAsset>(asset);
-      expect(asset.type).toBe('asset');
+      expect(asset.type).toBe("asset");
     });
 
-    it('OutputAsset with undefined name', () => {
+    it("OutputAsset with undefined name", () => {
       const asset: OutputAsset = {
-        fileName: 'unnamed.bin',
+        fileName: "unnamed.bin",
         name: undefined,
         names: [],
         needsCodeReference: false,
         originalFileName: null,
         originalFileNames: [],
         source: new Uint8Array([0]),
-        type: 'asset',
+        type: "asset",
       };
       assertType<OutputAsset>(asset);
       expect(asset.name).toBeUndefined();
     });
 
-    it('OutputBundle discriminates chunks from assets', () => {
+    it("OutputBundle discriminates chunks from assets", () => {
       const chunk: OutputChunk = {
         exports: [],
         facadeModuleId: null,
@@ -713,45 +709,45 @@ describe('types', () => {
         isEntry: true,
         isImplicitEntry: false,
         moduleIds: [],
-        name: 'main',
-        type: 'chunk',
+        name: "main",
+        type: "chunk",
         dynamicImports: [],
-        fileName: 'main.js',
+        fileName: "main.js",
         implicitlyLoadedBefore: [],
         importedBindings: {},
         imports: [],
         modules: {},
         referencedFiles: [],
-        code: '',
+        code: "",
         map: null,
         sourcemapFileName: null,
-        preliminaryFileName: 'main.js',
+        preliminaryFileName: "main.js",
       };
 
       const asset: OutputAsset = {
-        fileName: 'style.css',
-        name: 'style',
-        names: ['style'],
+        fileName: "style.css",
+        name: "style",
+        names: ["style"],
         needsCodeReference: false,
         originalFileName: null,
         originalFileNames: [],
-        source: '',
-        type: 'asset',
+        source: "",
+        type: "asset",
       };
 
       const bundle: OutputBundle = {
-        'main.js': chunk,
-        'style.css': asset,
+        "main.js": chunk,
+        "style.css": asset,
       };
 
-      const entry = bundle['main.js'];
-      if (entry?.type === 'chunk') {
+      const entry = bundle["main.js"];
+      if (entry?.type === "chunk") {
         assertType<OutputChunk>(entry);
         expect(entry.code).toBeDefined();
       }
 
-      const cssEntry = bundle['style.css'];
-      if (cssEntry?.type === 'asset') {
+      const cssEntry = bundle["style.css"];
+      if (cssEntry?.type === "asset") {
         assertType<OutputAsset>(cssEntry);
         expect(cssEntry.source).toBeDefined();
       }
@@ -763,27 +759,27 @@ describe('types', () => {
   // ==========================================================
   // Input Options
   // ==========================================================
-  describe('input options', () => {
-    it('InputOptions accepts minimal config', () => {
+  describe("input options", () => {
+    it("InputOptions accepts minimal config", () => {
       const opts: InputOptions = {
-        input: 'src/main.ts',
+        input: "src/main.ts",
       };
       assertType<InputOptions>(opts);
-      expect(opts.input).toBe('src/main.ts');
+      expect(opts.input).toBe("src/main.ts");
     });
 
-    it('InputOptions accepts full config', () => {
+    it("InputOptions accepts full config", () => {
       const opts: InputOptions = {
         cache: false,
-        context: 'window',
+        context: "window",
         experimentalCacheExpiry: 10,
         experimentalLogSideEffects: true,
-        external: ['lodash'],
-        input: { main: 'src/main.ts' },
-        logLevel: 'warn',
-        makeAbsoluteExternalsRelative: 'ifRelativeSource',
+        external: ["lodash"],
+        input: { main: "src/main.ts" },
+        logLevel: "warn",
+        makeAbsoluteExternalsRelative: "ifRelativeSource",
         maxParallelFileOps: 20,
-        moduleContext: { 'src/jquery.js': 'window' },
+        moduleContext: { "src/jquery.js": "window" },
         onLog: () => {
           /* no-op */
         },
@@ -792,68 +788,68 @@ describe('types', () => {
         },
         perf: false,
         plugins: [],
-        preserveEntrySignatures: 'strict',
+        preserveEntrySignatures: "strict",
         preserveSymlinks: false,
         shimMissingExports: false,
         strictDeprecations: true,
-        treeshake: { preset: 'recommended' },
+        treeshake: { preset: "recommended" },
       };
       assertType<InputOptions>(opts);
-      expect(opts.context).toBe('window');
+      expect(opts.context).toBe("window");
     });
 
-    it('InputOption accepts string, array, and record', () => {
-      const str: InputOption = 'src/main.ts';
-      const arr: InputOption = ['src/a.ts', 'src/b.ts'];
-      const rec: InputOption = { main: 'src/main.ts', worker: 'src/worker.ts' };
+    it("InputOption accepts string, array, and record", () => {
+      const str: InputOption = "src/main.ts";
+      const arr: InputOption = ["src/a.ts", "src/b.ts"];
+      const rec: InputOption = { main: "src/main.ts", worker: "src/worker.ts" };
       assertType<InputOption>(str);
       assertType<InputOption>(arr);
       assertType<InputOption>(rec);
-      expect(str).toBe('src/main.ts');
+      expect(str).toBe("src/main.ts");
       expect(arr).toHaveLength(2);
       expect(Object.keys(rec)).toHaveLength(2);
     });
 
-    it('ExternalOption accepts various forms', () => {
-      const str: ExternalOption = 'lodash';
+    it("ExternalOption accepts various forms", () => {
+      const str: ExternalOption = "lodash";
       const regex: ExternalOption = /^node:/;
-      const arr: ExternalOption = ['lodash', /^node:/];
+      const arr: ExternalOption = ["lodash", /^node:/];
       const fn: ExternalOption = (_source, _importer, _isResolved) => false;
       assertType<ExternalOption>(str);
       assertType<ExternalOption>(regex);
       assertType<ExternalOption>(arr);
       assertType<ExternalOption>(fn);
-      expect(str).toBe('lodash');
+      expect(str).toBe("lodash");
     });
 
-    it('TreeshakingOptions with all fields', () => {
+    it("TreeshakingOptions with all fields", () => {
       const opts: TreeshakingOptions = {
         annotations: true,
         correctVarValueBeforeDeclaration: false,
-        manualPureFunctions: ['console.log'],
-        moduleSideEffects: 'no-external',
-        preset: 'recommended',
-        propertyReadSideEffects: 'always',
+        manualPureFunctions: ["console.log"],
+        moduleSideEffects: "no-external",
+        preset: "recommended",
+        propertyReadSideEffects: "always",
         tryCatchDeoptimization: true,
         unknownGlobalSideEffects: false,
       };
       assertType<TreeshakingOptions>(opts);
-      expect(opts.preset).toBe('recommended');
+      expect(opts.preset).toBe("recommended");
     });
 
-    it('TreeshakingPreset values', () => {
+    it("TreeshakingPreset values", () => {
       const presets: ReadonlyArray<TreeshakingPreset> = [
-        'smallest',
-        'safest',
-        'recommended',
+        "smallest",
+        "safest",
+        "recommended",
       ];
       expect(presets).toHaveLength(3);
     });
 
-    it('ModuleSideEffectsOption accepts all forms', () => {
+    it("ModuleSideEffectsOption accepts all forms", () => {
       const bool: ModuleSideEffectsOption = true;
-      const noExt: ModuleSideEffectsOption = 'no-external';
-      const arr: ModuleSideEffectsOption = ['lodash'];
+      const noExt: ModuleSideEffectsOption = "no-external";
+      const arr: ModuleSideEffectsOption = ["lodash"];
       const fn: ModuleSideEffectsOption = (_id, _ext) => true;
       assertType<ModuleSideEffectsOption>(bool);
       assertType<ModuleSideEffectsOption>(noExt);
@@ -862,59 +858,65 @@ describe('types', () => {
       expect(bool).toBe(true);
     });
 
-    it('HasModuleSideEffects is a function', () => {
-      const fn: HasModuleSideEffects = (id, external) => !external && id.includes('src');
-      expect(fn('/src/main.ts', false)).toBe(true);
-      expect(fn('lodash', true)).toBe(false);
+    it("HasModuleSideEffects is a function", () => {
+      const fn: HasModuleSideEffects = (id, external) =>
+        !external && id.includes("src");
+      expect(fn("/src/main.ts", false)).toBe(true);
+      expect(fn("lodash", true)).toBe(false);
     });
   });
 
   // ==========================================================
   // Output Options
   // ==========================================================
-  describe('output options', () => {
-    it('OutputOptions accepts minimal config', () => {
+  describe("output options", () => {
+    it("OutputOptions accepts minimal config", () => {
       const opts: OutputOptions = {
-        format: 'es',
-        dir: 'dist',
+        format: "es",
+        dir: "dist",
       };
       assertType<OutputOptions>(opts);
-      expect(opts.format).toBe('es');
+      expect(opts.format).toBe("es");
     });
 
-    it('OutputOptions accepts full config', () => {
+    it("OutputOptions accepts full config", () => {
       const opts: OutputOptions = {
-        amd: { autoId: true, basePath: '', define: 'define', forceJsExtensionForImports: false },
-        assetFileNames: 'assets/[name]-[hash][extname]',
-        banner: '/* banner */',
-        chunkFileNames: '[name]-[hash].js',
+        amd: {
+          autoId: true,
+          basePath: "",
+          define: "define",
+          forceJsExtensionForImports: false,
+        },
+        assetFileNames: "assets/[name]-[hash][extname]",
+        banner: "/* banner */",
+        chunkFileNames: "[name]-[hash].js",
         compact: false,
-        dir: 'dist',
+        dir: "dist",
         dynamicImportInCjs: true,
-        entryFileNames: '[name].js',
-        esModule: 'if-default-prop',
+        entryFileNames: "[name].js",
+        esModule: "if-default-prop",
         experimentalMinChunkSize: 0,
-        exports: 'named',
+        exports: "named",
         extend: false,
         externalImportAttributes: true,
         externalLiveBindings: true,
         file: undefined,
-        footer: '/* footer */',
-        format: 'es',
+        footer: "/* footer */",
+        format: "es",
         freeze: true,
-        generatedCode: 'es2015',
-        globals: { jquery: '$' },
-        hashCharacters: 'base64',
+        generatedCode: "es2015",
+        globals: { jquery: "$" },
+        hashCharacters: "base64",
         hoistTransitiveImports: true,
         indent: true,
         inlineDynamicImports: false,
-        interop: 'auto',
-        intro: '',
-        manualChunks: { vendor: ['lodash'] },
+        interop: "auto",
+        intro: "",
+        manualChunks: { vendor: ["lodash"] },
         minifyInternalExports: true,
-        name: 'MyLib',
+        name: "MyLib",
         noConflict: false,
-        outro: '',
+        outro: "",
         paths: {},
         plugins: [],
         preserveModules: false,
@@ -922,7 +924,7 @@ describe('types', () => {
         reexportProtoFromExternal: false,
         sanitizeFileName: true,
         sourcemap: true,
-        sourcemapBaseUrl: 'https://example.com',
+        sourcemapBaseUrl: "https://example.com",
         sourcemapDebugIds: false,
         sourcemapExcludeSources: false,
         sourcemapFile: undefined,
@@ -932,18 +934,18 @@ describe('types', () => {
         strict: true,
         systemNullSetters: true,
         validate: false,
-        virtualDirname: '',
+        virtualDirname: "",
       };
       assertType<OutputOptions>(opts);
-      expect(opts.format).toBe('es');
+      expect(opts.format).toBe("es");
     });
 
-    it('GeneratedCodePreset values', () => {
-      const presets: ReadonlyArray<GeneratedCodePreset> = ['es5', 'es2015'];
+    it("GeneratedCodePreset values", () => {
+      const presets: ReadonlyArray<GeneratedCodePreset> = ["es5", "es2015"];
       expect(presets).toHaveLength(2);
     });
 
-    it('GeneratedCodeOptions accepts all fields', () => {
+    it("GeneratedCodeOptions accepts all fields", () => {
       const opts: GeneratedCodeOptions = {
         arrowFunctions: true,
         constBindings: true,
@@ -955,76 +957,77 @@ describe('types', () => {
       expect(opts.arrowFunctions).toBe(true);
     });
 
-    it('GlobalsOption accepts record and function', () => {
-      const rec: GlobalsOption = { lodash: '_' };
+    it("GlobalsOption accepts record and function", () => {
+      const rec: GlobalsOption = { lodash: "_" };
       const fn: GlobalsOption = (name) => name.toUpperCase();
       assertType<GlobalsOption>(rec);
       assertType<GlobalsOption>(fn);
       expect(rec).toBeDefined();
-      expect(typeof fn).toBe('function');
+      expect(typeof fn).toBe("function");
     });
 
-    it('ManualChunksOption accepts record and function', () => {
-      const rec: ManualChunksOption = { vendor: ['lodash'] };
-      const fn: ManualChunksOption = (id) => (id.includes('node_modules') ? 'vendor' : undefined);
+    it("ManualChunksOption accepts record and function", () => {
+      const rec: ManualChunksOption = { vendor: ["lodash"] };
+      const fn: ManualChunksOption = (id) =>
+        id.includes("node_modules") ? "vendor" : undefined;
       assertType<ManualChunksOption>(rec);
       assertType<ManualChunksOption>(fn);
       expect(rec).toBeDefined();
     });
 
-    it('OptionsPaths accepts record and function', () => {
-      const rec: OptionsPaths = { lodash: 'https://cdn.example.com/lodash.js' };
+    it("OptionsPaths accepts record and function", () => {
+      const rec: OptionsPaths = { lodash: "https://cdn.example.com/lodash.js" };
       const fn: OptionsPaths = (id) => id;
       assertType<OptionsPaths>(rec);
       assertType<OptionsPaths>(fn);
       expect(rec).toBeDefined();
     });
 
-    it('SourcemapIgnoreListOption signature', () => {
+    it("SourcemapIgnoreListOption signature", () => {
       const fn: SourcemapIgnoreListOption = (relPath, _smPath) =>
-        relPath.includes('node_modules');
-      expect(fn('node_modules/lodash/index.js', 'main.js.map')).toBe(true);
-      expect(fn('src/main.ts', 'main.js.map')).toBe(false);
+        relPath.includes("node_modules");
+      expect(fn("node_modules/lodash/index.js", "main.js.map")).toBe(true);
+      expect(fn("src/main.ts", "main.js.map")).toBe(false);
     });
 
-    it('SourcemapPathTransformOption signature', () => {
+    it("SourcemapPathTransformOption signature", () => {
       const fn: SourcemapPathTransformOption = (relPath, _smPath) =>
         `/mapped/${relPath}`;
-      expect(fn('src/main.ts', 'main.js.map')).toBe('/mapped/src/main.ts');
+      expect(fn("src/main.ts", "main.js.map")).toBe("/mapped/src/main.ts");
     });
 
-    it('AmdOptions accepts all fields', () => {
+    it("AmdOptions accepts all fields", () => {
       const opts: AmdOptions = {
         autoId: false,
-        basePath: 'lib',
-        define: 'define',
+        basePath: "lib",
+        define: "define",
         forceJsExtensionForImports: true,
-        id: 'myModule',
+        id: "myModule",
       };
       assertType<AmdOptions>(opts);
-      expect(opts.id).toBe('myModule');
+      expect(opts.id).toBe("myModule");
     });
   });
 
   // ==========================================================
   // RollupOptions
   // ==========================================================
-  describe('RollupOptions', () => {
-    it('RollupOptions extends InputOptions with output', () => {
+  describe("RollupOptions", () => {
+    it("RollupOptions extends InputOptions with output", () => {
       const opts: RollupOptions = {
-        input: 'src/main.ts',
-        output: { format: 'es', dir: 'dist' },
+        input: "src/main.ts",
+        output: { format: "es", dir: "dist" },
       };
       assertType<RollupOptions>(opts);
-      expect(opts.input).toBe('src/main.ts');
+      expect(opts.input).toBe("src/main.ts");
     });
 
-    it('RollupOptions accepts array of outputs', () => {
+    it("RollupOptions accepts array of outputs", () => {
       const opts: RollupOptions = {
-        input: 'src/main.ts',
+        input: "src/main.ts",
         output: [
-          { format: 'es', dir: 'dist/esm' },
-          { format: 'cjs', dir: 'dist/cjs' },
+          { format: "es", dir: "dist/esm" },
+          { format: "cjs", dir: "dist/cjs" },
         ],
       };
       assertType<RollupOptions>(opts);
@@ -1035,8 +1038,8 @@ describe('types', () => {
   // ==========================================================
   // Build Types
   // ==========================================================
-  describe('build types', () => {
-    it('RollupOutput has tuple with at least one chunk', () => {
+  describe("build types", () => {
+    it("RollupOutput has tuple with at least one chunk", () => {
       const chunk: OutputChunk = {
         exports: [],
         facadeModuleId: null,
@@ -1044,33 +1047,33 @@ describe('types', () => {
         isEntry: true,
         isImplicitEntry: false,
         moduleIds: [],
-        name: 'main',
-        type: 'chunk',
+        name: "main",
+        type: "chunk",
         dynamicImports: [],
-        fileName: 'main.js',
+        fileName: "main.js",
         implicitlyLoadedBefore: [],
         importedBindings: {},
         imports: [],
         modules: {},
         referencedFiles: [],
-        code: '',
+        code: "",
         map: null,
         sourcemapFileName: null,
-        preliminaryFileName: 'main.js',
+        preliminaryFileName: "main.js",
       };
 
       const output: RollupOutput = { output: [chunk] };
       assertType<RollupOutput>(output);
-      expect(output.output[0].type).toBe('chunk');
+      expect(output.output[0].type).toBe("chunk");
     });
 
-    it('RollupCache stores modules', () => {
+    it("RollupCache stores modules", () => {
       const cache: RollupCache = {
         modules: [
           {
-            id: '/src/main.ts',
+            id: "/src/main.ts",
             ast: null,
-            code: 'const x = 1;',
+            code: "const x = 1;",
             dependencies: [],
             transformDependencies: [],
             meta: {},
@@ -1084,31 +1087,31 @@ describe('types', () => {
       expect(cache.modules).toHaveLength(1);
     });
 
-    it('ModuleJSON has all required fields', () => {
+    it("ModuleJSON has all required fields", () => {
       const mod: ModuleJSON = {
-        id: 'test',
+        id: "test",
         ast: null,
-        code: '',
-        dependencies: ['dep1'],
-        transformDependencies: ['dep2'],
-        meta: { key: 'value' },
-        syntheticNamedExports: 'default',
-        moduleSideEffects: 'no-treeshake',
+        code: "",
+        dependencies: ["dep1"],
+        transformDependencies: ["dep2"],
+        meta: { key: "value" },
+        syntheticNamedExports: "default",
+        moduleSideEffects: "no-treeshake",
       };
       assertType<ModuleJSON>(mod);
-      expect(mod.syntheticNamedExports).toBe('default');
+      expect(mod.syntheticNamedExports).toBe("default");
     });
 
-    it('SerializedTimings stores timing tuples', () => {
+    it("SerializedTimings stores timing tuples", () => {
       const timings: SerializedTimings = {
-        'parse modules': [10.5, 8.2, 2.3],
-        'generate output': [5.1, 4.0, 1.1],
+        "parse modules": [10.5, 8.2, 2.3],
+        "generate output": [5.1, 4.0, 1.1],
       };
       assertType<SerializedTimings>(timings);
-      expect(timings['parse modules']).toHaveLength(3);
+      expect(timings["parse modules"]).toHaveLength(3);
     });
 
-    it('RollupBuild interface shape', () => {
+    it("RollupBuild interface shape", () => {
       const build: RollupBuild = {
         cache: undefined,
         close: () => Promise.resolve(),
@@ -1123,23 +1126,23 @@ describe('types', () => {
                 isEntry: true,
                 isImplicitEntry: false,
                 moduleIds: [],
-                name: 'main',
-                type: 'chunk' as const,
+                name: "main",
+                type: "chunk" as const,
                 dynamicImports: [],
-                fileName: 'main.js',
+                fileName: "main.js",
                 implicitlyLoadedBefore: [],
                 importedBindings: {},
                 imports: [],
                 modules: {},
                 referencedFiles: [],
-                code: '',
+                code: "",
                 map: null,
                 sourcemapFileName: null,
-                preliminaryFileName: 'main.js',
+                preliminaryFileName: "main.js",
               },
             ],
           }),
-        watchFiles: ['src/main.ts'],
+        watchFiles: ["src/main.ts"],
         write: () =>
           Promise.resolve({
             output: [
@@ -1150,19 +1153,19 @@ describe('types', () => {
                 isEntry: true,
                 isImplicitEntry: false,
                 moduleIds: [],
-                name: 'main',
-                type: 'chunk' as const,
+                name: "main",
+                type: "chunk" as const,
                 dynamicImports: [],
-                fileName: 'main.js',
+                fileName: "main.js",
                 implicitlyLoadedBefore: [],
                 importedBindings: {},
                 imports: [],
                 modules: {},
                 referencedFiles: [],
-                code: '',
+                code: "",
                 map: null,
                 sourcemapFileName: null,
-                preliminaryFileName: 'main.js',
+                preliminaryFileName: "main.js",
               },
             ],
           }),
@@ -1175,45 +1178,41 @@ describe('types', () => {
   // ==========================================================
   // Watch Types
   // ==========================================================
-  describe('watch types', () => {
-    it('ChangeEvent accepts valid values', () => {
-      const events: ReadonlyArray<ChangeEvent> = [
-        'create',
-        'update',
-        'delete',
-      ];
+  describe("watch types", () => {
+    it("ChangeEvent accepts valid values", () => {
+      const events: ReadonlyArray<ChangeEvent> = ["create", "update", "delete"];
       expect(events).toHaveLength(3);
     });
 
-    it('RollupWatcherEvent has valid code values', () => {
+    it("RollupWatcherEvent has valid code values", () => {
       const events: ReadonlyArray<RollupWatcherEvent> = [
-        { code: 'START' },
-        { code: 'BUNDLE_START', input: 'src/main.ts' },
-        { code: 'BUNDLE_END', duration: 150 },
-        { code: 'END' },
-        { code: 'ERROR', error: { message: 'Build failed' } },
+        { code: "START" },
+        { code: "BUNDLE_START", input: "src/main.ts" },
+        { code: "BUNDLE_END", duration: 150 },
+        { code: "END" },
+        { code: "ERROR", error: { message: "Build failed" } },
       ];
       expect(events).toHaveLength(5);
-      expect(events[4].code).toBe('ERROR');
+      expect(events[4].code).toBe("ERROR");
     });
 
-    it('WatcherOptions accepts all fields', () => {
+    it("WatcherOptions accepts all fields", () => {
       const opts: WatcherOptions = {
         buildDelay: 100,
         chokidar: { usePolling: true },
         clearScreen: true,
-        exclude: ['node_modules/**'],
-        include: ['src/**'],
+        exclude: ["node_modules/**"],
+        include: ["src/**"],
         skipWrite: false,
       };
       assertType<WatcherOptions>(opts);
       expect(opts.buildDelay).toBe(100);
     });
 
-    it('WatcherOptions with RegExp patterns', () => {
+    it("WatcherOptions with RegExp patterns", () => {
       const opts: WatcherOptions = {
         exclude: /node_modules/,
-        include: [/\.ts$/, '*.js'],
+        include: [/\.ts$/, "*.js"],
       };
       assertType<WatcherOptions>(opts);
       expect(opts.exclude).toBeInstanceOf(RegExp);
@@ -1223,10 +1222,10 @@ describe('types', () => {
   // ==========================================================
   // Plugin Interface
   // ==========================================================
-  describe('Plugin interface', () => {
-    it('Plugin with name and simple hooks', () => {
+  describe("Plugin interface", () => {
+    it("Plugin with name and simple hooks", () => {
       const plugin: Plugin = {
-        name: 'test-plugin',
+        name: "test-plugin",
         buildStart() {
           /* no-op */
         },
@@ -1235,20 +1234,20 @@ describe('types', () => {
         },
       };
       assertType<Plugin>(plugin);
-      expect(plugin.name).toBe('test-plugin');
+      expect(plugin.name).toBe("test-plugin");
     });
 
-    it('Plugin with ObjectHook form', () => {
+    it("Plugin with ObjectHook form", () => {
       const plugin: Plugin = {
-        name: 'ordered-plugin',
+        name: "ordered-plugin",
         resolveId: {
-          order: 'pre',
+          order: "pre",
           handler(_source, _importer, _options) {
             return null;
           },
         },
         load: {
-          order: 'post',
+          order: "post",
           handler(_id) {
             return null;
           },
@@ -1256,12 +1255,12 @@ describe('types', () => {
         },
       };
       assertType<Plugin>(plugin);
-      expect(plugin.name).toBe('ordered-plugin');
+      expect(plugin.name).toBe("ordered-plugin");
     });
 
-    it('OutputPlugin with output hooks only', () => {
+    it("OutputPlugin with output hooks only", () => {
       const plugin: OutputPlugin = {
-        name: 'output-only',
+        name: "output-only",
         generateBundle(_options, _bundle, _isWrite) {
           /* no-op */
         },
@@ -1270,34 +1269,34 @@ describe('types', () => {
         },
       };
       assertType<OutputPlugin>(plugin);
-      expect(plugin.name).toBe('output-only');
+      expect(plugin.name).toBe("output-only");
     });
 
-    it('ResolveIdResult accepts all valid forms', () => {
-      const str: ResolveIdResult = '/resolved/path.ts';
+    it("ResolveIdResult accepts all valid forms", () => {
+      const str: ResolveIdResult = "/resolved/path.ts";
       const nul: ResolveIdResult = null;
       const undef: ResolveIdResult = undefined;
       const fals: ResolveIdResult = false;
       const obj: ResolveIdResult = {
-        id: '/resolved/path.ts',
+        id: "/resolved/path.ts",
         external: false,
         moduleSideEffects: true,
         syntheticNamedExports: false,
         meta: {},
-        resolvedBy: 'my-plugin',
+        resolvedBy: "my-plugin",
       };
       assertType<ResolveIdResult>(str);
       assertType<ResolveIdResult>(nul);
       assertType<ResolveIdResult>(undef);
       assertType<ResolveIdResult>(fals);
       assertType<ResolveIdResult>(obj);
-      expect(str).toBe('/resolved/path.ts');
+      expect(str).toBe("/resolved/path.ts");
     });
 
-    it('ResolveIdResult object with absolute external', () => {
+    it("ResolveIdResult object with absolute external", () => {
       const result: ResolveIdResult = {
-        id: 'https://cdn.example.com/lib.js',
-        external: 'absolute',
+        id: "https://cdn.example.com/lib.js",
+        external: "absolute",
       };
       assertType<ResolveIdResult>(result);
       expect(result).toBeDefined();
@@ -1307,18 +1306,18 @@ describe('types', () => {
   // ==========================================================
   // Plugin Context Types
   // ==========================================================
-  describe('plugin context types', () => {
-    it('MinimalPluginContext has meta', () => {
+  describe("plugin context types", () => {
+    it("MinimalPluginContext has meta", () => {
       const ctx: MinimalPluginContext = {
-        meta: { rollupVersion: '4.0.0', watchMode: false },
+        meta: { rollupVersion: "4.0.0", watchMode: false },
       };
       assertType<MinimalPluginContext>(ctx);
-      expect(ctx.meta.rollupVersion).toBe('4.0.0');
+      expect(ctx.meta.rollupVersion).toBe("4.0.0");
     });
 
-    it('PluginContext extends MinimalPluginContext', () => {
+    it("PluginContext extends MinimalPluginContext", () => {
       const ctx: PluginContext = {
-        meta: { rollupVersion: '4.0.0', watchMode: false },
+        meta: { rollupVersion: "4.0.0", watchMode: false },
         addWatchFile: () => {
           /* no-op */
         },
@@ -1333,13 +1332,13 @@ describe('types', () => {
         debug: () => {
           /* no-op */
         },
-        emitFile: () => 'ref-id',
+        emitFile: () => "ref-id",
         error: () => {
-          throw new Error('plugin error');
+          throw new Error("plugin error");
         },
-        getFileName: () => 'file.js',
+        getFileName: () => "file.js",
         getModuleIds: function* () {
-          yield '/src/main.ts';
+          yield "/src/main.ts";
         },
         getModuleInfo: () => null,
         getWatchFiles: () => [],
@@ -1348,11 +1347,11 @@ describe('types', () => {
         },
         load: () => Promise.resolve(null as unknown as ModuleInfo),
         parse: () => ({
-          type: 'Program' as const,
+          type: "Program" as const,
           start: 0,
           end: 0,
           body: [],
-          sourceType: 'module' as const,
+          sourceType: "module" as const,
         }),
         resolve: () => Promise.resolve(null),
         setAssetSource: () => {
@@ -1364,12 +1363,12 @@ describe('types', () => {
       };
       assertType<PluginContext>(ctx);
       assertType<MinimalPluginContext>(ctx);
-      expect(ctx.emitFile({ type: 'asset', source: '' })).toBe('ref-id');
+      expect(ctx.emitFile({ type: "asset", source: "" })).toBe("ref-id");
     });
 
-    it('TransformPluginContext extends PluginContext', () => {
+    it("TransformPluginContext extends PluginContext", () => {
       const ctx: TransformPluginContext = {
-        meta: { rollupVersion: '4.0.0', watchMode: false },
+        meta: { rollupVersion: "4.0.0", watchMode: false },
         addWatchFile: () => {
           /* no-op */
         },
@@ -1384,11 +1383,11 @@ describe('types', () => {
         debug: () => {
           /* no-op */
         },
-        emitFile: () => 'ref-id',
+        emitFile: () => "ref-id",
         error: () => {
-          throw new Error('error');
+          throw new Error("error");
         },
-        getFileName: () => 'file.js',
+        getFileName: () => "file.js",
         getModuleIds: function* () {
           /* empty */
         },
@@ -1399,11 +1398,11 @@ describe('types', () => {
         },
         load: () => Promise.resolve(null as unknown as ModuleInfo),
         parse: () => ({
-          type: 'Program' as const,
+          type: "Program" as const,
           start: 0,
           end: 0,
           body: [],
-          sourceType: 'module' as const,
+          sourceType: "module" as const,
         }),
         resolve: () => Promise.resolve(null),
         setAssetSource: () => {
@@ -1428,35 +1427,35 @@ describe('types', () => {
   // ==========================================================
   // Normalized Options
   // ==========================================================
-  describe('normalized options', () => {
-    it('NormalizedInputOptions has all required fields', () => {
+  describe("normalized options", () => {
+    it("NormalizedInputOptions has all required fields", () => {
       const opts: NormalizedInputOptions = {
         cache: false,
-        context: 'undefined',
+        context: "undefined",
         experimentalCacheExpiry: 10,
         experimentalLogSideEffects: false,
         external: () => false,
-        input: ['src/main.ts'],
-        logLevel: 'warn',
+        input: ["src/main.ts"],
+        logLevel: "warn",
         makeAbsoluteExternalsRelative: true,
         maxParallelFileOps: 20,
-        moduleContext: () => 'undefined',
+        moduleContext: () => "undefined",
         onLog: () => {
           /* no-op */
         },
         perf: false,
         plugins: [],
-        preserveEntrySignatures: 'strict',
+        preserveEntrySignatures: "strict",
         preserveSymlinks: false,
         shimMissingExports: false,
         strictDeprecations: false,
         treeshake: false,
       };
       assertType<NormalizedInputOptions>(opts);
-      expect(opts.context).toBe('undefined');
+      expect(opts.context).toBe("undefined");
     });
 
-    it('NormalizedInputOptions with treeshake options', () => {
+    it("NormalizedInputOptions with treeshake options", () => {
       const treeshake: NormalizedTreeshakingOptions = {
         annotations: true,
         correctVarValueBeforeDeclaration: false,
@@ -1468,15 +1467,15 @@ describe('types', () => {
       };
       const opts: NormalizedInputOptions = {
         cache: false,
-        context: 'undefined',
+        context: "undefined",
         experimentalCacheExpiry: 10,
         experimentalLogSideEffects: false,
         external: () => false,
-        input: { main: 'src/main.ts' },
-        logLevel: 'info',
-        makeAbsoluteExternalsRelative: 'ifRelativeSource',
+        input: { main: "src/main.ts" },
+        logLevel: "info",
+        makeAbsoluteExternalsRelative: "ifRelativeSource",
         maxParallelFileOps: 20,
-        moduleContext: () => 'undefined',
+        moduleContext: () => "undefined",
         onLog: () => {
           /* no-op */
         },
@@ -1492,31 +1491,31 @@ describe('types', () => {
       expect(opts.treeshake).toBe(treeshake);
     });
 
-    it('NormalizedOutputOptions has all required fields', () => {
+    it("NormalizedOutputOptions has all required fields", () => {
       const opts: NormalizedOutputOptions = {
         amd: {
           autoId: false,
-          basePath: '',
-          define: 'define',
+          basePath: "",
+          define: "define",
           forceJsExtensionForImports: false,
           id: undefined,
         },
-        assetFileNames: 'assets/[name][extname]',
-        banner: () => '',
-        chunkFileNames: '[name].js',
+        assetFileNames: "assets/[name][extname]",
+        banner: () => "",
+        chunkFileNames: "[name].js",
         compact: false,
-        dir: 'dist',
+        dir: "dist",
         dynamicImportInCjs: true,
-        entryFileNames: '[name].js',
+        entryFileNames: "[name].js",
         esModule: true,
         experimentalMinChunkSize: 0,
-        exports: 'auto',
+        exports: "auto",
         extend: false,
         externalImportAttributes: true,
         externalLiveBindings: true,
         file: undefined,
-        footer: () => '',
-        format: 'es',
+        footer: () => "",
+        format: "es",
         freeze: true,
         generatedCode: {
           arrowFunctions: false,
@@ -1526,17 +1525,17 @@ describe('types', () => {
           symbols: false,
         },
         globals: {},
-        hashCharacters: 'base64',
+        hashCharacters: "base64",
         hoistTransitiveImports: true,
         indent: true,
         inlineDynamicImports: false,
-        interop: () => 'auto',
-        intro: () => '',
+        interop: () => "auto",
+        intro: () => "",
         manualChunks: {},
         minifyInternalExports: true,
         name: undefined,
         noConflict: false,
-        outro: () => '',
+        outro: () => "",
         paths: {},
         plugins: [],
         preserveModules: false,
@@ -1553,25 +1552,25 @@ describe('types', () => {
         strict: true,
         systemNullSetters: true,
         validate: false,
-        virtualDirname: '',
+        virtualDirname: "",
       };
       assertType<NormalizedOutputOptions>(opts);
-      expect(opts.format).toBe('es');
+      expect(opts.format).toBe("es");
     });
 
-    it('NormalizedAmdOptions has all fields', () => {
+    it("NormalizedAmdOptions has all fields", () => {
       const opts: NormalizedAmdOptions = {
         autoId: true,
-        basePath: 'lib',
-        define: 'define',
+        basePath: "lib",
+        define: "define",
         forceJsExtensionForImports: true,
-        id: 'myModule',
+        id: "myModule",
       };
       assertType<NormalizedAmdOptions>(opts);
       expect(opts.autoId).toBe(true);
     });
 
-    it('NormalizedGeneratedCodeOptions has all fields', () => {
+    it("NormalizedGeneratedCodeOptions has all fields", () => {
       const opts: NormalizedGeneratedCodeOptions = {
         arrowFunctions: true,
         constBindings: true,
@@ -1587,20 +1586,20 @@ describe('types', () => {
   // ==========================================================
   // FS Types
   // ==========================================================
-  describe('FS types', () => {
-    it('BufferEncoding accepts valid encodings', () => {
+  describe("FS types", () => {
+    it("BufferEncoding accepts valid encodings", () => {
       const encodings: ReadonlyArray<BufferEncoding> = [
-        'ascii',
-        'base64',
-        'hex',
-        'latin1',
-        'utf-8',
-        'utf8',
+        "ascii",
+        "base64",
+        "hex",
+        "latin1",
+        "utf-8",
+        "utf8",
       ];
       expect(encodings).toHaveLength(6);
     });
 
-    it('RollupFileStats has method signatures', () => {
+    it("RollupFileStats has method signatures", () => {
       const stats: RollupFileStats = {
         isDirectory: () => false,
         isFile: () => true,
@@ -1612,25 +1611,27 @@ describe('types', () => {
       expect(stats.isSymbolicLink()).toBe(false);
     });
 
-    it('RollupDirectoryEntry has name and type checks', () => {
+    it("RollupDirectoryEntry has name and type checks", () => {
       const entry: RollupDirectoryEntry = {
         isDirectory: () => true,
         isFile: () => false,
-        name: 'src',
+        name: "src",
       };
       assertType<RollupDirectoryEntry>(entry);
-      expect(entry.name).toBe('src');
+      expect(entry.name).toBe("src");
       expect(entry.isDirectory()).toBe(true);
     });
 
-    it('RollupFsModule with all methods', () => {
+    it("RollupFsModule with all methods", () => {
       const fs: RollupFsModule = {
         opendir: async function* (_path: string) {
           /* empty */
-        } as unknown as (path: string) => Promise<AsyncIterable<RollupDirectoryEntry>>,
-        readFile: async (_path: string, _encoding: BufferEncoding) => '',
+        } as unknown as (
+          path: string,
+        ) => Promise<AsyncIterable<RollupDirectoryEntry>>,
+        readFile: async (_path: string, _encoding: BufferEncoding) => "",
         readdir: async (_path: string) => [],
-        realpath: async (_path: string) => '/real/path',
+        realpath: async (_path: string) => "/real/path",
         stat: async (_path: string) => ({
           isDirectory: () => false,
           isFile: () => true,
@@ -1638,12 +1639,12 @@ describe('types', () => {
         }),
       };
       assertType<RollupFsModule>(fs);
-      expect(typeof fs.readFile).toBe('function');
+      expect(typeof fs.readFile).toBe("function");
     });
 
-    it('RollupFsModule with only required readFile', () => {
+    it("RollupFsModule with only required readFile", () => {
       const fs: RollupFsModule = {
-        readFile: async () => 'content',
+        readFile: async () => "content",
       };
       assertType<RollupFsModule>(fs);
       expect(fs.opendir).toBeUndefined();
@@ -1656,14 +1657,14 @@ describe('types', () => {
   // ==========================================================
   // InputPluginOption and OutputPluginOption recursive types
   // ==========================================================
-  describe('plugin option types', () => {
-    it('InputPluginOption accepts Plugin', () => {
-      const opt: InputPluginOption = { name: 'test' };
+  describe("plugin option types", () => {
+    it("InputPluginOption accepts Plugin", () => {
+      const opt: InputPluginOption = { name: "test" };
       assertType<InputPluginOption>(opt);
       expect(opt).toBeDefined();
     });
 
-    it('InputPluginOption accepts null/undefined/false', () => {
+    it("InputPluginOption accepts null/undefined/false", () => {
       const n: InputPluginOption = null;
       const u: InputPluginOption = undefined;
       const f: InputPluginOption = false;
@@ -1673,34 +1674,30 @@ describe('types', () => {
       expect(n).toBeNull();
     });
 
-    it('InputPluginOption accepts Promise', () => {
-      const p: InputPluginOption = Promise.resolve({ name: 'async-plugin' });
+    it("InputPluginOption accepts Promise", () => {
+      const p: InputPluginOption = Promise.resolve({ name: "async-plugin" });
       assertType<InputPluginOption>(p);
       expect(p).toBeInstanceOf(Promise);
     });
 
-    it('InputPluginOption accepts nested arrays', () => {
+    it("InputPluginOption accepts nested arrays", () => {
       const opt: InputPluginOption = [
-        { name: 'a' },
+        { name: "a" },
         null,
-        [{ name: 'b' }, false],
+        [{ name: "b" }, false],
       ];
       assertType<InputPluginOption>(opt);
       expect(Array.isArray(opt)).toBe(true);
     });
 
-    it('OutputPluginOption accepts OutputPlugin', () => {
-      const opt: OutputPluginOption = { name: 'output-test' };
+    it("OutputPluginOption accepts OutputPlugin", () => {
+      const opt: OutputPluginOption = { name: "output-test" };
       assertType<OutputPluginOption>(opt);
       expect(opt).toBeDefined();
     });
 
-    it('OutputPluginOption accepts nested arrays', () => {
-      const opt: OutputPluginOption = [
-        { name: 'a' },
-        false,
-        [{ name: 'b' }],
-      ];
+    it("OutputPluginOption accepts nested arrays", () => {
+      const opt: OutputPluginOption = [{ name: "a" }, false, [{ name: "b" }]];
       assertType<OutputPluginOption>(opt);
       expect(Array.isArray(opt)).toBe(true);
     });
@@ -1709,18 +1706,20 @@ describe('types', () => {
   // ==========================================================
   // RollupWatcher (overloaded on method)
   // ==========================================================
-  describe('RollupWatcher', () => {
-    it('RollupWatcher has close and on methods', () => {
+  describe("RollupWatcher", () => {
+    it("RollupWatcher has close and on methods", () => {
       const watcher: RollupWatcher = {
         close: () => {
           /* no-op */
         },
-        on: ((_event: string, _listener: (...args: ReadonlyArray<unknown>) => void) =>
-          watcher) as RollupWatcher['on'],
+        on: ((
+          _event: string,
+          _listener: (...args: ReadonlyArray<unknown>) => void,
+        ) => watcher) as RollupWatcher["on"],
       };
       assertType<RollupWatcher>(watcher);
-      expect(typeof watcher.close).toBe('function');
-      expect(typeof watcher.on).toBe('function');
+      expect(typeof watcher.close).toBe("function");
+      expect(typeof watcher.on).toBe("function");
     });
   });
 });
