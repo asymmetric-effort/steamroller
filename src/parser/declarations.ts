@@ -91,8 +91,18 @@ export const parseFunctionDeclaration = (
   // Parse parameters
   const params = parseParameters(ctx);
 
+  // Save previous context and set async/generator flags for body parsing
+  const prevAsync = ctx.lexer.inAsync;
+  const prevGenerator = ctx.lexer.inGenerator;
+  ctx.lexer.inAsync = isAsync;
+  ctx.lexer.inGenerator = generator;
+
   // Parse body
   const body = ctx.parseBlockStatement();
+
+  // Restore previous context
+  ctx.lexer.inAsync = prevAsync;
+  ctx.lexer.inGenerator = prevGenerator;
 
   return Object.freeze({
     type: "FunctionDeclaration" as const,

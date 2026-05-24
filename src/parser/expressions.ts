@@ -110,9 +110,101 @@ export const parseExpression = (
 };
 
 /**
+ * Parse a yield expression: yield [expr] or yield* expr.
+ *
+ * Yield has very low precedence (lower than assignment) and is only
+ * valid inside generator function bodies.
+ *
+ * @param lexer - The lexer instance.
+ * @param allowIn - Whether the `in` operator is permitted.
+ * @returns The YieldExpression AST node.
+ */
+const parseYieldExpression = (
+  lexer: Lexer,
+  allowIn: boolean,
+): AST.YieldExpression => {
+  const start = lexer.token.start;
+  lexer.next(); // consume 'yield'
+
+  // Check for delegate: yield*
+  let delegate = false;
+  if (lexer.is(TokenType.Star) && !lexer.hadLineTerminatorBefore) {
+    delegate = true;
+    lexer.next(); // consume '*'
+  }
+
+  // yield without argument (line terminator or restricted token follows)
+  let argument: AST.Expression | null = null;
+  if (
+    !delegate &&
+    (lexer.hadLineTerminatorBefore || isYieldTerminator(lexer))
+  ) {
+    argument = null;
+  } else {
+    argument = parseAssignmentExpression(lexer, allowIn);
+  }
+
+  const end = argument !== null ? argument.end : start + 5;
+
+  return Object.freeze({
+    type: "YieldExpression" as const,
+    start,
+    end,
+    argument,
+    delegate,
+  });
+};
+
+/**
+ * Check if the current token terminates a yield expression without argument.
+ *
+ * @param lexer - The lexer instance.
+ * @returns True if yield should have no argument.
+ */
+const isYieldTerminator = (lexer: Lexer): boolean => {
+  const t = lexer.token.type;
+  return (
+    t === TokenType.Semicolon ||
+    t === TokenType.RightParen ||
+    t === TokenType.RightBracket ||
+    t === TokenType.RightBrace ||
+    t === TokenType.Comma ||
+    t === TokenType.Colon ||
+    t === TokenType.EOF
+  );
+};
+
+/**
+ * Parse an await expression: await expr.
+ *
+ * Await has unary-like precedence (higher than assignment, lower than unary).
+ * Only valid inside async function bodies.
+ *
+ * @param lexer - The lexer instance.
+ * @returns The AwaitExpression AST node.
+ */
+const parseAwaitExpression = (lexer: Lexer): AST.AwaitExpression => {
+  const start = lexer.token.start;
+  lexer.next(); // consume 'await'
+
+  // Parse the argument as a unary expression (await binds tighter than binary)
+  const argument = parseUnaryExpression(lexer, () =>
+    parseLeftHandSideExpression(lexer),
+  );
+
+  return Object.freeze({
+    type: "AwaitExpression" as const,
+    start,
+    end: argument.end,
+    argument,
+  });
+};
+
+/**
  * Parse an assignment expression with full operator support.
  *
- * Pipeline: unary -> binary (Pratt) -> conditional -> assignment check.
+ * Pipeline: yield check -> await check -> unary -> binary (Pratt) ->
+ * conditional -> assignment check.
  * If `allowIn` is false (for-loop init), the `in` operator is excluded
  * from binary precedence.
  *
@@ -124,10 +216,17 @@ export const parseAssignmentExpression = (
   lexer: Lexer,
   allowIn: boolean = true,
 ): AST.Expression => {
+  // Yield has the lowest precedence (lower than assignment)
+  if (lexer.is(TokenType.Yield) && lexer.inGenerator) {
+    return parseYieldExpression(lexer, allowIn);
+  }
+
   // Parse unary (prefix operators + primary with member/call + postfix)
-  const unary = parseUnaryExpression(lexer, () =>
-    parseLeftHandSideExpression(lexer),
-  );
+  // Await is handled at unary level (binds tighter than binary)
+  const unary =
+    lexer.is(TokenType.Await) && lexer.inAsync
+      ? parseAwaitExpression(lexer)
+      : parseUnaryExpression(lexer, () => parseLeftHandSideExpression(lexer));
 
   // Parse binary/logical with Pratt precedence
   const binary = parseBinaryExpression(lexer, unary, 1, allowIn);
@@ -185,6 +284,12 @@ export const parsePrimaryExpression = (lexer: Lexer): AST.Expression => {
 
     case TokenType.Async:
       return parseAsyncExpression(lexer);
+
+    case TokenType.Await:
+      return parseAwaitAsIdentifier(lexer);
+
+    case TokenType.Yield:
+      return parseYieldAsIdentifier(lexer);
 
     case TokenType.This:
       return parseThisExpression(lexer);
@@ -432,6 +537,38 @@ const parseBigIntLiteral = (lexer: Lexer): AST.Literal => {
     value: token.value as bigint,
     raw,
     bigint: bigintStr,
+  });
+};
+
+/**
+ * Parse `await` as an identifier when not inside an async function.
+ *
+ * @param lexer - The lexer instance.
+ * @returns An Identifier AST node.
+ */
+const parseAwaitAsIdentifier = (lexer: Lexer): AST.Identifier => {
+  const consumed = lexer.next();
+  return Object.freeze({
+    type: "Identifier" as const,
+    start: consumed.start,
+    end: consumed.end,
+    name: "await",
+  });
+};
+
+/**
+ * Parse `yield` as an identifier when not inside a generator function.
+ *
+ * @param lexer - The lexer instance.
+ * @returns An Identifier AST node.
+ */
+const parseYieldAsIdentifier = (lexer: Lexer): AST.Identifier => {
+  const consumed = lexer.next();
+  return Object.freeze({
+    type: "Identifier" as const,
+    start: consumed.start,
+    end: consumed.end,
+    name: "yield",
   });
 };
 
