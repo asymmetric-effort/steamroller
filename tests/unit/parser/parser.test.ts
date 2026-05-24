@@ -123,19 +123,29 @@ describe("Parser", () => {
       expect(program.body[0].type).toBe("EmptyStatement");
     });
 
-    it("should throw for unimplemented statement types", () => {
+    it("should parse identifiers as expression statements", () => {
       const parser = new Parser("foo");
-      expect(() => parser.parseProgram()).toThrow(SyntaxError);
+      const program = parser.parseProgram();
+      expect(program.body.length).toBe(1);
+      expect(program.body[0].type).toBe("ExpressionStatement");
     });
 
-    it("should include token type name in error for unimplemented statements", () => {
+    it("should parse identifier expression with correct name", () => {
       const parser = new Parser("foo");
-      expect(() => parser.parseProgram()).toThrow(/Identifier/);
+      const program = parser.parseProgram();
+      const stmt = program.body[0] as {
+        type: string;
+        expression: { type: string; name: string };
+      };
+      expect(stmt.expression.type).toBe("Identifier");
+      expect(stmt.expression.name).toBe("foo");
     });
 
-    it("should include position in error for unimplemented statements", () => {
+    it("should parse identifier with leading whitespace at correct position", () => {
       const parser = new Parser("  foo");
-      expect(() => parser.parseProgram()).toThrow(/position 2/);
+      const program = parser.parseProgram();
+      const stmt = program.body[0] as { type: string; start: number };
+      expect(stmt.start).toBe(2);
     });
   });
 });
@@ -164,8 +174,10 @@ describe("parse() function", () => {
     expect(program.body[0].type).toBe("EmptyStatement");
   });
 
-  it("should throw on unimplemented statements", () => {
-    expect(() => parse("x")).toThrow(SyntaxError);
+  it("should parse identifiers as expression statements", () => {
+    const program = parse("x");
+    expect(program.body.length).toBe(1);
+    expect(program.body[0].type).toBe("ExpressionStatement");
   });
 
   it("should accept allowHashBang option", () => {

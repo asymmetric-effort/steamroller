@@ -41,6 +41,7 @@ export interface ParserContext {
   readonly lexer: Lexer;
   readonly sourceType: "module" | "script";
   parseExpression(): AST.Expression;
+  parseAssignmentExpression(): AST.Expression;
   parseStatement(): AST.Statement | AST.ModuleDeclaration;
   parseBlockStatement(): AST.BlockStatement;
 }
@@ -155,11 +156,11 @@ const parseParameters = (ctx: ParserContext): Array<AST.Pattern> => {
       end: paramToken.end,
     });
 
-    // Check for default value
+    // Check for default value (use assignment expression to avoid consuming comma)
     if (ctx.lexer.is(TokenType.Equals)) {
       const assignStart = paramId.start;
       ctx.lexer.next();
-      const right = ctx.parseExpression();
+      const right = ctx.parseAssignmentExpression();
       params.push(
         Object.freeze({
           type: "AssignmentPattern" as const,
@@ -1047,7 +1048,7 @@ const parseVariableDeclaration = (
     let init: AST.Expression | null = null;
     if (ctx.lexer.is(TokenType.Equals)) {
       ctx.lexer.next();
-      init = ctx.parseExpression();
+      init = ctx.parseAssignmentExpression();
     }
 
     declarations.push(
