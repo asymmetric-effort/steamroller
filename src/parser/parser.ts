@@ -295,7 +295,7 @@ export class Parser implements DeclarationsContext, StatementsContext {
    * @returns The Expression AST node.
    */
   parseExpression(): AST.Expression {
-    return parseExpressionModule(this.lexer);
+    return parseExpressionModule(this.lexer, this.allowIn);
   }
 
   /**
@@ -304,7 +304,7 @@ export class Parser implements DeclarationsContext, StatementsContext {
    * @returns The Expression AST node.
    */
   parseAssignmentExpression(): AST.Expression {
-    return parseAssignmentExpressionModule(this.lexer);
+    return parseAssignmentExpressionModule(this.lexer, this.allowIn);
   }
 
   /**
