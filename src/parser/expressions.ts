@@ -7,7 +7,7 @@
  * conditional expression parsing via Pratt parsing (issue #29).
  *
  * Function/arrow/class expressions will be implemented by issue #27.
- * Member/call expressions will be implemented by issue #31.
+ * Member/call expressions are handled by the member-call module.
  *
  * @module parser/expressions
  */
@@ -23,6 +23,11 @@ import {
   parseAssignment,
   setPrimaryExpressionParser,
 } from "./operators.js";
+import {
+  parseMemberCallExpression,
+  parseNewExpression,
+  parseSuperExpression,
+} from "./member-call.js";
 
 /**
  * Parse a full expression, handling sequence expressions (comma-separated).
@@ -76,9 +81,9 @@ export const parseAssignmentExpression = (
   lexer: Lexer,
   allowIn: boolean = true,
 ): AST.Expression => {
-  // Parse unary (prefix operators + primary + postfix)
+  // Parse unary (prefix operators + primary with member/call + postfix)
   const unary = parseUnaryExpression(lexer, () =>
-    parsePrimaryExpression(lexer),
+    parseLeftHandSideExpression(lexer),
   );
 
   // Parse binary/logical with Pratt precedence
@@ -167,6 +172,106 @@ export const parsePrimaryExpression = (lexer: Lexer): AST.Expression => {
       );
     }
   }
+};
+
+/**
+ * Parse a left-hand side expression.
+ *
+ * Handles new expressions, super, and extends primary expressions
+ * with member access, call expressions, and optional chaining.
+ *
+ * @param lexer - The lexer instance.
+ * @returns The parsed Expression AST node.
+ */
+const parseLeftHandSideExpression = (lexer: Lexer): AST.Expression => {
+  // Handle 'new' expression
+  if (lexer.is(TokenType.New)) {
+    const newExpr = parseNewExpression(
+      lexer,
+      () => parsePrimaryExpression(lexer),
+      () => parseAssignmentExpression(lexer),
+    );
+    // After new, continue with member/call chain
+    return parseMemberCallExpression(lexer, newExpr, () =>
+      parseAssignmentExpression(lexer),
+    );
+  }
+
+  // Handle 'super' expression
+  if (lexer.is(TokenType.Super)) {
+    const superExpr = parseSuperExpression(lexer, () =>
+      parseAssignmentExpression(lexer),
+    );
+    // After super.prop or super(), continue with member/call chain
+    return parseMemberCallExpression(lexer, superExpr, () =>
+      parseAssignmentExpression(lexer),
+    );
+  }
+
+  // Handle 'import' for import() and import.meta
+  if (lexer.is(TokenType.Import)) {
+    const saved = lexer.saveState();
+    const importStart = lexer.token.start;
+    lexer.next();
+
+    // import.meta
+    if (lexer.is(TokenType.Dot)) {
+      lexer.next();
+      if (
+        lexer.is(TokenType.Identifier) &&
+        (lexer.token.value as string) === "meta"
+      ) {
+        const metaToken = lexer.next();
+        const metaProp: AST.MetaProperty = Object.freeze({
+          type: "MetaProperty" as const,
+          start: importStart,
+          end: metaToken.end,
+          meta: Object.freeze({
+            type: "Identifier" as const,
+            start: importStart,
+            end: importStart + 6,
+            name: "import",
+          }),
+          property: Object.freeze({
+            type: "Identifier" as const,
+            start: metaToken.start,
+            end: metaToken.end,
+            name: "meta",
+          }),
+        });
+        return parseMemberCallExpression(lexer, metaProp, () =>
+          parseAssignmentExpression(lexer),
+        );
+      }
+      // Not import.meta, restore
+      lexer.restoreState(saved);
+    }
+
+    // import() dynamic import
+    if (lexer.is(TokenType.LeftParen)) {
+      lexer.next();
+      const source = parseAssignmentExpression(lexer);
+      const closeParen = lexer.expect(TokenType.RightParen);
+      const importExpr: AST.ImportExpression = Object.freeze({
+        type: "ImportExpression" as const,
+        start: importStart,
+        end: closeParen.end,
+        source,
+      });
+      return parseMemberCallExpression(lexer, importExpr, () =>
+        parseAssignmentExpression(lexer),
+      );
+    }
+
+    // Not import() or import.meta, restore for statement-level import
+    lexer.restoreState(saved);
+  }
+
+  // Parse primary expression and extend with member/call
+  const primary = parsePrimaryExpression(lexer);
+  return parseMemberCallExpression(lexer, primary, () =>
+    parseAssignmentExpression(lexer),
+  );
 };
 
 /**
@@ -917,6 +1022,6 @@ const parseClassExpressionStub = (lexer: Lexer): AST.ClassExpression => {
   );
 };
 
-// Register primary expression parser with the operators module to
-// break the circular dependency.
-setPrimaryExpressionParser(parsePrimaryExpression);
+// Register left-hand side expression parser with the operators module to
+// break the circular dependency. This includes member/call/new parsing.
+setPrimaryExpressionParser(parseLeftHandSideExpression);

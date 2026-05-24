@@ -208,9 +208,21 @@ export class Parser implements DeclarationsContext, StatementsContext {
       case TokenType.Class:
         return parseClassDeclaration(this);
 
-      // Import declaration (module only)
-      case TokenType.Import:
+      // Import declaration (module only) or import() / import.meta expression
+      case TokenType.Import: {
+        const savedImport = this.lexer.saveState();
+        this.lexer.next();
+        if (
+          this.lexer.is(TokenType.LeftParen) ||
+          this.lexer.is(TokenType.Dot)
+        ) {
+          // import() or import.meta - treat as expression statement
+          this.lexer.restoreState(savedImport);
+          return parseExpressionStatement(this);
+        }
+        this.lexer.restoreState(savedImport);
         return parseImportDeclaration(this);
+      }
 
       // Export declaration (module only)
       case TokenType.Export:
