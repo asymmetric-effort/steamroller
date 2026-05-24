@@ -23,6 +23,7 @@ import type { ParserContext as DeclarationsContext } from "./declarations.js";
 import {
   parseExpression as parseExpressionModule,
   parseAssignmentExpression as parseAssignmentExpressionModule,
+  setBlockStatementParser,
 } from "./expressions.js";
 import {
   parseBlockStatement as parseBlockStmt,
@@ -85,6 +86,10 @@ export class Parser implements DeclarationsContext, StatementsContext {
     this.sourceType = sourceType;
     this.lexer = new Lexer(source, isStrict, allowHashBang);
     this.allowIn = true;
+
+    // Register block statement parser for function/class expression bodies.
+    // The lexer parameter is ignored since this parser instance owns the lexer.
+    setBlockStatementParser((_lex: Lexer) => this.parseBlockStatement());
   }
 
   /**
