@@ -12,6 +12,7 @@ import type * as AST from '../ast/types.js';
 import { Lexer } from './lexer.js';
 import { TokenType } from './token-types.js';
 import { tokenTypeName } from './token-types.js';
+import { parseExpression } from './expressions.js';
 
 /**
  * Options for the parser.
@@ -84,9 +85,9 @@ export class Parser {
   /**
    * Parse a single statement or module declaration.
    *
-   * This is a placeholder that handles only semicolons (empty statements)
-   * for now. Full statement parsing will be implemented by issues #19,
-   * #22, and #24.
+   * Handles empty statements and expression statements. Full statement
+   * parsing (control flow, declarations) will be implemented by issues
+   * #19 and #22.
    *
    * @returns The parsed statement or module declaration AST node.
    * @throws {SyntaxError} For unrecognized tokens (statement parsing not
@@ -105,10 +106,34 @@ export class Parser {
       });
     }
 
-    const typeName = tokenTypeName(token.type);
-    throw new SyntaxError(
-      `Statement parsing not yet implemented for ${typeName} at position ${token.start}`,
-    );
+    // Expression statement (fallback for expressions)
+    return this.parseExpressionStatement();
+  }
+
+  /**
+   * Parse an expression statement.
+   *
+   * Parses an expression followed by an optional semicolon.
+   *
+   * @returns An ExpressionStatement AST node.
+   */
+  private parseExpressionStatement(): AST.ExpressionStatement {
+    const expression = parseExpression(this.lexer);
+    const start = expression.start;
+
+    // Consume optional semicolon
+    let end = expression.end;
+    if (this.lexer.is(TokenType.Semicolon)) {
+      const semi = this.lexer.next();
+      end = semi.end;
+    }
+
+    return Object.freeze({
+      type: 'ExpressionStatement' as const,
+      start,
+      end,
+      expression,
+    });
   }
 }
 
