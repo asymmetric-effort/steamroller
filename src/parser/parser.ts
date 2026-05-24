@@ -25,7 +25,10 @@ import {
   parseExpression as parseExpressionModule,
   parseAssignmentExpression as parseAssignmentExpressionModule,
   setBlockStatementParser,
+  setJSXParser,
 } from "./expressions.js";
+import { parseJSXElementOrFragment } from "./jsx.js";
+import type { JSXParserContext } from "./jsx.js";
 import {
   parseBlockStatement as parseBlockStmt,
   parseEmptyStatement,
@@ -46,6 +49,12 @@ import {
   parseExpressionStatement,
 } from "./statements.js";
 import type { ParserContext as StatementsContext } from "./statements.js";
+import {
+  createParseError,
+  skipToStatementBoundary,
+  ErrorCollector,
+} from "./diagnostics.js";
+import type { ParseError } from "./diagnostics.js";
 
 /**
  * Options for the parser.
@@ -57,6 +66,18 @@ export interface ParseOptions {
   readonly allowHashBang?: boolean;
   /** The ECMAScript version to target. Defaults to 2024. */
   readonly ecmaVersion?: number;
+  /** Whether to enable JSX syntax parsing. Defaults to false. */
+  readonly jsx?: boolean;
+  /** Whether to collect errors instead of throwing. Defaults to false. */
+  readonly recoverable?: boolean;
+}
+
+/**
+ * Result of a recoverable parse operation.
+ */
+export interface RecoverableParseResult {
+  readonly program: AST.Program;
+  readonly errors: ReadonlyArray<ParseError>;
 }
 
 /**
@@ -72,6 +93,14 @@ export class Parser implements DeclarationsContext, StatementsContext {
   sourceType: "module" | "script";
   /** Whether `in` operator is allowed in expressions (false in for-loop headers). */
   allowIn: boolean;
+  /** Whether JSX parsing is enabled. */
+  readonly jsxEnabled: boolean;
+  /** Whether recoverable mode is active. */
+  readonly recoverable: boolean;
+  /** The original source text for error diagnostics. */
+  readonly source: string;
+  /** Collected errors in recoverable mode. */
+  readonly errorCollector: ErrorCollector;
 
   /**
    * Create a new Parser for the given source text.
@@ -85,12 +114,29 @@ export class Parser implements DeclarationsContext, StatementsContext {
     const isStrict = sourceType === "module";
 
     this.sourceType = sourceType;
+    this.source = source;
     this.lexer = new Lexer(source, isStrict, allowHashBang);
     this.allowIn = true;
+    this.jsxEnabled = options?.jsx ?? false;
+    this.recoverable = options?.recoverable ?? false;
+    this.errorCollector = new ErrorCollector();
 
     // Register block statement parser for function/class expression bodies.
     // The lexer parameter is ignored since this parser instance owns the lexer.
     setBlockStatementParser((_lex: Lexer) => this.parseBlockStatement());
+
+    // Register JSX parser when enabled
+    if (this.jsxEnabled) {
+      setJSXParser((_lex: Lexer) => {
+        const jsxCtx: JSXParserContext = {
+          lexer: this.lexer,
+          parseAssignmentExpression: () => this.parseAssignmentExpression(),
+        };
+        return parseJSXElementOrFragment(jsxCtx) as unknown as AST.Expression;
+      });
+    } else {
+      setJSXParser(null);
+    }
   }
 
   /**
@@ -148,7 +194,8 @@ export class Parser implements DeclarationsContext, StatementsContext {
    * Parse the complete program.
    *
    * Iteratively parses statements and declarations until EOF is reached,
-   * producing a Program AST node.
+   * producing a Program AST node. In recoverable mode, catches parse errors
+   * and skips to the next statement boundary.
    *
    * @returns The root Program AST node.
    */
@@ -158,8 +205,26 @@ export class Parser implements DeclarationsContext, StatementsContext {
 
     // Parse statements/declarations until EOF
     while (!this.lexer.is(TokenType.EOF)) {
-      const stmt = this.parseStatement();
-      body.push(stmt);
+      if (this.recoverable) {
+        try {
+          const stmt = this.parseStatement();
+          body.push(stmt);
+        } catch (err: unknown) {
+          if (err instanceof SyntaxError) {
+            this.errorCollector.addError(
+              err.message,
+              this.lexer.token.start,
+              this.source,
+            );
+            skipToStatementBoundary(this.lexer);
+          } else {
+            throw err;
+          }
+        }
+      } else {
+        const stmt = this.parseStatement();
+        body.push(stmt);
+      }
     }
 
     const end = this.lexer.token.end;
@@ -407,4 +472,23 @@ export class Parser implements DeclarationsContext, StatementsContext {
 export const parse = (source: string, options?: ParseOptions): AST.Program => {
   const parser = new Parser(source, options);
   return parser.parseProgram();
+};
+
+/**
+ * Parse source text in recoverable mode, collecting errors.
+ *
+ * Returns a partial AST alongside all collected parse errors.
+ * Non-recoverable errors (e.g., non-SyntaxError) will still throw.
+ *
+ * @param source - The source text to parse.
+ * @param options - Optional parse configuration (recoverable is forced true).
+ * @returns A result containing the partial program and array of errors.
+ */
+export const parseRecoverable = (
+  source: string,
+  options?: ParseOptions,
+): RecoverableParseResult => {
+  const parser = new Parser(source, { ...options, recoverable: true });
+  const program = parser.parseProgram();
+  return { program, errors: Object.freeze([...parser.errorCollector.errors]) };
 };

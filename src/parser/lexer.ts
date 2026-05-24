@@ -120,7 +120,7 @@ const createEofToken = (pos: number): Token => {
  */
 export class Lexer {
   /** The full source text being lexed. */
-  private source: string;
+  private _source: string;
   /** Current byte offset in source. */
   private pos: number;
   /** The current (most recently scanned) token. */
@@ -148,7 +148,7 @@ export class Lexer {
    * @param allowHashBang - Whether to allow a hashbang (#!) at source start.
    */
   constructor(source: string, strict: boolean, allowHashBang: boolean = false) {
-    this.source = source;
+    this._source = source;
     this.pos = 0;
     this.hadLineTerminator = false;
     this.strict = strict;
@@ -169,6 +169,13 @@ export class Lexer {
 
     // Scan the first token
     this.currentToken = this.scan();
+  }
+
+  /**
+   * Get the full source text being lexed.
+   */
+  get source(): string {
+    return this._source;
   }
 
   /**
@@ -301,6 +308,21 @@ export class Lexer {
   }
 
   /**
+   * Set the lexer position and rescan the current token.
+   *
+   * Used by the JSX parser to advance past raw-scanned identifiers.
+   * Sets previousTokenType to Identifier to ensure `/` is treated as
+   * division (not regex start) in subsequent scans.
+   *
+   * @param newPos - The new byte offset to resume scanning from.
+   */
+  setPosition(newPos: number): void {
+    this.pos = newPos;
+    this.previousTokenType = TokenType.Identifier;
+    this.currentToken = this.scan();
+  }
+
+  /**
    * The main scanning method. Skips whitespace and comments, then
    * dispatches to the appropriate scanner based on the next character.
    *
@@ -312,13 +334,13 @@ export class Lexer {
     this.hadLineTerminator = skipResult;
 
     // Check for EOF
-    if (this.pos >= this.source.length) {
+    if (this.pos >= this._source.length) {
       return createEofToken(this.pos);
     }
 
     // Handle template continuation when inside ${...}
     // When we see a } and templateDepth > 0, we scan the rest of the template
-    const code = this.source.charCodeAt(this.pos);
+    const code = this._source.charCodeAt(this.pos);
 
     // Dispatch based on the first character
     // Identifiers and keywords: a-z, A-Z, _, $, and Unicode
@@ -328,21 +350,21 @@ export class Lexer {
 
     // Numeric literals: 0-9 or . followed by digit
     if (isDigit(code)) {
-      const result = scanNumericLiteral(this.source, this.pos, this.strict);
+      const result = scanNumericLiteral(this._source, this.pos, this.strict);
       this.pos = result.end;
       return result.token;
     }
 
     // String literals: ' or "
     if (code === 0x27 || code === 0x22) {
-      const result = scanStringLiteral(this.source, this.pos, this.strict);
+      const result = scanStringLiteral(this._source, this.pos, this.strict);
       this.pos = result.end;
       return result.token;
     }
 
     // Template literals: `
     if (code === 0x60) {
-      const result = scanTemplateLiteral(this.source, this.pos, true);
+      const result = scanTemplateLiteral(this._source, this.pos, true);
       this.pos = result.end;
       // If we got a TemplateHead, increment template depth
       if (result.token.type === TokenType.TemplateHead) {
@@ -354,11 +376,11 @@ export class Lexer {
     // Dot followed by digit is a numeric literal (.5)
     if (code === 0x2e) {
       const nextCode =
-        this.pos + 1 < this.source.length
-          ? this.source.charCodeAt(this.pos + 1)
+        this.pos + 1 < this._source.length
+          ? this._source.charCodeAt(this.pos + 1)
           : -1;
       if (isDigit(nextCode)) {
-        const result = scanNumericLiteral(this.source, this.pos, this.strict);
+        const result = scanNumericLiteral(this._source, this.pos, this.strict);
         this.pos = result.end;
         return result.token;
       }
@@ -368,7 +390,7 @@ export class Lexer {
     if (code === 0x2f) {
       // Check if this is a regex
       if (isRegExpStart(this.previousTokenType)) {
-        const result = scanRegExpLiteral(this.source, this.pos);
+        const result = scanRegExpLiteral(this._source, this.pos);
         this.pos = result.end;
         return result.token;
       }
@@ -378,7 +400,7 @@ export class Lexer {
     // Right brace inside template: continue scanning the template
     if (code === 0x7d && this.templateDepth > 0) {
       this.templateDepth--;
-      const result = scanTemplateLiteral(this.source, this.pos, false);
+      const result = scanTemplateLiteral(this._source, this.pos, false);
       this.pos = result.end;
       // If we got a TemplateMiddle, increment depth back
       if (result.token.type === TokenType.TemplateMiddle) {
@@ -388,7 +410,7 @@ export class Lexer {
     }
 
     // Punctuators and operators
-    const punctResult = scanPunctuator(this.source, this.pos);
+    const punctResult = scanPunctuator(this._source, this.pos);
     if (punctResult !== null) {
       this.pos = punctResult.end;
       return punctResult.token;
@@ -396,7 +418,7 @@ export class Lexer {
 
     // Unknown character
     throw new SyntaxError(
-      `Unexpected character '${this.source[this.pos]}' at position ${this.pos}`,
+      `Unexpected character '${this._source[this.pos]}' at position ${this.pos}`,
     );
   }
 
@@ -411,8 +433,8 @@ export class Lexer {
     const start = this.pos;
     this.pos++;
 
-    while (this.pos < this.source.length) {
-      const code = this.source.charCodeAt(this.pos);
+    while (this.pos < this._source.length) {
+      const code = this._source.charCodeAt(this.pos);
       if (isIdentifierPart(code)) {
         this.pos++;
       } else {
@@ -420,7 +442,7 @@ export class Lexer {
       }
     }
 
-    const raw = this.source.slice(start, this.pos);
+    const raw = this._source.slice(start, this.pos);
     const keywordInfo = lookupKeyword(raw);
 
     if (keywordInfo !== undefined) {
@@ -461,33 +483,33 @@ export class Lexer {
   private skipWhitespaceAndComments(): boolean {
     let hadLT = false;
 
-    while (this.pos < this.source.length) {
+    while (this.pos < this._source.length) {
       // Skip whitespace (including line terminators)
-      const wsResult = skipWhitespace(this.source, this.pos);
+      const wsResult = skipWhitespace(this._source, this.pos);
       if (wsResult.hadLineTerminator) {
         hadLT = true;
       }
       this.pos = wsResult.end;
 
       // Check if at a comment
-      if (this.pos >= this.source.length) {
+      if (this.pos >= this._source.length) {
         break;
       }
 
-      const c0 = this.source.charCodeAt(this.pos);
+      const c0 = this._source.charCodeAt(this.pos);
       if (c0 !== 0x2f) {
         // Not a slash, done skipping
         break;
       }
 
       const c1 =
-        this.pos + 1 < this.source.length
-          ? this.source.charCodeAt(this.pos + 1)
+        this.pos + 1 < this._source.length
+          ? this._source.charCodeAt(this.pos + 1)
           : -1;
 
       if (c1 === 0x2f) {
         // Line comment //
-        const result = scanLineComment(this.source, this.pos);
+        const result = scanLineComment(this._source, this.pos);
         this.pos = result.end;
         // The line terminator after the comment will be caught by the next
         // whitespace skip iteration
@@ -496,7 +518,7 @@ export class Lexer {
 
       if (c1 === 0x2a) {
         // Block comment /* */
-        const result = scanBlockComment(this.source, this.pos);
+        const result = scanBlockComment(this._source, this.pos);
         if (result.hadLineTerminator) {
           hadLT = true;
         }

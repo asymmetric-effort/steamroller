@@ -47,6 +47,13 @@ import type { ExprContext } from "./function-class-expr.js";
 let parseBlockStatementFn: (lexer: Lexer) => AST.BlockStatement;
 
 /**
+ * Internal reference to the JSX parser function.
+ * Set by `setJSXParser` when JSX is enabled, allowing JSX elements
+ * in expression position.
+ */
+let parseJSXFn: ((lexer: Lexer) => AST.Expression) | null = null;
+
+/**
  * Register the block statement parser function.
  * Called by parser.ts during initialization to break the
  * circular dependency between expressions and statements modules.
@@ -57,6 +64,18 @@ export const setBlockStatementParser = (
   fn: (lexer: Lexer) => AST.BlockStatement,
 ): void => {
   parseBlockStatementFn = fn;
+};
+
+/**
+ * Register the JSX parser function.
+ * Called by parser.ts when JSX mode is enabled.
+ *
+ * @param fn - The JSX parser function, or null to disable.
+ */
+export const setJSXParser = (
+  fn: ((lexer: Lexer) => AST.Expression) | null,
+): void => {
+  parseJSXFn = fn;
 };
 
 /**
@@ -315,6 +334,16 @@ export const parsePrimaryExpression = (lexer: Lexer): AST.Expression => {
 
     case TokenType.Class:
       return parseClassExpr(lexer);
+
+    case TokenType.LessThan: {
+      if (parseJSXFn !== null) {
+        return parseJSXFn(lexer);
+      }
+      const ltName = tokenTypeName(token.type);
+      throw new SyntaxError(
+        `Unexpected token ${ltName} at position ${token.start}`,
+      );
+    }
 
     default: {
       const name = tokenTypeName(token.type);
