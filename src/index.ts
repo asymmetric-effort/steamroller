@@ -6,3 +6,5 @@
 export { VERSION } from "./version.js";
 export { defineConfig } from "./define-config.js";
 export type { RollupOptions, RollupOptionsFunction } from "./define-config.js";
+export { parseAst, parseAstAsync } from "./parse-ast.js";
+export type { ParseAstOptions } from "./parse-ast.js";
