@@ -19,6 +19,7 @@ import {
   parseExportDeclaration,
 } from "./declarations.js";
 import type { ParserContext as DeclarationsContext } from "./declarations.js";
+import { parseDecorators } from "./decorators.js";
 import { parseBindingPattern as parseBindingPatternFromModule } from "./patterns.js";
 import {
   parseExpression as parseExpressionModule,
@@ -271,6 +272,22 @@ export class Parser implements DeclarationsContext, StatementsContext {
       case TokenType.Debugger:
         return parseDebuggerStatement(this);
 
+      // Decorator: @expr class ...  or  @expr export class ...
+      case TokenType.At: {
+        const decorators = parseDecorators(this.lexer, () =>
+          this.parseDecoratorArgs(),
+        );
+        if (this.lexer.is(TokenType.Class)) {
+          return parseClassDeclaration(this, decorators);
+        }
+        if (this.lexer.is(TokenType.Export)) {
+          return parseExportDeclaration(this, decorators);
+        }
+        throw new SyntaxError(
+          `Decorators must precede a class declaration or export at position ${this.lexer.token.start}`,
+        );
+      }
+
       // Variable declarations
       case TokenType.Var:
       case TokenType.Let:
@@ -336,6 +353,45 @@ export class Parser implements DeclarationsContext, StatementsContext {
     return parseBindingPatternFromModule(this.lexer, () =>
       parseAssignmentExpressionModule(this.lexer, this.allowIn),
     );
+  }
+
+  /**
+   * Parse decorator call expression arguments.
+   *
+   * Used as a callback for parseDecorators to handle argument lists
+   * inside decorator call expressions like @dec(arg1, arg2).
+   *
+   * @returns Array of Expression or SpreadElement nodes.
+   */
+  parseDecoratorArgs(): ReadonlyArray<AST.Expression | AST.SpreadElement> {
+    const args: Array<AST.Expression | AST.SpreadElement> = [];
+
+    while (
+      !this.lexer.is(TokenType.RightParen) &&
+      !this.lexer.is(TokenType.EOF)
+    ) {
+      if (args.length > 0) {
+        this.lexer.expect(TokenType.Comma);
+      }
+
+      if (this.lexer.is(TokenType.Ellipsis)) {
+        const spreadStart = this.lexer.token.start;
+        this.lexer.next();
+        const argument = this.parseAssignmentExpression();
+        args.push(
+          Object.freeze({
+            type: "SpreadElement" as const,
+            argument,
+            start: spreadStart,
+            end: argument.end,
+          }),
+        );
+      } else {
+        args.push(this.parseAssignmentExpression());
+      }
+    }
+
+    return Object.freeze(args);
   }
 }
 

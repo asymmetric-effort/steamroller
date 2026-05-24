@@ -14,6 +14,7 @@ import type * as AST from "../ast/types.js";
 import type { Lexer } from "./lexer.js";
 import { TokenType } from "./token-types.js";
 import { parseBindingPattern as parseBindingPatternFromModule } from "./patterns.js";
+import { parseDecorators } from "./decorators.js";
 
 /**
  * Context interface required by function/class expression parsers.
@@ -270,6 +271,7 @@ export const parseClassExpression = (ctx: ExprContext): AST.ClassExpression => {
     id,
     superClass,
     body,
+    decorators: Object.freeze([]),
     start,
     end: body.end,
   });
@@ -296,7 +298,12 @@ const parseClassBody = (ctx: ExprContext): AST.ClassBody => {
       continue;
     }
 
-    const member = parseClassMember(ctx);
+    // Parse decorators before class member
+    const memberDecorators = parseDecorators(ctx.lexer, () =>
+      parseExprArgList(ctx),
+    );
+
+    const member = parseClassMember(ctx, memberDecorators);
     members.push(member);
   }
 
@@ -311,15 +318,54 @@ const parseClassBody = (ctx: ExprContext): AST.ClassBody => {
 };
 
 /**
+ * Parse a comma-separated argument list for decorator call expressions.
+ *
+ * @param ctx - The expression context.
+ * @returns Array of Expression or SpreadElement nodes.
+ */
+const parseExprArgList = (
+  ctx: ExprContext,
+): ReadonlyArray<AST.Expression | AST.SpreadElement> => {
+  const args: Array<AST.Expression | AST.SpreadElement> = [];
+
+  while (!ctx.lexer.is(TokenType.RightParen) && !ctx.lexer.is(TokenType.EOF)) {
+    if (args.length > 0) {
+      ctx.lexer.expect(TokenType.Comma);
+    }
+
+    if (ctx.lexer.is(TokenType.Ellipsis)) {
+      const spreadStart = ctx.lexer.token.start;
+      ctx.lexer.next();
+      const argument = ctx.parseAssignmentExpression(ctx.lexer, true);
+      args.push(
+        Object.freeze({
+          type: "SpreadElement" as const,
+          argument,
+          start: spreadStart,
+          end: argument.end,
+        }),
+      );
+    } else {
+      args.push(ctx.parseAssignmentExpression(ctx.lexer, true));
+    }
+  }
+
+  return Object.freeze(args);
+};
+
+/**
  * Parse a single class member (method or property).
  *
  * @param ctx - The expression context.
+ * @param decorators - Pre-parsed decorators for this member.
  * @returns A MethodDefinition, PropertyDefinition, or StaticBlock node.
  */
 const parseClassMember = (
   ctx: ExprContext,
+  decorators: ReadonlyArray<AST.Decorator> = Object.freeze([]),
 ): AST.MethodDefinition | AST.PropertyDefinition | AST.StaticBlock => {
-  const memberStart = ctx.lexer.token.start;
+  const memberStart =
+    decorators.length > 0 ? decorators[0].start : ctx.lexer.token.start;
   let isStatic = false;
   let kind: "constructor" | "method" | "get" | "set" = "method";
 
@@ -433,6 +479,7 @@ const parseClassMember = (
       kind,
       computed,
       static: isStatic,
+      decorators,
       start: memberStart,
       end: body.end,
     });
@@ -458,6 +505,7 @@ const parseClassMember = (
     value: propValue,
     computed,
     static: isStatic,
+    decorators,
     start: memberStart,
     end: propEnd,
   });

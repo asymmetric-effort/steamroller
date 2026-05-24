@@ -12,6 +12,7 @@ import type * as AST from "../ast/types.js";
 import type { Lexer } from "./lexer.js";
 import { TokenType } from "./token-types.js";
 import { parseBindingPattern as parseBindingPatternFromModule } from "./patterns.js";
+import { parseDecorators } from "./decorators.js";
 
 /**
  * Extended ImportDeclaration that supports import attributes.
@@ -188,14 +189,18 @@ const parseParameters = (ctx: ParserContext): Array<AST.Pattern> => {
  *
  * Handles: class Name { ... }
  *          class Name extends SuperClass { ... }
+ *          @decorator class Name { ... }
  *
  * @param ctx - The parser context.
+ * @param decorators - Pre-parsed decorators attached to this class.
  * @returns The ClassDeclaration AST node.
  */
 export const parseClassDeclaration = (
   ctx: ParserContext,
+  decorators: ReadonlyArray<AST.Decorator> = Object.freeze([]),
 ): AST.ClassDeclaration => {
-  const start = ctx.lexer.token.start;
+  const start =
+    decorators.length > 0 ? decorators[0].start : ctx.lexer.token.start;
 
   // Consume 'class' keyword
   ctx.lexer.expect(TokenType.Class);
@@ -233,15 +238,53 @@ export const parseClassDeclaration = (
     id,
     superClass,
     body,
+    decorators,
     start,
     end: body.end,
   });
 };
 
 /**
+ * Parse a comma-separated list of arguments for decorator call expressions.
+ *
+ * @param ctx - The parser context.
+ * @returns Array of Expression or SpreadElement nodes.
+ */
+const parseArgumentList = (
+  ctx: ParserContext,
+): ReadonlyArray<AST.Expression | AST.SpreadElement> => {
+  const args: Array<AST.Expression | AST.SpreadElement> = [];
+
+  while (!ctx.lexer.is(TokenType.RightParen) && !ctx.lexer.is(TokenType.EOF)) {
+    if (args.length > 0) {
+      ctx.lexer.expect(TokenType.Comma);
+    }
+
+    if (ctx.lexer.is(TokenType.Ellipsis)) {
+      const spreadStart = ctx.lexer.token.start;
+      ctx.lexer.next();
+      const argument = ctx.parseAssignmentExpression();
+      args.push(
+        Object.freeze({
+          type: "SpreadElement" as const,
+          argument,
+          start: spreadStart,
+          end: argument.end,
+        }),
+      );
+    } else {
+      args.push(ctx.parseAssignmentExpression());
+    }
+  }
+
+  return Object.freeze(args);
+};
+
+/**
  * Parse a class body enclosed in braces.
  *
- * Handles methods, properties, static members, private fields, and static blocks.
+ * Handles methods, properties, static members, private fields, static blocks,
+ * and decorated members.
  *
  * @param ctx - The parser context.
  * @returns The ClassBody AST node.
@@ -261,7 +304,12 @@ const parseClassBody = (ctx: ParserContext): AST.ClassBody => {
       continue;
     }
 
-    const member = parseClassMember(ctx);
+    // Parse decorators before class member
+    const memberDecorators = parseDecorators(ctx.lexer, () =>
+      parseArgumentList(ctx),
+    );
+
+    const member = parseClassMember(ctx, memberDecorators);
     members.push(member);
   }
 
@@ -279,12 +327,15 @@ const parseClassBody = (ctx: ParserContext): AST.ClassBody => {
  * Parse a single class member (method, property, or static block).
  *
  * @param ctx - The parser context.
+ * @param decorators - Pre-parsed decorators for this member.
  * @returns A MethodDefinition, PropertyDefinition, or StaticBlock node.
  */
 const parseClassMember = (
   ctx: ParserContext,
+  decorators: ReadonlyArray<AST.Decorator> = Object.freeze([]),
 ): AST.MethodDefinition | AST.PropertyDefinition | AST.StaticBlock => {
-  const memberStart = ctx.lexer.token.start;
+  const memberStart =
+    decorators.length > 0 ? decorators[0].start : ctx.lexer.token.start;
   let isStatic = false;
   let kind: "constructor" | "method" | "get" | "set" = "method";
 
@@ -407,6 +458,7 @@ const parseClassMember = (
       kind,
       computed,
       static: isStatic,
+      decorators,
       start: memberStart,
       end: body.end,
     });
@@ -432,6 +484,7 @@ const parseClassMember = (
     value: propValue,
     computed,
     static: isStatic,
+    decorators,
     start: memberStart,
     end: propEnd,
   });
@@ -751,17 +804,19 @@ const parseImportAttributes = (ctx: ParserContext): Array<ImportAttribute> => {
  */
 export const parseExportDeclaration = (
   ctx: ParserContext,
+  decorators: ReadonlyArray<AST.Decorator> = Object.freeze([]),
 ):
   | AST.ExportNamedDeclaration
   | AST.ExportDefaultDeclaration
   | AST.ExportAllDeclaration => {
-  const start = ctx.lexer.token.start;
+  const start =
+    decorators.length > 0 ? decorators[0].start : ctx.lexer.token.start;
   ctx.lexer.expect(TokenType.Export);
 
   // export default ...
   if (ctx.lexer.is(TokenType.Default)) {
     ctx.lexer.next();
-    return parseExportDefault(ctx, start);
+    return parseExportDefault(ctx, start, decorators);
   }
 
   // export * from 'module' or export * as ns from 'module'
@@ -863,7 +918,7 @@ export const parseExportDeclaration = (
 
   // export class Name {}
   if (ctx.lexer.is(TokenType.Class)) {
-    const declaration = parseClassDeclaration(ctx);
+    const declaration = parseClassDeclaration(ctx, decorators);
     return Object.freeze({
       type: "ExportNamedDeclaration" as const,
       declaration,
@@ -906,6 +961,7 @@ export const parseExportDeclaration = (
 const parseExportDefault = (
   ctx: ParserContext,
   start: number,
+  decorators: ReadonlyArray<AST.Decorator> = Object.freeze([]),
 ): AST.ExportDefaultDeclaration => {
   // export default function ...
   if (ctx.lexer.is(TokenType.Function)) {
@@ -932,7 +988,7 @@ const parseExportDefault = (
 
   // export default class ...
   if (ctx.lexer.is(TokenType.Class)) {
-    const declaration = parseClassDeclaration(ctx);
+    const declaration = parseClassDeclaration(ctx, decorators);
     return Object.freeze({
       type: "ExportDefaultDeclaration" as const,
       declaration,

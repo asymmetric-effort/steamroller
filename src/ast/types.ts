@@ -226,12 +226,19 @@ export interface FunctionDeclaration extends BaseNode {
   readonly async: boolean;
 }
 
+/** A decorator annotation (@expression). */
+export interface Decorator extends BaseNode {
+  readonly type: "Decorator";
+  readonly expression: Expression;
+}
+
 /** A class declaration. */
 export interface ClassDeclaration extends BaseNode {
   readonly type: "ClassDeclaration";
   readonly id: Identifier | null;
   readonly superClass: Expression | null;
   readonly body: ClassBody;
+  readonly decorators: ReadonlyArray<Decorator>;
 }
 
 /** The body of a class, containing method and property definitions. */
@@ -250,6 +257,7 @@ export interface MethodDefinition extends BaseNode {
   readonly kind: "constructor" | "method" | "get" | "set";
   readonly computed: boolean;
   readonly static: boolean;
+  readonly decorators: ReadonlyArray<Decorator>;
 }
 
 /** A property definition (class field) within a class body. */
@@ -259,6 +267,7 @@ export interface PropertyDefinition extends BaseNode {
   readonly value: Expression | null;
   readonly computed: boolean;
   readonly static: boolean;
+  readonly decorators: ReadonlyArray<Decorator>;
 }
 
 /** A static initialization block within a class body. */
@@ -377,6 +386,7 @@ export interface ClassExpression extends BaseNode {
   readonly id: Identifier | null;
   readonly superClass: Expression | null;
   readonly body: ClassBody;
+  readonly decorators: ReadonlyArray<Decorator>;
 }
 
 /** A sequence expression (comma-separated expressions). */
