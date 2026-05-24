@@ -17,6 +17,11 @@
       "import": "./dist/steamroller.mjs",
       "require": "./dist/steamroller.cjs",
       "types": "./dist/steamroller.d.ts"
+    },
+    "./parseAst": {
+      "import": "./dist/parse-ast.mjs",
+      "require": "./dist/parse-ast.cjs",
+      "types": "./dist/parse-ast.d.ts"
     }
   },
   "files": [
