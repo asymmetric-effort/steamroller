@@ -274,7 +274,7 @@ export interface AsiContext {
  * In these productions, a line terminator between the keyword and its
  * operand triggers ASI (e.g., `return\nvalue` becomes `return; value`).
  */
-const RESTRICTED_TOKENS = new Set([
+const RESTRICTED_TOKENS: ReadonlySet<number> = new Set([
   TokenType.Return,
   TokenType.Throw,
   TokenType.Break,

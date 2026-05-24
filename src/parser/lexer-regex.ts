@@ -30,7 +30,7 @@ const VALID_FLAGS = new Set(['d', 'g', 'i', 'm', 's', 'u', 'v', 'y']);
  * These are token types that can end an expression, meaning a subsequent
  * `/` would be interpreted as division.
  */
-const DIVISION_PREDECESSORS = new Set([
+const DIVISION_PREDECESSORS: ReadonlySet<number> = new Set([
   TokenType.Identifier,
   TokenType.NumericLiteral,
   TokenType.StringLiteral,
