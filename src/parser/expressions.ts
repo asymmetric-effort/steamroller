@@ -6,7 +6,7 @@
  * Also provides assignment, sequence, binary, unary, update, and
  * conditional expression parsing via Pratt parsing (issue #29).
  *
- * Function/arrow/class expressions will be implemented by issue #27.
+ * Function/arrow/class expressions are handled by the function-class-expr module.
  * Member/call expressions are handled by the member-call module.
  *
  * @module parser/expressions
@@ -28,6 +28,49 @@ import {
   parseNewExpression,
   parseSuperExpression,
 } from "./member-call.js";
+import {
+  parseFunctionExpression,
+  parseArrowFunction,
+  parseClassExpression,
+  parseParams,
+  isArrowAfterParen,
+  isArrowAfterIdent,
+} from "./function-class-expr.js";
+import type { ExprContext } from "./function-class-expr.js";
+
+/**
+ * Internal reference to the block statement parser.
+ * Set by `setBlockStatementParser` during module initialization from parser.ts.
+ *
+ * This avoids circular imports between expressions.ts and statements.ts.
+ */
+let parseBlockStatementFn: (lexer: Lexer) => AST.BlockStatement;
+
+/**
+ * Register the block statement parser function.
+ * Called by parser.ts during initialization to break the
+ * circular dependency between expressions and statements modules.
+ *
+ * @param fn - The block statement parser function.
+ */
+export const setBlockStatementParser = (
+  fn: (lexer: Lexer) => AST.BlockStatement,
+): void => {
+  parseBlockStatementFn = fn;
+};
+
+/**
+ * Build an ExprContext for the function-class-expr module.
+ *
+ * @param lexer - The lexer instance.
+ * @returns The expression context for function/class expression parsing.
+ */
+const buildExprContext = (lexer: Lexer): ExprContext => ({
+  lexer,
+  parseAssignmentExpression: (lex: Lexer, allowIn: boolean) =>
+    parseAssignmentExpression(lex, allowIn),
+  parseBlockStatementFromLexer: (lex: Lexer) => parseBlockStatementFn(lex),
+});
 
 /**
  * Parse a full expression, handling sequence expressions (comma-separated).
@@ -138,7 +181,10 @@ export const parsePrimaryExpression = (lexer: Lexer): AST.Expression => {
       return parseBigIntLiteral(lexer);
 
     case TokenType.Identifier:
-      return parseIdentifier(lexer);
+      return parseIdentifierOrArrowOrAsync(lexer);
+
+    case TokenType.Async:
+      return parseAsyncExpression(lexer);
 
     case TokenType.This:
       return parseThisExpression(lexer);
@@ -160,10 +206,10 @@ export const parsePrimaryExpression = (lexer: Lexer): AST.Expression => {
       return parseParenthesizedExpression(lexer);
 
     case TokenType.Function:
-      return parseFunctionExpressionStub(lexer);
+      return parseFunctionExpr(lexer, false);
 
     case TokenType.Class:
-      return parseClassExpressionStub(lexer);
+      return parseClassExpr(lexer);
 
     default: {
       const name = tokenTypeName(token.type);
@@ -390,18 +436,107 @@ const parseBigIntLiteral = (lexer: Lexer): AST.Literal => {
 };
 
 /**
- * Parse an identifier reference.
+ * Parse an identifier or arrow function (x => ...).
+ *
+ * Handles:
+ * - Plain identifier reference
+ * - Arrow function with single parameter: x => expr
  *
  * @param lexer - The lexer instance.
- * @returns An Identifier AST node.
+ * @returns An Identifier or ArrowFunctionExpression AST node.
  */
-const parseIdentifier = (lexer: Lexer): AST.Identifier => {
-  const token = lexer.next();
+const parseIdentifierOrArrowOrAsync = (lexer: Lexer): AST.Expression => {
+  const token = lexer.token;
+
+  // Check for arrow function: x => ...
+  if (isArrowAfterIdent(lexer)) {
+    const start = token.start;
+    const paramToken = lexer.next(); // consume identifier
+    const param: AST.Identifier = Object.freeze({
+      type: "Identifier" as const,
+      start: paramToken.start,
+      end: paramToken.end,
+      name: paramToken.value as string,
+    });
+    const ctx = buildExprContext(lexer);
+    return parseArrowFunction(ctx, [param], false, start);
+  }
+
+  // Plain identifier
+  const consumed = lexer.next();
   return Object.freeze({
     type: "Identifier" as const,
-    start: token.start,
-    end: token.end,
-    name: token.value as string,
+    start: consumed.start,
+    end: consumed.end,
+    name: consumed.value as string,
+  });
+};
+
+/**
+ * Parse an async function expression or async arrow function.
+ *
+ * Handles:
+ * - async function [name]() {}
+ * - async () => ...
+ * - async x => ...
+ * - plain identifier 'async' when not followed by function/arrow
+ *
+ * The current token is TokenType.Async.
+ *
+ * @param lexer - The lexer instance.
+ * @returns The parsed expression.
+ */
+const parseAsyncExpression = (lexer: Lexer): AST.Expression => {
+  const start = lexer.token.start;
+  const saved = lexer.saveState();
+
+  // Consume 'async'
+  lexer.next();
+
+  // async function expression
+  if (lexer.is(TokenType.Function)) {
+    return parseFunctionExpr(lexer, true);
+  }
+
+  // async () => ... or async (params) => ...
+  if (lexer.is(TokenType.LeftParen)) {
+    if (isParenArrow(lexer)) {
+      const ctx = buildExprContext(lexer);
+      const params = parseParams(ctx);
+      return parseArrowFunction(ctx, params, true, start);
+    }
+    // Not an arrow - restore and parse 'async' as identifier
+    lexer.restoreState(saved);
+    const consumed = lexer.next();
+    return Object.freeze({
+      type: "Identifier" as const,
+      start: consumed.start,
+      end: consumed.end,
+      name: consumed.value as string,
+    });
+  }
+
+  // async x => ...
+  if (lexer.is(TokenType.Identifier) && isArrowAfterIdent(lexer)) {
+    const paramToken = lexer.next();
+    const param: AST.Identifier = Object.freeze({
+      type: "Identifier" as const,
+      start: paramToken.start,
+      end: paramToken.end,
+      name: paramToken.value as string,
+    });
+    const ctx = buildExprContext(lexer);
+    return parseArrowFunction(ctx, [param], true, start);
+  }
+
+  // Just 'async' as a plain identifier
+  lexer.restoreState(saved);
+  const consumed = lexer.next();
+  return Object.freeze({
+    type: "Identifier" as const,
+    start: consumed.start,
+    end: consumed.end,
+    name: consumed.value as string,
   });
 };
 
@@ -960,19 +1095,44 @@ export const parseTaggedTemplate = (
 };
 
 /**
- * Parse a parenthesized expression: (expr)
- * Returns the inner expression directly (no wrapper node).
+ * Check if the current '(' starts an arrow function parameter list.
+ * Saves state, consumes '(', delegates to isArrowAfterParen, and restores.
+ *
+ * @param lexer - The lexer positioned at '('.
+ * @returns True if this is an arrow function.
+ */
+const isParenArrow = (lexer: Lexer): boolean => {
+  const saved = lexer.saveState();
+  lexer.next(); // consume (
+  const result = isArrowAfterParen(lexer);
+  lexer.restoreState(saved);
+  return result;
+};
+
+/**
+ * Parse a parenthesized expression or arrow function: (expr) or (params) => body
+ * Returns the inner expression directly (no wrapper node) for grouping,
+ * or an ArrowFunctionExpression for arrow functions.
  *
  * @param lexer - The lexer instance.
- * @returns The inner Expression AST node.
+ * @returns The inner Expression AST node or an ArrowFunctionExpression.
  * @throws {SyntaxError} For unterminated parenthesized expressions.
  */
 const parseParenthesizedExpression = (lexer: Lexer): AST.Expression => {
   const start = lexer.token.start;
+
+  // Check if this is an arrow function: (...) =>
+  if (isParenArrow(lexer)) {
+    // Parse as arrow function parameters
+    const ctx = buildExprContext(lexer);
+    const params = parseParams(ctx);
+    return parseArrowFunction(ctx, params, false, start);
+  }
+
   lexer.next(); // consume (
 
   if (lexer.is(TokenType.RightParen)) {
-    // Empty parens - could be arrow function params, error for now
+    // Empty parens not followed by => is an error
     throw new SyntaxError(`Unexpected ')' at position ${lexer.token.start}`);
   }
 
@@ -995,31 +1155,29 @@ const parseParenthesizedExpression = (lexer: Lexer): AST.Expression => {
 };
 
 /**
- * Stub for function expression parsing.
- * Will be implemented by issue #27.
+ * Parse a function expression by delegating to the function-class-expr module.
  *
  * @param lexer - The lexer instance.
- * @returns A FunctionExpression AST node (stub with empty body).
- * @throws {SyntaxError} Always — not yet implemented.
+ * @param isAsync - Whether this is an async function expression.
+ * @returns A FunctionExpression AST node.
  */
-const parseFunctionExpressionStub = (lexer: Lexer): AST.FunctionExpression => {
-  throw new SyntaxError(
-    `Function expressions not yet implemented at position ${lexer.token.start}`,
-  );
+const parseFunctionExpr = (
+  lexer: Lexer,
+  isAsync: boolean,
+): AST.FunctionExpression => {
+  const ctx = buildExprContext(lexer);
+  return parseFunctionExpression(ctx, isAsync);
 };
 
 /**
- * Stub for class expression parsing.
- * Will be implemented by issue #27.
+ * Parse a class expression by delegating to the function-class-expr module.
  *
  * @param lexer - The lexer instance.
- * @returns A ClassExpression AST node (stub).
- * @throws {SyntaxError} Always — not yet implemented.
+ * @returns A ClassExpression AST node.
  */
-const parseClassExpressionStub = (lexer: Lexer): AST.ClassExpression => {
-  throw new SyntaxError(
-    `Class expressions not yet implemented at position ${lexer.token.start}`,
-  );
+const parseClassExpr = (lexer: Lexer): AST.ClassExpression => {
+  const ctx = buildExprContext(lexer);
+  return parseClassExpression(ctx);
 };
 
 // Register left-hand side expression parser with the operators module to
