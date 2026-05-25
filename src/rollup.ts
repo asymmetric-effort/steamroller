@@ -10,13 +10,24 @@ import type {
   RollupBuild,
   NormalizedInputOptions,
   Plugin,
+  ResolvedId,
   RollupLog,
 } from "./types.js";
 import { normalizeInputOptions } from "./config/normalize-input.js";
 import { validateInputOptions } from "./config/validate.js";
 import { PluginDriver } from "./plugins/driver.js";
+import { BuildHookExecutor } from "./plugins/build-hooks.js";
 import { createRollupBuild } from "./build/rollup-build.js";
 import type { BuildState } from "./build/rollup-build.js";
+import { ModuleLoader } from "./module/loader.js";
+import type {
+  LoadHook,
+  TransformHook,
+  ModuleParsedHook,
+} from "./module/loader.js";
+import { buildModuleGraph } from "./module/graph.js";
+import { defaultResolve, isExternal } from "./module/resolve.js";
+import { createNodeFs } from "./fs/node-fs.js";
 
 /**
  * Run the options hook across all plugins, allowing them to mutate options.
@@ -103,8 +114,136 @@ export const rollup = async (
   // Step 5: Run buildStart hook
   await pluginDriver.hookParallel("buildStart", [finalOptions]);
 
-  // Step 6: Build module graph (placeholder — will integrate module loader)
-  const modules: Array<unknown> = [];
+  // Step 6: Build module graph
+  const buildHookExecutor = new BuildHookExecutor(pluginDriver);
+  const fs = createNodeFs();
+
+  // Create resolve function that chains plugin resolveId with defaultResolve fallback
+  const resolveIdFn = async (
+    source: string,
+    importer: string | undefined,
+    isEntry: boolean,
+  ): Promise<ResolvedId | null> => {
+    const pluginResult = await buildHookExecutor.resolveId(source, importer, {
+      isEntry,
+      attributes: {},
+    });
+
+    if (pluginResult !== null) {
+      if (typeof pluginResult === "string") {
+        const ext = isExternal(
+          pluginResult,
+          source,
+          importer,
+          finalOptions.external,
+        );
+        return {
+          id: pluginResult,
+          external: ext,
+          moduleSideEffects: true,
+          syntheticNamedExports: false,
+          meta: {},
+          resolvedBy: "plugin",
+        };
+      }
+      return pluginResult;
+    }
+
+    // Check if the source itself is external (handles bare specifiers)
+    const sourceIsExternal = isExternal(
+      source,
+      source,
+      importer,
+      finalOptions.external,
+    );
+    if (sourceIsExternal) {
+      return {
+        id: source,
+        external: true,
+        moduleSideEffects: true,
+        syntheticNamedExports: false,
+        meta: {},
+        resolvedBy: "default",
+      };
+    }
+
+    // Fallback to default resolution
+    const resolved = defaultResolve(source, importer);
+    if (!resolved) {
+      return null;
+    }
+
+    const ext = isExternal(resolved, source, importer, finalOptions.external);
+    return {
+      id: resolved,
+      external: ext,
+      moduleSideEffects: true,
+      syntheticNamedExports: false,
+      meta: {},
+      resolvedBy: "default",
+    };
+  };
+
+  // Create load hook from plugin driver
+  const loadHook: LoadHook = async (id: string) => {
+    const result = await buildHookExecutor.load(id);
+    if (result === null || result === undefined) {
+      return null;
+    }
+    // Normalize string result to LoadResult object
+    if (typeof result === "string") {
+      return { code: result };
+    }
+    return {
+      code: result.code,
+      map: result.map,
+      ast: result.ast,
+      meta: result.meta,
+      syntheticNamedExports: result.syntheticNamedExports,
+      moduleSideEffects: result.moduleSideEffects,
+    };
+  };
+
+  // Create transform hook from plugin driver
+  const transformHook: TransformHook = async (code: string, id: string) => {
+    const result = await buildHookExecutor.transform(code, id);
+    if (result.code === code && result.map === undefined) {
+      return null;
+    }
+    return { code: result.code, map: result.map };
+  };
+
+  // Create moduleParsed hook
+  const moduleParsedHook: ModuleParsedHook = async () => {
+    // moduleParsed notification handled by graph construction
+  };
+
+  const moduleLoader = new ModuleLoader({
+    fs,
+    maxParallelFileOps: finalOptions.maxParallelFileOps,
+    loadHooks: [loadHook],
+    transformHooks: [transformHook],
+    moduleParsedHooks: [moduleParsedHook],
+  });
+
+  const graph = await buildModuleGraph({
+    input: finalOptions.input,
+    resolveId: resolveIdFn,
+    loadModule: async (id: string) => {
+      const loaded = await moduleLoader.loadModule(id);
+      return {
+        code: loaded.code,
+        ast: loaded.ast,
+        meta: { ...(loaded.meta as Record<string, unknown>) },
+        moduleSideEffects: loaded.moduleSideEffects,
+        syntheticNamedExports: loaded.syntheticNamedExports,
+      };
+    },
+    onWarning: (warning) => {
+      warnings.push({ code: warning.code, message: warning.message });
+    },
+    shimMissingExports: finalOptions.shimMissingExports,
+  });
 
   // Step 7: Tree-shaking is applied during module graph construction
   // (handled by the tree-shaking engine when modules are loaded)
@@ -121,10 +260,18 @@ export const rollup = async (
   }
 
   // Step 10: Create and return RollupBuild
+  const watchFiles: Array<string> = [];
+  for (let i = 0; i < graph.modules.length; i++) {
+    watchFiles.push(graph.modules[i].id);
+  }
+  for (let i = 0; i < graph.externalModules.length; i++) {
+    watchFiles.push(graph.externalModules[i].id);
+  }
+
   const buildState: BuildState = {
-    modules,
+    modules: graph.modules,
     cache: finalOptions.cache || undefined,
-    watchFiles: [],
+    watchFiles,
     getTimings: finalOptions.perf ? () => ({}) : undefined,
   };
 
