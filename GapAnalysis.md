@@ -1,276 +1,419 @@
-# Steamroller — Gap Analysis
+# Steamroller Gap Analysis
 
-> Current state vs. target state for 100% feature parity and 100% API compatibility with rollup v4.60.4.
-
-## Current State
-
-The `asymmetric-effort/steamroller` repository has:
-
-- `PLAN.md` — exhaustive 1774-line implementation plan
-- `GapAnalysis.md` — this document
-- `README.md` — project overview with logo
-- `logo.png` — project logo
-- `website/` — GitHub Pages SPA (steamroller.asymmetric-effort.com)
-- `.claude/skills` — shared skills submodule
-- **131 GitHub issues** across 15 milestones tracking all implementation work
-- No source code, no tests, no CI, no package configuration yet
-
-## Target State
-
-A fully functional, zero-dependency TypeScript module bundler that is a drop-in replacement for rollup v4.60.4, published to npm as `steamroller`.
+> Source: **Rollup v4.x** (https://github.com/rollup/rollup)
+> Target: **Steamroller** at `~/git/steamroller`
+> Date: 2026-05-23
 
 ---
 
-## Gap Categories
+## Executive Summary
 
-### G0 — Project Infrastructure (Phase 0)
+Steamroller has substantial component-level implementation across 116 TypeScript source files covering parsing, module graph construction, code generation, format wrappers, plugin hooks, tree-shaking, source maps, code splitting, watch mode, and CLI argument parsing. However, **the components are not wired together end-to-end**. The `rollup()` function skips module graph construction (Step 6 is a placeholder that produces an empty `modules` array), and `generate()` produces an empty output chunk. Calling `rollup({input: 'test.js'})` today returns a valid `RollupBuild` object, but the generated bundle contains zero code. No real JavaScript file is ever read, parsed, resolved, transformed, or emitted.
 
-| ID    | Gap                           | Current | Target                                                               |
-| ----- | ----------------------------- | ------- | -------------------------------------------------------------------- |
-| G0.1  | No LICENSE file               | missing | MIT license file                                                     |
-| G0.2  | No CODE_OF_CONDUCT.md         | missing | Contributor Covenant or equivalent                                   |
-| G0.3  | No SECURITY.md                | missing | Vulnerability reporting procedures and response timelines            |
-| G0.4  | No CONTRIBUTING.md            | missing | Setup instructions, dev workflows, coding conventions                |
-| G0.5  | No TypeScript config          | missing | tsconfig.json with strict mode, ES2022 target, NodeNext modules      |
-| G0.6  | No package.json               | missing | Zero-dep package with exports map, bin, engines                      |
-| G0.7  | No .gitignore                 | missing | Standard Node/TypeScript ignores                                     |
-| G0.8  | No CI/CD pipeline             | missing | Multi-stage GitHub Actions (lint→test→build→e2e), CodeQL, Dependabot |
-| G0.9  | No git hooks                  | missing | Pre-commit (typecheck+format), pre-push (tests+coverage)             |
-| G0.10 | No test infrastructure        | missing | Node.js test runner, coverage reporting, 98% threshold               |
-| G0.11 | No compatibility test harness | missing | Differential testing framework (rollup vs steamroller)               |
-
-### G1 — JavaScript Parser (Phase 1)
-
-| ID    | Gap                       | Current | Target                                                                               |
-| ----- | ------------------------- | ------- | ------------------------------------------------------------------------------------ |
-| G1.1  | No lexer/tokenizer        | missing | Full ES2024 tokenizer with ASI, position tracking, annotation detection              |
-| G1.2  | No parser                 | missing | Recursive descent parser producing ESTree AST for all ES2024 grammar                 |
-| G1.3  | No statement parsing      | missing | All statement types including using/await using                                      |
-| G1.4  | No declaration parsing    | missing | Functions, classes, imports, exports                                                 |
-| G1.5  | No expression parsing     | missing | All expression types including optional chaining, nullish coalescing, dynamic import |
-| G1.6  | No pattern parsing        | missing | Destructuring (array, object, assignment, rest)                                      |
-| G1.7  | No literal parsing        | missing | Strings, numbers, BigInt, RegExp, template literals                                  |
-| G1.8  | No RegExp feature support | missing | Named groups, lookbehind, unicode properties, /v flag                                |
-| G1.9  | No top-level await        | missing | Top-level await in module mode                                                       |
-| G1.10 | No import attributes      | missing | `with { type: "json" }` syntax                                                       |
-| G1.11 | No decorator support      | missing | Stage 3 decorator syntax with metadata                                               |
-| G1.12 | No JSX parsing            | missing | JSXElement, JSXFragment, attributes, expressions, text nodes                         |
-| G1.13 | No AST type definitions   | missing | Full ESTree-compatible types with RollupAstNode wrapper                              |
-| G1.14 | No public parser API      | missing | parseAst() and parseAstAsync() exported from steamroller/parseAst                    |
-| G1.15 | No hashbang support       | missing | #! comment handling at start of source                                               |
-
-### G2 — Module Graph (Phase 2)
-
-| ID    | Gap                       | Current | Target                                                                             |
-| ----- | ------------------------- | ------- | ---------------------------------------------------------------------------------- |
-| G2.1  | No Module class           | missing | Module representation with id, code, AST, imports, exports, scope, metadata        |
-| G2.2  | No ExternalModule class   | missing | External module representation                                                     |
-| G2.3  | No ModuleInfo interface   | missing | Full ModuleInfo with all 20+ properties                                            |
-| G2.4  | No resolution pipeline    | missing | resolveId hook, resolveDynamicImport, default resolution, external checking        |
-| G2.5  | No loading pipeline       | missing | load hook, fs read, parse, transform hook, moduleParsed hook                       |
-| G2.6  | No cache system           | missing | RollupCache, PluginCache, shouldTransformCachedModule, experimentalCacheExpiry     |
-| G2.7  | No graph construction     | missing | Entry point traversal, dependency resolution, circular detection, topological sort |
-| G2.8  | No syntheticNamedExports  | missing | Fallback namespace resolution, codegen, tree-shaking interaction                   |
-| G2.9  | No filesystem abstraction | missing | RollupFsModule interface with all methods, Node.js adapter                         |
-| G2.10 | No shimMissingExports     | missing | Generate void 0 shims for missing exports                                          |
-
-### G3 — Tree-Shaking (Phase 3)
-
-| ID   | Gap                           | Current | Target                                                                     |
-| ---- | ----------------------------- | ------- | -------------------------------------------------------------------------- |
-| G3.1 | No scope analysis             | missing | All scope types, binding tracking, hoisting, TDZ, import/export resolution |
-| G3.2 | No side effect detection      | missing | Statement/expression-level analysis, module-level effects                  |
-| G3.3 | No pure annotations           | missing | @**PURE**, #**PURE**, @**NO_SIDE_EFFECTS**                                 |
-| G3.4 | No eval deoptimization        | missing | Direct eval scope deoptimization, EVAL warning                             |
-| G3.5 | No getter/setter side effects | missing | Property access side effects, accessor handling                            |
-| G3.6 | No tree-shaking engine        | missing | Multi-pass iterative algorithm with convergence                            |
-| G3.7 | No tree-shaking presets       | missing | recommended, smallest, safest presets                                      |
-| G3.8 | No experimentalLogSideEffects | missing | Debug logging for included statements                                      |
-
-### G4 — Code Generation (Phase 4)
-
-| ID    | Gap                            | Current | Target                                                              |
-| ----- | ------------------------------ | ------- | ------------------------------------------------------------------- |
-| G4.1  | No AST-to-code renderer        | missing | Statement/expression rendering, compact mode, indent option         |
-| G4.2  | No generatedCode presets       | missing | es5 and es2015 presets with fine-grained options                    |
-| G4.3  | No JSX transform output        | missing | Classic and automatic modes, factory/fragment config                |
-| G4.4  | No MagicString-based rendering | missing | Source-preserving transformation approach                           |
-| G4.5  | No variable deconfliction      | missing | Collision detection, $N rename strategy, reserved word handling     |
-| G4.6  | No import/export rewriting     | missing | Format-appropriate rewrites, live bindings, namespace objects       |
-| G4.7  | No interop modes               | missing | compat, auto, esModule, default, defaultOnly                        |
-| G4.8  | No module concatenation        | missing | Multi-module chunks, deconfliction, hoisted imports                 |
-| G4.9  | No RollupBuild object          | missing | cache, close, asyncDispose, generate, write, getTimings, watchFiles |
-| G4.10 | No output validation           | missing | Re-parse output to verify valid JS (validate option)                |
-| G4.11 | No banner/footer/intro/outro   | missing | Addon hooks with string and function variants                       |
-
-### G5 — Source Maps (Phase 5)
-
-| ID   | Gap                           | Current | Target                                                                                                                         |
-| ---- | ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| G5.1 | No VLQ codec                  | missing | VLQ encoding/decoding, base64 mapping                                                                                          |
-| G5.2 | No MagicString implementation | missing | Full MagicString + Bundle class with source map tracking                                                                       |
-| G5.3 | No source map composition     | missing | Transform chain composition, getCombinedSourcemap, renderChunk merging                                                         |
-| G5.4 | No source map output          | missing | All output modes (file, inline, hidden), all options (baseUrl, excludeSources, debugIds, pathTransform, ignoreList, fileNames) |
-
-### G6 — Plugin System (Phase 6)
-
-| ID   | Gap                        | Current | Target                                                                                                                                                                                                                                                         |
-| ---- | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G6.1 | No plugin driver           | missing | Hook execution (first/sequential/parallel), modifiers (order/sequential/filter)                                                                                                                                                                                |
-| G6.2 | No build phase hooks       | missing | 9 hooks: options→buildStart→resolveId→resolveDynamicImport→load→shouldTransformCachedModule→transform→moduleParsed→buildEnd                                                                                                                                    |
-| G6.3 | No output generation hooks | missing | 14 hooks: outputOptions→renderStart→renderDynamicImport→resolveFileUrl→resolveImportMeta→banner/footer/intro/outro→renderChunk→augmentChunkHash→generateBundle→writeBundle→renderError→closeBundle                                                             |
-| G6.4 | No watch hooks             | missing | watchChange, closeWatcher                                                                                                                                                                                                                                      |
-| G6.5 | No onLog hook              | missing | Sync sequential log interception                                                                                                                                                                                                                               |
-| G6.6 | No plugin context          | missing | this.resolve, this.load, this.parse, this.emitFile, this.getFileName, this.setAssetSource, this.error/warn/info/debug, this.meta, this.cache, this.fs, this.addWatchFile, this.getModuleIds, this.getModuleInfo, this.getWatchFiles, this.getCombinedSourcemap |
-| G6.7 | No EmittedFile handling    | missing | EmittedAsset, EmittedChunk, EmittedPrebuiltChunk                                                                                                                                                                                                               |
-
-### G7 — Code Splitting (Phase 7)
-
-| ID   | Gap                      | Current | Target                                                                                           |
-| ---- | ------------------------ | ------- | ------------------------------------------------------------------------------------------------ |
-| G7.1 | No split point detection | missing | Dynamic import, multi-entry, implicit load splits                                                |
-| G7.2 | No chunk assignment      | missing | Entry ownership, shared extraction, manualChunks, preserveModules, inlineDynamicImports          |
-| G7.3 | No chunk naming          | missing | entryFileNames, chunkFileNames, assetFileNames patterns with placeholders                        |
-| G7.4 | No chunk optimization    | missing | preserveEntrySignatures, hoistTransitiveImports, minifyInternalExports, experimentalMinChunkSize |
-| G7.5 | No content hashing       | missing | xxHash128 in TypeScript, 3 encodings, deterministic hash inputs                                  |
-
-### G8 — Output Formats (Phase 8)
-
-| ID   | Gap                      | Current | Target                                                                                        |
-| ---- | ------------------------ | ------- | --------------------------------------------------------------------------------------------- |
-| G8.1 | No ES module format      | missing | import/export preservation, native code splitting                                             |
-| G8.2 | No CommonJS format       | missing | require/exports, \_\_esModule, dynamicImportInCjs                                             |
-| G8.3 | No UMD format            | missing | CJS/AMD/global detection wrapper, name, globals, extend, noConflict                           |
-| G8.4 | No AMD format            | missing | define wrapper, amd.id/autoId/basePath/define/forceJsExtensionForImports                      |
-| G8.5 | No IIFE format           | missing | Self-executing function wrapper, name, globals, extend                                        |
-| G8.6 | No SystemJS format       | missing | System.register wrapper, setter/getter mechanism, systemNullSetters                           |
-| G8.7 | No cross-format concerns | missing | exports option, interop, paths, externalImportAttributes, importAttributesKey, virtualDirname |
-
-### G9 — Watch Mode (Phase 9)
-
-| ID   | Gap                    | Current | Target                                                         |
-| ---- | ---------------------- | ------- | -------------------------------------------------------------- |
-| G9.1 | No file watcher        | missing | fs.watch-based watching, debouncing, include/exclude filtering |
-| G9.2 | No watch event emitter | missing | RollupWatcher with AwaitingEventEmitter, event lifecycle       |
-| G9.3 | No incremental rebuild | missing | Cache reuse, selective re-parse, ROLLUP_WATCH env var          |
-| G9.4 | No watch CLI hooks     | missing | onStart/onBundleStart/onBundleEnd/onEnd/onError shell commands |
-
-### G10 — CLI (Phase 10)
-
-| ID    | Gap                    | Current | Target                                                                                                      |
-| ----- | ---------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| G10.1 | No argument parser     | missing | 80+ flags, short flags, negation, dot-notation, comma-separated, repeatable                                 |
-| G10.2 | No config file loading | missing | Discovery (steamroller.config._ + rollup.config._), formats, configPlugin, defineConfig, loadConfigFile API |
-| G10.3 | No terminal output     | missing | Colors, build summary, warning display, silent/logLevel, failAfterWarnings, filterLogs, perf timing         |
-| G10.4 | No log filter          | missing | getLogFilter() exported from steamroller/getLogFilter                                                       |
-| G10.5 | No stdin support       | missing | Pipe code as input, --stdin=ext                                                                             |
-| G10.6 | No misc CLI features   | missing | forceExit, waitForBundleInput, strictDeprecations                                                           |
-
-### G11 — Configuration (Phase 11)
-
-| ID    | Gap                     | Current | Target                                                                               |
-| ----- | ----------------------- | ------- | ------------------------------------------------------------------------------------ |
-| G11.1 | No input normalization  | missing | Normalize input, external, plugins, treeshake, jsx to canonical forms                |
-| G11.2 | No output normalization | missing | Validate format requirements, file/dir exclusivity, normalize generatedCode, interop |
-| G11.3 | No option validation    | missing | Unknown option warnings, deprecation handling, conflict detection                    |
-
-### G12 — Compatibility & Conformance (Phase 12)
-
-| ID    | Gap                         | Current | Target                                                     |
-| ----- | --------------------------- | ------- | ---------------------------------------------------------- |
-| G12.1 | No rollup test suite        | missing | Port/adapt rollup's MIT-licensed test suite                |
-| G12.2 | No plugin ecosystem tests   | missing | Verify 20 official @rollup/plugin-\* packages work         |
-| G12.3 | No build tool tests         | missing | Verify Vite, Svelte, etc. compatibility                    |
-| G12.4 | No performance benchmarks   | missing | Parse/bundle/render timing vs rollup, memory usage         |
-| G12.5 | No fuzz testing             | missing | Grammar-aware parser fuzzer, differential fuzzing vs acorn |
-| G12.6 | No real-world project tests | missing | Bundle d3, three.js, svelte, preact, lodash-es             |
-
-### GX — Cross-Cutting Concerns
-
-| ID   | Gap                             | Current | Target                                                                  |
-| ---- | ------------------------------- | ------- | ----------------------------------------------------------------------- |
-| GX.1 | No error code system            | missing | 60+ error/warning codes with structured error objects, code frames      |
-| GX.2 | No cross-platform path handling | missing | Forward slash normalization, UNC paths, drive letters, case sensitivity |
-| GX.3 | No line ending handling         | missing | CRLF/LF parsing, preservation, output normalization                     |
-| GX.4 | No performance instrumentation  | missing | perf option, getTimings(), phase timing, memory tracking                |
-| GX.5 | No type system                  | missing | 100+ exported types matching rollup's rollup.d.ts                       |
-| GX.6 | No threading model              | missing | Single-threaded async/await, semaphore for maxParallelFileOps           |
-
-### GV — Versioning & Distribution (PLAN.md §21)
-
-| ID   | Gap                       | Current | Target                                                      |
-| ---- | ------------------------- | ------- | ----------------------------------------------------------- |
-| GV.1 | No CHANGELOG.md           | missing | CHANGELOG.md with Keep a Changelog format                   |
-| GV.2 | No npm publish pipeline   | missing | Tag-triggered GitHub Actions workflow for npm publish       |
-| GV.3 | No defineConfig()/VERSION | missing | defineConfig() type helper (3 overloads) + VERSION constant |
-
-### GP — Performance (PLAN.md §24)
-
-| ID   | Gap                            | Current | Target                                                                 |
-| ---- | ------------------------------ | ------- | ---------------------------------------------------------------------- |
-| GP.1 | No parser optimizations        | missing | Single-pass tokenization, string interning, keyword trie, typed arrays |
-| GP.2 | No graph/codegen optimizations | missing | Lazy parsing, parallel loading, deferred VLQ, array-join concatenation |
-| GP.3 | No benchmark regression CI     | missing | Per-commit timing, >10% regression alerts                              |
-
-### GD — Documentation (PLAN.md §2)
-
-| ID   | Gap                | Current | Target                                                                 |
-| ---- | ------------------ | ------- | ---------------------------------------------------------------------- |
-| GD.1 | No docs/ directory | missing | 6 documentation pages (index, JS API, config, plugins, CLI, migration) |
-
-### GI — CI/CD Infrastructure (PLAN.md §3, §20)
-
-| ID   | Gap                        | Current | Target                                                       |
-| ---- | -------------------------- | ------- | ------------------------------------------------------------ |
-| GI.1 | No CodeQL/Dependabot       | missing | CodeQL scanning + Dependabot for deps and Actions            |
-| GI.2 | No cross-platform CI       | missing | Ubuntu + macOS + Windows matrix, Node 18/20/22               |
-| GI.3 | No website deploy workflow | missing | GitHub Actions workflow for website build/deploy             |
-| GI.4 | No snapshot testing        | missing | Output format, error message, source map, and hash snapshots |
-| GI.5 | No error code parity tests | missing | Test fixtures for all 60+ error codes                        |
-
-### GB — Bundled Library Reimplementations
-
-| ID    | Gap                     | Library                                                                                                      | Target                                                     |
-| ----- | ----------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| GB.1  | No string manipulation  | magic-string                                                                                                 | MagicString + Bundle with source map tracking (~500 lines) |
-| GB.2  | No VLQ codec            | @jridgewell/sourcemap-codec                                                                                  | VLQ encode/decode (~200 lines)                             |
-| GB.3  | No plugin utilities     | @rollup/pluginutils                                                                                          | createFilter, dataToEsm, addExtension, etc. (~400 lines)   |
-| GB.4  | No file watching        | chokidar + readdirp                                                                                          | fs.watch/fs.watchFile wrapper (~700 lines)                 |
-| GB.5  | No glob matching        | picomatch + anymatch + braces + fill-range + to-regex-range + is-number + glob-parent + is-extglob + is-glob | Glob pattern matching engine (~550 lines)                  |
-| GB.6  | No CLI arg parsing      | yargs-parser                                                                                                 | Custom argument parser (~400 lines)                        |
-| GB.7  | No terminal colors      | picocolors                                                                                                   | ANSI escape codes with TTY detection (~50 lines)           |
-| GB.8  | No formatting utils     | pretty-bytes + pretty-ms + parse-ms + date-time + time-zone                                                  | Human-readable formatters (~100 lines)                     |
-| GB.9  | No exit handling        | signal-exit                                                                                                  | Process exit/signal handlers (~60 lines)                   |
-| GB.10 | No AST utilities        | is-reference + locate-character                                                                              | Reference detection + position mapping (~80 lines)         |
-| GB.11 | No LRU cache            | flru                                                                                                         | Simple LRU cache with Map (~40 lines)                      |
-| GB.12 | No built-in module list | builtin-modules                                                                                              | Static list from module.builtinModules (~10 lines)         |
-| GB.13 | No content hashing      | xxHash (native)                                                                                              | xxHash128 in pure TypeScript, 3 encodings (~300 lines)     |
+**Overall completion: ~40% by component breadth, ~5% by end-to-end functionality.**
 
 ---
 
-## Summary
+## 1. End-to-End Pipeline Integration
 
-| Category                  | Gap Count | Issues  | Estimated Complexity |
-| ------------------------- | --------- | ------- | -------------------- |
-| G0 — Infrastructure       | 11        | 12      | Low                  |
-| G1 — Parser               | 15        | 21      | Very High            |
-| G2 — Module Graph         | 10        | 9       | High                 |
-| G3 — Tree-Shaking         | 8         | 7       | Very High            |
-| G4 — Code Generation      | 11        | 11      | High                 |
-| G5 — Source Maps          | 4         | 4       | Medium               |
-| G6 — Plugin System        | 7         | 8       | High                 |
-| G7 — Code Splitting       | 5         | 5       | High                 |
-| G8 — Output Formats       | 7         | 7       | Medium               |
-| G9 — Watch Mode           | 4         | 4       | Medium               |
-| G10 — CLI                 | 6         | 5       | Medium               |
-| G11 — Configuration       | 3         | 3       | Low                  |
-| G12 — Compatibility       | 6         | 8       | Medium               |
-| GX — Cross-Cutting        | 6         | 10      | Medium               |
-| GV — Versioning           | 3         | 3       | Low                  |
-| GP — Performance          | 3         | 3       | Medium               |
-| GD — Documentation        | 1         | 1       | Medium               |
-| GI — CI/CD Infrastructure | 5         | 5       | Low                  |
-| GB — Reimplementations    | 13        | 9       | Medium               |
-| **Total**                 | **128**   | **131** |
+### 1.1 rollup() Entry Point
 
-131 GitHub issues track all identified gaps. Some gaps decompose into multiple issues (parser: 15 gaps → 21 issues). Some gaps share issues (GB items covered by feature-phase issues). Three issues (#118 rollup(), #119 watch(), #15 nightly CI) cover integration work not mapped to a single gap.
+| Aspect | Rollup v4 | Steamroller | Status |
+|--------|-----------|-------------|--------|
+| Validate and normalize input options | Full validation with detailed errors | Implemented | DONE |
+| Create plugin driver | Full lifecycle management | Implemented (basic) | DONE |
+| Run `options` hook | Runs across all plugins | Implemented | DONE |
+| Run `buildStart` hook | Runs in parallel | Implemented | DONE |
+| **Build module graph** | Resolves, loads, transforms, parses all modules | **Placeholder: `const modules = [] `** | CRITICAL GAP |
+| **Tree-shaking** | Multi-pass dead code elimination on real AST | Comment says "handled during graph construction" but graph is never built | CRITICAL GAP |
+| Run `buildEnd` hook | Runs in parallel | Implemented | DONE |
+| Return RollupBuild | With generate/write/close | Implemented (shell only) | PARTIAL |
+
+**The fundamental gap**: `src/rollup.ts` line 107 assigns `const modules: Array<unknown> = []` instead of calling `buildModuleGraph()`. The module graph builder (`src/module/graph.ts`), module loader (`src/module/loader.ts`), and resolver (`src/module/resolve.ts`) all exist as standalone units but are never invoked from the main pipeline.
+
+### 1.2 generate() / write()
+
+| Aspect | Rollup v4 | Steamroller | Status |
+|--------|-----------|-------------|--------|
+| Normalize output options | Full | Not called during generate | GAP |
+| Run `renderStart` hook | Parallel across plugins | Not wired | GAP |
+| Assign modules to chunks | Based on entries, dynamic imports, manual chunks | Not wired (splitting logic exists standalone) | GAP |
+| Render each chunk | MagicString edits, import/export rewriting | Not wired (module-render.ts exists standalone) | GAP |
+| Run `renderChunk` hook | Sequential, per-chunk | Not wired | GAP |
+| Run `banner/footer/intro/outro` hooks | Sequential | Not wired | GAP |
+| Generate source maps | Compose transforms, chunk maps, VLQ encode | Not wired (sourcemap/ exists standalone) | GAP |
+| Run `generateBundle` hook | Sequential with full bundle | Not wired | GAP |
+| Run `writeBundle` hook (write only) | Parallel after disk write | Not wired | GAP |
+| **Actually write files to disk** | fs.writeFile for chunks and assets | **Stub: `writeOutput()` is a no-op** | CRITICAL GAP |
+| Produce non-empty code | Concatenated, format-wrapped output | **Output chunk has `code: ""`** | CRITICAL GAP |
+
+### 1.3 close()
+
+| Aspect | Rollup v4 | Steamroller | Status |
+|--------|-----------|-------------|--------|
+| Run `closeBundle` hook | Parallel | Not wired (sets `closed = true` only) | GAP |
+| Release resources | Plugin cleanup | Not implemented | GAP |
+
+---
+
+## 2. Parser
+
+The parser is the most complete subsystem. It is a hand-written recursive-descent parser with a full lexer, producing ESTree-compatible ASTs.
+
+| Feature | Rollup v4 (uses SWC/acorn) | Steamroller | Status |
+|---------|---------------------------|-------------|--------|
+| ES2024 syntax | Full via SWC | Hand-written lexer + parser | DONE |
+| Module/script mode | Both | Both | DONE |
+| Import/export declarations | Full | Full | DONE |
+| Dynamic import() | Full | Parsed | DONE |
+| JSX | Via plugin (acorn-jsx) | Built-in (parser/jsx.ts) | DONE |
+| Decorators (Stage 3) | Via SWC | Implemented (parser/decorators.ts) | DONE |
+| Async/generators | Full | Full | DONE |
+| Template literals | Full | Full | DONE |
+| Destructuring/patterns | Full | Full (parser/patterns.ts) | DONE |
+| Recoverable parsing | N/A (Rollup relies on SWC) | Implemented (error collection mode) | EXTRA |
+| Hashbang support | Yes | Yes | DONE |
+| `parseAst()` / `parseAstAsync()` | Public API | Implemented | DONE |
+| TypeScript parsing | Via SWC (strips types) | **Not implemented** | GAP |
+| Error recovery quality | SWC-grade | Basic skip-to-statement-boundary | PARTIAL |
+
+**Assessment**: The parser works well for standard JavaScript. It cannot handle TypeScript, which most real-world Rollup projects require (typically via plugin, but Rollup's SWC parser handles it natively since v4).
+
+---
+
+## 3. Module Graph
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| BFS graph traversal | Yes | Implemented in graph.ts | DONE |
+| resolveId pipeline (plugin hooks -> default) | Chained hooks | **Not wired** (resolve.ts + driver.ts exist separately) | GAP |
+| load pipeline (plugin hooks -> fs fallback) | Chained hooks | **Not wired** (loader.ts exists separately) | GAP |
+| transform pipeline (sequential) | Chained hooks | **Not wired** (loader.ts exists separately) | GAP |
+| moduleParsed notification | Parallel hooks | **Not wired** | GAP |
+| Circular dependency detection | Warning | Implemented in graph.ts | DONE |
+| Topological sort | Kahn's algorithm | Implemented in graph.ts | DONE |
+| External module handling | Full | Implemented (ExternalModule.ts) | DONE |
+| Module class (imports/exports extraction) | Full | Implemented (Module.ts) | DONE |
+| ModuleInfo for plugin API | Full | Implemented (Module.toModuleInfo()) | DONE |
+| Module cache / incremental | Full | Cache types exist, incremental.ts exists | PARTIAL |
+| **Integration: graph builder called from rollup()** | Yes | **No -- never called** | CRITICAL GAP |
+
+---
+
+## 4. Plugin System
+
+### 4.1 Plugin Driver
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| Hook strategies: first, sequential, parallel | Yes | Implemented | DONE |
+| Hook reduce strategy | Yes | Implemented | DONE |
+| Hook ordering (pre/normal/post) | Yes | Implemented | DONE |
+| Duplicate plugin name detection | Warning | Implemented | DONE |
+| ObjectHook support (handler + order + filter) | Yes | Implemented (getHookHandler, getHookOrder) | DONE |
+| StringFilter matching | Yes | Implemented (matchesFilter) | DONE |
+
+### 4.2 Build Hooks (9 hooks)
+
+| Hook | Rollup v4 | Steamroller | Status |
+|------|-----------|-------------|--------|
+| options | Sequential, sync-first | Implemented and wired in rollup.ts | DONE |
+| buildStart | Parallel | Implemented and wired in rollup.ts | DONE |
+| resolveId | First | Defined, **not wired to module graph** | GAP |
+| resolveDynamicImport | First | Defined, not wired | GAP |
+| load | First | Defined, not wired | GAP |
+| shouldTransformCachedModule | First | Defined, not wired | GAP |
+| transform | Sequential | Defined, not wired | GAP |
+| moduleParsed | Parallel | Defined, not wired | GAP |
+| buildEnd | Parallel | Implemented and wired in rollup.ts | DONE |
+
+### 4.3 Output Hooks (14 hooks)
+
+| Hook | Rollup v4 | Steamroller | Status |
+|------|-----------|-------------|--------|
+| renderStart | Parallel | Defined in output-hooks.ts, not wired | GAP |
+| banner | Sequential | Defined, not wired | GAP |
+| footer | Sequential | Defined, not wired | GAP |
+| intro | Sequential | Defined, not wired | GAP |
+| outro | Sequential | Defined, not wired | GAP |
+| renderDynamicImport | First | Defined, not wired | GAP |
+| augmentChunkHash | Sequential | Defined, not wired | GAP |
+| resolveFileUrl | First | Defined, not wired | GAP |
+| resolveImportMeta | First | Defined, not wired | GAP |
+| renderChunk | Sequential | Defined, not wired | GAP |
+| generateBundle | Sequential | Defined, not wired | GAP |
+| writeBundle | Parallel | Defined, not wired | GAP |
+| closeBundle | Parallel | Defined, not wired | GAP |
+| renderError | Parallel | Defined, not wired | GAP |
+
+### 4.4 Watch Hooks (2 hooks)
+
+| Hook | Rollup v4 | Steamroller | Status |
+|------|-----------|-------------|--------|
+| watchChange | Sequential | Defined in watch-hooks.ts | PARTIAL |
+| closeWatcher | Sequential | Defined in watch-hooks.ts | PARTIAL |
+
+### 4.5 Plugin Context
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| this.resolve() | Calls resolveId pipeline | Typed, InMemoryModuleGraph exists | PARTIAL |
+| this.load() | Triggers full load pipeline | Typed, not functional | GAP |
+| this.parse() | Returns AST | Typed, parser exists | PARTIAL |
+| this.emitFile() | Emit chunks/assets | EmittedFiles system exists | PARTIAL |
+| this.getFileName() | Resolve emitted file name | Exists | PARTIAL |
+| this.setAssetSource() | Set asset content | Exists | PARTIAL |
+| this.addWatchFile() | Track watch dependencies | Typed | PARTIAL |
+| this.getWatchFiles() | List watched files | Typed | PARTIAL |
+| this.getModuleInfo() | Module metadata | Typed, graph not populated | GAP |
+| this.getModuleIds() | Iterate modules | Typed, graph not populated | GAP |
+| this.warn() / this.error() | Log/throw | Typed | PARTIAL |
+| this.cache | Per-plugin cache | PluginCache implemented | DONE |
+
+**Summary**: 4 of 25 hooks are actually wired and executing. The remaining 21 have type definitions and hook executor code but are never called from the build pipeline.
+
+---
+
+## 5. Code Generation
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| AST-to-code renderer | astring-based | Stack-based iterative renderer (renderer.ts, ~1250 lines) | DONE |
+| MagicString-based module editing | Yes (uses magic-string npm) | Custom MagicString implementation (magic-string.ts) | DONE |
+| Import rewriting (ES, CJS) | Full | Implemented in module-render.ts | DONE |
+| Export rewriting (ES, CJS) | Full | Implemented in module-render.ts | DONE |
+| Variable deconfliction | Scope-aware | Regex-based word-boundary replacement | PARTIAL |
+| Compact mode | Yes | Basic whitespace collapse | PARTIAL |
+| Module concatenation | Scope-hoisting | concatenate.ts exists | PARTIAL |
+| **Integration: codegen called from generate()** | Yes | **No -- generate() returns empty chunk** | CRITICAL GAP |
+
+---
+
+## 6. Output Formats
+
+All six format wrappers are implemented as standalone `FormatWrapper` objects with `wrapChunk()`, `getExternalImportCode()`, and `getExportCode()` methods.
+
+| Format | Rollup v4 | Steamroller | Status |
+|--------|-----------|-------------|--------|
+| es | Full | Implemented (es.ts) | DONE (standalone) |
+| cjs | Full with interop helpers | Implemented (cjs.ts) with __esModule, interop helpers | DONE (standalone) |
+| iife | Full with globals, name, extend | Implemented (iife.ts) | DONE (standalone) |
+| umd | Full (AMD + CJS + global) | Implemented (umd.ts) | DONE (standalone) |
+| amd | Full with define() | Implemented (amd.ts) | DONE (standalone) |
+| system | Full with System.register | Implemented (system.ts) | DONE (standalone) |
+| Format dispatcher | getFormat() | getFormatWrapper() | DONE |
+| **Integration: formats called during generate()** | Yes | **No** | CRITICAL GAP |
+
+**Assessment**: Format wrappers produce structurally correct output when given imports/exports/code, but they are never called from the build pipeline. No end-to-end validation that the generated code actually runs.
+
+---
+
+## 7. Tree-Shaking
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| Multi-pass inclusion engine | Yes | engine.ts (worklist-based, iterative) | DONE (standalone) |
+| Scope analysis | Full (own scope implementation) | scope.ts (Scope/Binding/Reference) | DONE (standalone) |
+| Side-effect detection | Statement-level | side-effects.ts | DONE (standalone) |
+| Pure function annotations | `/*@__PURE__*/` | pure.ts | DONE (standalone) |
+| Deoptimization (try/catch, eval) | Yes | deoptimize.ts | DONE (standalone) |
+| moduleSideEffects option | Boolean, function, "no-external" | Supported in options.ts | DONE |
+| propertyReadSideEffects | Yes | Supported in options.ts | DONE |
+| tryCatchDeoptimization | Yes | Supported in options.ts | DONE |
+| unknownGlobalSideEffects | Yes | Supported in options.ts | DONE |
+| manualPureFunctions | Yes | Supported in options.ts | DONE |
+| **Integration: tree-shaking applied to real modules** | Yes | **No -- engine never receives real module data** | CRITICAL GAP |
+
+---
+
+## 8. Source Maps
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| VLQ encode/decode | Yes | vlq.ts | DONE |
+| MagicString with position tracking | Yes (npm magic-string) | Custom implementation (magic-string.ts) | DONE |
+| Source map composition (transform chain) | Yes | compose.ts | DONE |
+| Output modes (true, 'inline', 'hidden', false) | Yes | output.ts | DONE |
+| sourcemapBaseUrl | Yes | Supported | DONE |
+| sourcemapExcludeSources | Yes | Supported | DONE |
+| sourcemapPathTransform | Yes | Supported | DONE |
+| sourcemapIgnoreList | Yes | Supported | DONE |
+| x_google_ignoreList | Yes | Typed | DONE |
+| **Integration: source maps generated during build** | Yes | **No -- never called from pipeline** | CRITICAL GAP |
+
+---
+
+## 9. Code Splitting
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| Split point detection | Dynamic imports | split-points.ts | DONE (standalone) |
+| Chunk assignment | Entry + dynamic + manual + shared | chunk-assignment.ts | DONE (standalone) |
+| Chunk naming | Pattern-based ([name], [hash]) | chunk-naming.ts | DONE (standalone) |
+| Chunk optimization (min size, max size) | Yes | chunk-optimization.ts | DONE (standalone) |
+| Content hashing | Yes | hash.ts | DONE (standalone) |
+| **Integration: splitting applied during generate()** | Yes | **No** | CRITICAL GAP |
+
+---
+
+## 10. Watch Mode
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| watch() entry function | Full | watch-entry.ts (creates watcher, emits START) | PARTIAL |
+| File system watcher | chokidar-based | file-watcher.ts (fs.watch-based) | DONE (standalone) |
+| Debounced rebuild | Yes | watcher.ts (RollupWatcherImpl with buildDelay) | DONE (standalone) |
+| Event protocol (START/BUNDLE_START/BUNDLE_END/END/ERROR) | Full | Implemented in watcher.ts | DONE |
+| Incremental rebuild with cache | Yes | incremental.ts (shouldRebuildModule) | PARTIAL |
+| **Integration: watch() triggers real builds** | Yes | **watch-entry.ts creates a stub watcher that never builds** | CRITICAL GAP |
+
+The `watch-entry.ts` `createWatcher()` function has `void configs` (explicitly suppresses unused variable) and never triggers any build. It only emits a START event via `Promise.resolve()`. Meanwhile, `watcher.ts` has a `RollupWatcherImpl` class that does call `createIncrementalBuild`, but `watch-entry.ts` does not use it.
+
+---
+
+## 11. CLI
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| `rollup` binary in package.json `bin` | Yes | **No `bin` field in package.json** | CRITICAL GAP |
+| CLI argument parser | Full (all flags) | parse-cli.ts (maps flags to options) | DONE |
+| Config file loading | rollup.config.js/ts/mjs | config-loader.ts (findConfigFile, loadConfigFile) | DONE (standalone) |
+| Terminal output (colors, progress) | Full | terminal.ts (formatWarning, displayBundleStart, etc.) | DONE (standalone) |
+| Log filtering | --filterLogs | log-filter.ts | DONE (standalone) |
+| Stdin input | --stdin | stdin.ts (readStdin) | DONE (standalone) |
+| Environment variables | --environment | stdin.ts (handleEnvironment) | DONE (standalone) |
+| **Integration: CLI entry point that runs builds** | `#!/usr/bin/env node` main script | **No executable entry point** | CRITICAL GAP |
+
+The CLI module barrel (`cli/index.ts`) re-exports parsers and formatters but there is no `bin/steamroller.ts` or equivalent that wires `parseCli()` -> `rollup()` -> `generate()` -> write to disk.
+
+---
+
+## 12. Configuration
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| normalizeInputOptions | Full | normalize-input.ts | DONE |
+| normalizeOutputOptions | Full | normalize-output.ts | DONE |
+| validateInputOptions | Full | validate.ts | DONE |
+| validateOutputOptions | Full | validate.ts | DONE |
+| defineConfig() | Type helper | define-config.ts | DONE |
+| VERSION constant | Matches package.json | "0.0.0" (hardcoded) | DONE |
+
+---
+
+## 13. Testing
+
+| Category | Count | Quality |
+|----------|-------|---------|
+| Unit test files | 119 | Extensive coverage of individual modules |
+| Integration test files | 0 (tests/integration/.gitkeep only) | **No integration tests exist** |
+| E2E test files | 0 (tests/e2e/.gitkeep only) | **No E2E tests exist** |
+| Compat test files | 4 (harness, real-world, plugin-compat, build-tools, rollup-suite) | **Scaffolded but not functional** (real-world tests emit "not yet functional" warnings) |
+
+**Assessment**: Unit tests verify individual components in isolation. There are zero tests that verify `rollup()` produces a working bundle from actual JavaScript files on disk. The "compat" tests validate configuration structures, not actual bundling behavior.
+
+---
+
+## 14. Build and Distribution
+
+| Feature | Rollup v4 | Steamroller | Status |
+|---------|-----------|-------------|--------|
+| npm package with bin | Yes | **No `bin` field** | GAP |
+| CommonJS + ESM dual package | Yes | Configured in exports map | DONE |
+| TypeScript declarations | Yes | Configured (types field) | DONE |
+| Zero runtime dependencies | Rollup has native bindings | Zero devDeps only | DONE |
+| CI/CD pipeline | Full | **Not present** | GAP |
+| Pre-commit hooks | Yes | Scripts defined but no husky/lint-staged | PARTIAL |
+
+---
+
+## 15. Priority-Ordered Work Items
+
+### P0: Critical Integration (must be done for any functionality)
+
+1. **Wire module graph into rollup()**: Replace `const modules = []` in `src/rollup.ts` with actual calls to the resolver, loader, and graph builder. This requires:
+   - Creating a `resolveId` function that chains plugin hooks with `defaultResolve`
+   - Creating a `loadModule` function that chains plugin hooks with fs fallback via `ModuleLoader`
+   - Passing these to `buildModuleGraph()`
+   - Feeding the resulting `ModuleGraph` into `BuildState`
+
+2. **Wire code generation into generate()**: Replace the empty-chunk stub in `src/build/rollup-build.ts` with actual:
+   - Output option normalization
+   - Chunk assignment from the module graph
+   - Module rendering via `renderModule()` + MagicString
+   - Format wrapping via `getFormatWrapper()`
+   - Source map generation
+   - Output hook execution (renderStart through generateBundle)
+
+3. **Wire file writing into write()**: Replace the no-op `writeOutput()` with actual `fs.writeFile` calls, directory creation, and writeBundle hook execution.
+
+### P1: Essential for Real-World Use
+
+4. **Create CLI entry point**: Add `bin/steamroller.ts` (or `src/cli/main.ts`) that ties `parseCli` -> config loading -> `rollup()` -> `generate()`/`write()`. Add `"bin"` field to package.json.
+
+5. **Wire tree-shaking to module graph**: After graph construction, run the tree-shaking engine on the actual module scopes/bindings, feeding results into the `includedStatements` set for code generation.
+
+6. **Wire code splitting to generate()**: Use `detectSplitPoints()` + `assignChunks()` on the real module graph during output generation.
+
+7. **Wire all plugin hooks**: Connect the remaining 21 unconnected hooks at their proper lifecycle points:
+   - resolveId, load, transform, moduleParsed during graph build
+   - All 14 output hooks during generate/write
+   - watchChange, closeWatcher during watch mode
+
+8. **Wire watch mode**: Connect `watch-entry.ts` to `RollupWatcherImpl` so it actually triggers builds via the `rollup()` pipeline.
+
+### P2: Parity and Quality
+
+9. **Add integration tests**: Tests that call `rollup()` with real `.js` files and verify the output code is correct and executable.
+
+10. **Add E2E tests**: Tests that run the CLI binary against sample projects and verify outputs.
+
+11. **Add CI/CD pipeline**: GitHub Actions with lint -> typecheck -> test -> build stages.
+
+12. **TypeScript stripping**: Either add TypeScript parsing to the parser or document that TypeScript support requires a plugin (like Rollup's @rollup/plugin-typescript).
+
+13. **Variable deconfliction**: The current regex-based approach in `module-render.ts` will produce incorrect results for identifiers inside strings, comments, or property names. Needs scope-aware renaming.
+
+14. **Rollup compatibility test suite**: Port a subset of Rollup's own test fixtures to verify behavioral parity.
+
+15. **Performance benchmarking**: Ensure parsing, graph construction, and code generation are competitive with Rollup.
+
+### P3: Polish
+
+16. **Error messages**: Match Rollup's error codes and message formats for ecosystem compatibility.
+17. **Plugin filter system**: Wire the HookFilter matching for resolveId, load, transform hooks.
+18. **Asset emission**: Wire the emitted files system through generate/write.
+19. **Preserve modules mode**: `preserveModules` output option.
+20. **experimentalMinChunkSize**: Advanced splitting optimization.
+
+---
+
+## 16. Rollup Public API Parity Checklist
+
+| API | Steamroller | Functional? |
+|-----|-------------|-------------|
+| `rollup(options)` -> `RollupBuild` | Exported | Returns valid object but builds nothing |
+| `RollupBuild.generate(outputOptions)` | Implemented | Returns empty chunk |
+| `RollupBuild.write(outputOptions)` | Implemented | No-op (no files written) |
+| `RollupBuild.close()` | Implemented | Sets closed flag only |
+| `RollupBuild.cache` | Implemented | Always undefined |
+| `RollupBuild.watchFiles` | Implemented | Always empty |
+| `RollupBuild.getTimings` | Implemented | Returns empty object |
+| `watch(options)` -> `RollupWatcher` | Exported | Emits START event, never builds |
+| `RollupWatcher.on(event, listener)` | Implemented | Listeners registered but no real events |
+| `RollupWatcher.close()` | Implemented | Sets closed, fires close listeners |
+| `parseAst(code)` | Exported | **Fully functional** |
+| `parseAstAsync(code)` | Exported | **Fully functional** |
+| `defineConfig(options)` | Exported | **Fully functional** (type passthrough) |
+| `VERSION` | Exported | "0.0.0" |
+| CLI binary (`rollup -c`) | Not exported | **Does not exist** |
+
+---
+
+## 17. Conclusion
+
+Steamroller has impressive breadth: nearly every subsystem that Rollup provides has a corresponding implementation. The parser is production-quality. The format wrappers, tree-shaking engine, source map utilities, code splitting logic, and plugin driver are all well-structured with thorough unit tests.
+
+**The critical gap is integration.** The components were built by parallel agents and were never connected into a working pipeline. The `rollup()` function does not build a module graph. The `generate()` function does not run code generation. The `write()` function does not write files. The CLI does not exist as an executable.
+
+The path from current state to a functional bundler requires primarily **wiring work** -- connecting the existing components through the main pipeline in `rollup.ts` and `rollup-build.ts`. The individual components appear to have the right interfaces and data structures; the challenge is integration, error handling across boundaries, and end-to-end testing.
