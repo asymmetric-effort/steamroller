@@ -32,6 +32,7 @@ import type {
 } from "../formats/shared.js";
 import { getExportMode } from "../formats/shared.js";
 import { OutputHookExecutor } from "../plugins/output-hooks.js";
+import type { TreeShakeResult } from "../tree-shaking/engine.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -48,6 +49,13 @@ export interface BuildState {
   readonly getTimings?: () => SerializedTimings;
   /** Optional executor for firing output-phase plugin hooks (e.g. closeBundle). */
   readonly outputHookExecutor?: OutputHookExecutor;
+  /** Tree-shaking result summary, undefined if tree-shaking was disabled. */
+  readonly treeShakeResult?: TreeShakeResult;
+  /** Map from module ID to the set of included statement indices. */
+  readonly includedStatementsByModule?: ReadonlyMap<
+    string,
+    ReadonlySet<number>
+  >;
 }
 
 /**
@@ -132,17 +140,20 @@ const getExportBindings = (mod: Module): ReadonlyArray<ExportBinding> => {
 
 /**
  * Render a single module by removing internal import declarations and
- * stripping export keywords from declarations.
+ * stripping export keywords from declarations. When tree-shaking results
+ * are available, excluded statements are removed from the output.
  *
  * @param mod - The module to render
  * @param isEntry - Whether this module is the entry point
  * @param format - The output format
+ * @param includedStatements - Optional set of statement indices that tree-shaking included
  * @returns The rendered code string
  */
 const renderSingleModule = (
   mod: Module,
   isEntry: boolean,
   format: ModuleFormat,
+  includedStatements?: ReadonlySet<number>,
 ): string => {
   const ms = new MagicString(mod.code);
 
@@ -153,6 +164,17 @@ const renderSingleModule = (
   const body = mod.ast.body;
   for (let i = 0; i < body.length; i++) {
     const node = body[i];
+
+    // If tree-shaking is active and this statement is not included, remove it
+    // (but always keep import declarations — they are handled separately below)
+    if (
+      includedStatements !== undefined &&
+      !includedStatements.has(i) &&
+      node.type !== "ImportDeclaration"
+    ) {
+      ms.remove(node.start, node.end);
+      continue;
+    }
 
     if (node.type === "ImportDeclaration") {
       // Check if this is an internal import (should be removed)
@@ -279,12 +301,24 @@ const generateOutput = async (
     entryModule = modules[modules.length - 1];
   }
 
-  // Render each module
+  // Render each module, skipping those excluded by tree-shaking
   const renderedModules: Array<ConcatModule> = [];
   for (let i = 0; i < modules.length; i++) {
     const mod = modules[i];
+
+    // If tree-shaking ran and the module is not included, skip it entirely
+    // (unless it is the entry module — always render entries)
+    if (
+      state.includedStatementsByModule !== undefined &&
+      !mod.isIncluded &&
+      mod !== entryModule
+    ) {
+      continue;
+    }
+
     const isEntry = mod === entryModule;
-    const rendered = renderSingleModule(mod, isEntry, format);
+    const modStatements = state.includedStatementsByModule?.get(mod.id);
+    const rendered = renderSingleModule(mod, isEntry, format, modStatements);
     if (rendered.length > 0) {
       renderedModules.push({
         id: mod.id,
@@ -344,20 +378,26 @@ const generateOutput = async (
 
   // Build module info record
   const modulesRecord: Record<string, OutputRenderedModule> = {};
+  const removedBindingNames: ReadonlyArray<string> =
+    state.treeShakeResult?.removedBindings ?? [];
   for (let i = 0; i < modules.length; i++) {
     const mod = modules[i];
     const renderedExports: Array<string> = [];
+    const removedExports: Array<string> = [];
     for (let j = 0; j < mod.exports.length; j++) {
-      renderedExports.push(
-        mod.exports[j].exported ?? mod.exports[j].local ?? "",
-      );
+      const name = mod.exports[j].exported ?? mod.exports[j].local ?? "";
+      if (removedBindingNames.includes(name) && !mod.isEntry) {
+        removedExports.push(name);
+      } else {
+        renderedExports.push(name);
+      }
     }
     modulesRecord[mod.id] = {
-      code: mod.code,
+      code: mod.isIncluded ? mod.code : "",
       originalLength: mod.code.length,
-      removedExports: [],
+      removedExports,
       renderedExports,
-      renderedLength: mod.code.length,
+      renderedLength: mod.isIncluded ? mod.code.length : 0,
     };
   }
 

@@ -28,6 +28,43 @@ import type {
 import { buildModuleGraph } from "./module/graph.js";
 import { defaultResolve, isExternal } from "./module/resolve.js";
 import { createNodeFs } from "./fs/node-fs.js";
+import { analyzeScopes } from "./tree-shaking/scope.js";
+import type { Scope } from "./tree-shaking/scope.js";
+import type { Binding, Reference } from "./tree-shaking/scope.js";
+import { collectPureAnnotations } from "./tree-shaking/pure.js";
+import { analyzeModuleSideEffects } from "./tree-shaking/side-effects.js";
+import { treeShake } from "./tree-shaking/engine.js";
+import type {
+  ModuleBindingInfo,
+  StatementInfo,
+  TreeShakeResult,
+} from "./tree-shaking/engine.js";
+import { Module } from "./module/Module.js";
+import type * as AST from "./ast/types.js";
+
+/**
+ * Collect all references from a scope tree using iterative traversal.
+ * Walks the scope and all child scopes to gather every reference.
+ *
+ * @param rootScope - The root scope to traverse.
+ * @returns All references found in the scope tree.
+ */
+const collectAllReferences = (rootScope: Scope): ReadonlyArray<Reference> => {
+  const refs: Array<Reference> = [];
+  const scopeStack: Array<Scope> = [rootScope];
+
+  while (scopeStack.length > 0) {
+    const current = scopeStack.pop()!;
+    for (let i = 0; i < current.references.length; i++) {
+      refs.push(current.references[i]);
+    }
+    for (let i = current.children.length - 1; i >= 0; i--) {
+      scopeStack.push(current.children[i]);
+    }
+  }
+
+  return refs;
+};
 
 /**
  * Run the options hook across all plugins, allowing them to mutate options.
@@ -245,8 +282,262 @@ export const rollup = async (
     shimMissingExports: finalOptions.shimMissingExports,
   });
 
-  // Step 7: Tree-shaking is applied during module graph construction
-  // (handled by the tree-shaking engine when modules are loaded)
+  // Step 7: Tree-shaking
+  let treeShakeResult: TreeShakeResult | undefined;
+  const includedStatementsByModule = new Map<string, ReadonlySet<number>>();
+
+  if (finalOptions.treeshake !== false) {
+    const tsOpts = finalOptions.treeshake;
+    const modules = graph.modules.filter(
+      (m): m is Module => m instanceof Module,
+    );
+    const moduleInfos = new Map<Module, ModuleBindingInfo>();
+
+    // Build binding info for each module
+    for (let i = 0; i < modules.length; i++) {
+      const mod = modules[i];
+      if (mod.ast === null) {
+        continue;
+      }
+
+      const scope = analyzeScopes(mod.ast);
+      const pureAnnotations = collectPureAnnotations(mod.code, mod.ast);
+      const sideEffectAnalysis = analyzeModuleSideEffects(
+        mod.ast,
+        scope,
+        pureAnnotations,
+        tsOpts.manualPureFunctions as ReadonlyArray<string>,
+      );
+
+      // Build a set of side-effect node positions for quick lookup
+      const sideEffectNodeStarts = new Set<number>();
+      for (let se = 0; se < sideEffectAnalysis.sideEffectNodes.length; se++) {
+        sideEffectNodeStarts.add(sideEffectAnalysis.sideEffectNodes[se].start);
+      }
+
+      // Collect all resolved references from the scope (including child scopes)
+      const allReferences = collectAllReferences(scope);
+
+      // Build StatementInfo for each top-level statement
+      const statements: Array<StatementInfo> = [];
+      const sideEffectStatements: Array<StatementInfo> = [];
+      const body = mod.ast.body;
+      const allBindings = Array.from(scope.bindings.values());
+
+      for (let j = 0; j < body.length; j++) {
+        const node = body[j] as AST.BaseNode;
+
+        // Find bindings declared in this statement
+        const declaredBindings: Array<Binding> = [];
+        for (let k = 0; k < allBindings.length; k++) {
+          const binding = allBindings[k];
+          if (
+            binding.node.start >= node.start &&
+            binding.node.end <= node.end
+          ) {
+            declaredBindings.push(binding);
+          }
+        }
+
+        // Find all references within this statement and link them to declared
+        // bindings so the engine can trace from a binding's inclusion to
+        // all other bindings referenced in the same statement.
+        const stmtRefs: Array<Binding> = [];
+        for (let k = 0; k < allReferences.length; k++) {
+          const ref = allReferences[k];
+          if (
+            ref.node.start >= node.start &&
+            ref.node.end <= node.end &&
+            ref.binding !== null
+          ) {
+            stmtRefs.push(ref.binding);
+          }
+        }
+
+        // For each declared binding, add synthetic references to all other
+        // bindings referenced in the same statement, so the engine can
+        // discover them via reference tracing.
+        for (let k = 0; k < declaredBindings.length; k++) {
+          const decl = declaredBindings[k];
+          for (let r = 0; r < stmtRefs.length; r++) {
+            const target = stmtRefs[r];
+            if (target !== decl) {
+              decl.references.push({
+                name: target.name,
+                node: target.node,
+                scope: target.scope,
+                binding: target,
+              });
+            }
+          }
+        }
+
+        // Use analyzeModuleSideEffects result to determine side effects
+        const isSideEffectNode = sideEffectNodeStarts.has(node.start);
+
+        const stmtInfo: StatementInfo = {
+          index: j,
+          sideEffectResult: isSideEffectNode ? "definite" : "none",
+          declaredBindings,
+          isIncluded: false,
+        };
+
+        statements.push(stmtInfo);
+
+        if (isSideEffectNode) {
+          sideEffectStatements.push(stmtInfo);
+        }
+      }
+
+      moduleInfos.set(mod, {
+        module: mod,
+        scope,
+        bindings: allBindings,
+        sideEffectStatements,
+        statements,
+      });
+    }
+
+    // Build a map from module ID to Module for cross-module resolution
+    const moduleById = new Map<string, Module>();
+    for (let i = 0; i < modules.length; i++) {
+      moduleById.set(modules[i].id, modules[i]);
+    }
+
+    // Link import bindings to their corresponding export bindings across modules.
+    // When an import binding is included by the engine, it traces references;
+    // we add a synthetic reference from the import binding to the target
+    // module's export binding so the engine can cross module boundaries.
+    for (let i = 0; i < modules.length; i++) {
+      const mod = modules[i];
+      const info = moduleInfos.get(mod);
+      if (info === undefined) {
+        continue;
+      }
+
+      for (let j = 0; j < mod.imports.length; j++) {
+        const imp = mod.imports[j];
+
+        // Find the dependency module
+        let depModule: Module | undefined;
+        for (const dep of mod.dependencies) {
+          if (
+            dep instanceof Module &&
+            (dep.id.endsWith(imp.source) ||
+              dep.id.includes(imp.source.replace(/^\.\//, "")))
+          ) {
+            depModule = dep;
+            break;
+          }
+        }
+        if (depModule === undefined) {
+          continue;
+        }
+
+        const depInfo = moduleInfos.get(depModule);
+        if (depInfo === undefined) {
+          continue;
+        }
+
+        // For each specifier, link the local import binding to the
+        // exported binding in the dependency
+        for (let k = 0; k < imp.specifiers.length; k++) {
+          const spec = imp.specifiers[k];
+          const importBinding = info.scope.bindings.get(spec.local);
+          if (importBinding === undefined) {
+            continue;
+          }
+
+          // Find the exported binding name in the dep module
+          const importedName =
+            spec.imported === "default" ? "default" : spec.imported;
+          let targetBindingName: string | undefined;
+
+          for (let e = 0; e < depModule.exports.length; e++) {
+            const exp = depModule.exports[e];
+            const exportedName = exp.exported ?? exp.local ?? "";
+            if (exportedName === importedName) {
+              targetBindingName = exp.local ?? exp.exported ?? "";
+              break;
+            }
+          }
+
+          if (targetBindingName === undefined) {
+            continue;
+          }
+
+          const targetBinding = depInfo.scope.bindings.get(targetBindingName);
+          if (targetBinding === undefined) {
+            continue;
+          }
+
+          // Add a synthetic reference from the import binding to the
+          // target binding so the engine traces across modules
+          importBinding.references.push({
+            name: targetBinding.name,
+            node: targetBinding.node,
+            scope: targetBinding.scope,
+            binding: targetBinding,
+          });
+        }
+      }
+    }
+
+    // Determine entry exports
+    const entryExports = new Map<Module, ReadonlyArray<string>>();
+    for (let i = 0; i < modules.length; i++) {
+      const mod = modules[i];
+      if (mod.isEntry) {
+        const exportNames: Array<string> = [];
+        for (let j = 0; j < mod.exports.length; j++) {
+          const exp = mod.exports[j];
+          if (exp.type === "all") {
+            exportNames.push("*");
+          } else {
+            const name = exp.exported ?? exp.local ?? "";
+            if (name.length > 0) {
+              exportNames.push(name);
+            }
+          }
+        }
+        entryExports.set(mod, exportNames);
+      }
+    }
+
+    // Run tree-shaking engine
+    treeShakeResult = treeShake(
+      modules,
+      entryExports,
+      {
+        enabled: true,
+        moduleSideEffects: tsOpts.moduleSideEffects,
+        propertyReadSideEffects: tsOpts.propertyReadSideEffects,
+        tryCatchDeoptimization: tsOpts.tryCatchDeoptimization,
+        unknownGlobalSideEffects: tsOpts.unknownGlobalSideEffects,
+        manualPureFunctions: tsOpts.manualPureFunctions,
+      },
+      moduleInfos,
+    );
+
+    // Record which statement indices are included per module
+    for (const [mod, info] of moduleInfos) {
+      const included = new Set<number>();
+      for (let i = 0; i < info.statements.length; i++) {
+        if (info.statements[i].isIncluded) {
+          included.add(info.statements[i].index);
+        }
+      }
+      includedStatementsByModule.set(mod.id, included);
+    }
+  } else {
+    // Tree-shaking disabled: mark all modules as included
+    for (let i = 0; i < graph.modules.length; i++) {
+      const mod = graph.modules[i];
+      if (mod instanceof Module) {
+        mod.isIncluded = true;
+      }
+    }
+  }
 
   // Step 8: Run buildEnd hook
   await pluginDriver.hookParallel("buildEnd", []);
@@ -273,6 +564,8 @@ export const rollup = async (
     cache: finalOptions.cache || undefined,
     watchFiles,
     getTimings: finalOptions.perf ? () => ({}) : undefined,
+    treeShakeResult,
+    includedStatementsByModule,
   };
 
   return createRollupBuild(buildState);
