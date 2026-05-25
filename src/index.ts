@@ -12,3 +12,5 @@ export type { ModuleInfo, ResolvedId } from "./types.js";
 export { ModuleInfoRegistry } from "./module/module-info-registry.js";
 export { RollupCache, PluginCache } from "./module/cache.js";
 export type { CachedModuleData, RollupCacheData } from "./module/cache.js";
+export { createRollupBuild } from "./build/rollup-build.js";
+export type { BuildState } from "./build/rollup-build.js";
