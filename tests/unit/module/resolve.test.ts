@@ -4,26 +4,23 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { resolve } from "node:path";
 import {
   defaultResolve,
   isExternal,
   resolveId,
 } from "../../../src/module/resolve.js";
-import { normalizePath } from "../../../src/utils/path.js";
 import type {
   ResolveIdHook,
   ResolveOptions,
 } from "../../../src/module/resolve.js";
 import type { ResolvedId } from "../../../src/types.js";
 
-/** Helper to get platform-correct normalized absolute path */
-const np = (p: string): string => normalizePath(resolve(p));
+const isWindows = process.platform === "win32";
 
 describe("defaultResolve", () => {
   it("should return normalized path for absolute source", () => {
     const result = defaultResolve("/home/user/project/src/index.ts", undefined);
-    expect(result).toBe(np("/home/user/project/src/index.ts"));
+    expect(result).toBe("/home/user/project/src/index.ts");
   });
 
   it("should normalize backslashes in absolute paths", () => {
@@ -31,23 +28,29 @@ describe("defaultResolve", () => {
       "/home/user/project\\src\\index.ts",
       undefined,
     );
-    expect(result).toBe(np("/home/user/project/src/index.ts"));
+    expect(result).toBe("/home/user/project/src/index.ts");
   });
 
   it("should resolve relative path against importer directory", () => {
-    const result = defaultResolve(
-      "./utils.ts",
-      np("/home/user/project/src/index.ts"),
-    );
-    expect(result).toBe(np("/home/user/project/src/utils.ts"));
+    const base = isWindows
+      ? "C:/project/src/index.ts"
+      : "/project/src/index.ts";
+    const expected = isWindows
+      ? "C:/project/src/utils.ts"
+      : "/project/src/utils.ts";
+    const result = defaultResolve("./utils.ts", base);
+    expect(result).toBe(expected);
   });
 
   it("should resolve parent-relative path against importer", () => {
-    const result = defaultResolve(
-      "../lib/helper.ts",
-      np("/home/user/project/src/index.ts"),
-    );
-    expect(result).toBe(np("/home/user/project/lib/helper.ts"));
+    const base = isWindows
+      ? "C:/project/src/index.ts"
+      : "/project/src/index.ts";
+    const expected = isWindows
+      ? "C:/project/lib/helper.ts"
+      : "/project/lib/helper.ts";
+    const result = defaultResolve("../lib/helper.ts", base);
+    expect(result).toBe(expected);
   });
 
   it("should return null for relative path without importer", () => {
@@ -258,30 +261,42 @@ describe("resolveId", () => {
   });
 
   it("should fall through when plugin hook returns undefined", async () => {
+    const importer = isWindows
+      ? "C:/project/src/index.ts"
+      : "/project/src/index.ts";
+    const expected = isWindows
+      ? "C:/project/src/utils.ts"
+      : "/project/src/utils.ts";
     const hooks: ReadonlyArray<ResolveIdHook> = [() => undefined];
     const result = await resolveId(
       "./utils.ts",
-      "/project/src/index.ts",
+      importer,
       emptyOptions,
       hooks,
       false,
       emptyAttributes,
     );
-    expect(result!.id).toBe(np("/project/src/utils.ts"));
+    expect(result!.id).toBe(expected);
     expect(result!.resolvedBy).toBe("default");
   });
 
   it("should use default resolution for relative paths", async () => {
+    const importer = isWindows
+      ? "C:/project/src/index.ts"
+      : "/project/src/index.ts";
+    const expected = isWindows
+      ? "C:/project/src/lib/helper.ts"
+      : "/project/src/lib/helper.ts";
     const result = await resolveId(
       "./lib/helper.ts",
-      "/project/src/index.ts",
+      importer,
       emptyOptions,
       [],
       false,
       emptyAttributes,
     );
     expect(result).not.toBeNull();
-    expect(result!.id).toBe(np("/project/src/lib/helper.ts"));
+    expect(result!.id).toBe(expected);
     expect(result!.external).toBe(false);
     expect(result!.resolvedBy).toBe("default");
   });
@@ -471,6 +486,8 @@ describe("resolveId", () => {
   });
 
   it("should handle multiple plugin hooks where all return null", async () => {
+    const importer = isWindows ? "C:/project/index.ts" : "/project/index.ts";
+    const expected = isWindows ? "C:/project/file.ts" : "/project/file.ts";
     const hooks: ReadonlyArray<ResolveIdHook> = [
       () => null,
       () => null,
@@ -478,13 +495,13 @@ describe("resolveId", () => {
     ];
     const result = await resolveId(
       "./file.ts",
-      "/project/index.ts",
+      importer,
       emptyOptions,
       hooks,
       false,
       emptyAttributes,
     );
-    expect(result!.id).toBe(np("/project/file.ts"));
+    expect(result!.id).toBe(expected);
     expect(result!.resolvedBy).toBe("default");
   });
 
