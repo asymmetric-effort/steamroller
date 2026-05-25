@@ -5,16 +5,21 @@
  * Addresses issue #73.
  */
 
-import type { ExportBinding, FormatOptions, FormatWrapper, ImportBinding } from './shared.js';
+import type {
+  ExportBinding,
+  FormatOptions,
+  FormatWrapper,
+  ImportBinding,
+} from "./shared.js";
 
 /**
  * Generates an ES import statement for a single binding.
  */
 const formatImportStatement = (binding: ImportBinding): string => {
-  if (binding.imported === '*') {
+  if (binding.imported === "*") {
     return `import * as ${binding.local} from '${binding.source}';`;
   }
-  if (binding.imported === 'default') {
+  if (binding.imported === "default") {
     return `import ${binding.local} from '${binding.source}';`;
   }
   if (binding.imported === binding.local) {
@@ -27,7 +32,7 @@ const formatImportStatement = (binding: ImportBinding): string => {
  * Generates an ES export statement for a single binding.
  */
 const formatExportStatement = (binding: ExportBinding): string => {
-  if (binding.exported === 'default') {
+  if (binding.exported === "default") {
     return `export default ${binding.local};`;
   }
   if (binding.exported === binding.local) {
@@ -74,20 +79,20 @@ export const esFormat: FormatWrapper = {
 
   getExternalImportCode(bindings: ReadonlyArray<ImportBinding>): string {
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const statements = groupImportsBySource(bindings);
-    return statements.join('\n');
+    return statements.join("\n");
   },
 
   getExportCode(bindings: ReadonlyArray<ExportBinding>): string {
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const statements: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
       statements.push(formatExportStatement(bindings[i]));
     }
-    return statements.join('\n');
+    return statements.join("\n");
   },
 };

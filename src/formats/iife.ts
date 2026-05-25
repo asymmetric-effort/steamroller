@@ -5,7 +5,12 @@
  * Addresses issue #81.
  */
 
-import type { ExportBinding, FormatOptions, FormatWrapper, ImportBinding } from './shared.js';
+import type {
+  ExportBinding,
+  FormatOptions,
+  FormatWrapper,
+  ImportBinding,
+} from "./shared.js";
 
 /**
  * Resolves the global variable name for an external dependency.
@@ -18,7 +23,7 @@ const resolveGlobal = (
     return globals[source];
   }
   /* Fallback: use the source name as-is, replacing invalid chars */
-  return source.replace(/[^a-zA-Z0-9$_]/g, '_');
+  return source.replace(/[^a-zA-Z0-9$_]/g, "_");
 };
 
 /**
@@ -29,7 +34,7 @@ const getParams = (bindings: ReadonlyArray<ImportBinding>): string => {
   for (let i = 0; i < bindings.length; i++) {
     params.push(bindings[i].local);
   }
-  return params.join(', ');
+  return params.join(", ");
 };
 
 /**
@@ -43,7 +48,7 @@ const getArgs = (
   for (let i = 0; i < bindings.length; i++) {
     args.push(resolveGlobal(bindings[i].source, globals));
   }
-  return args.join(', ');
+  return args.join(", ");
 };
 
 /**
@@ -54,9 +59,9 @@ const getReturnStatement = (
   exportMode: string,
 ): string => {
   if (bindings.length === 0) {
-    return '';
+    return "";
   }
-  if (exportMode === 'default' && bindings.length === 1) {
+  if (exportMode === "default" && bindings.length === 1) {
     return `return ${bindings[0].local};`;
   }
   const props: Array<string> = [];
@@ -68,7 +73,7 @@ const getReturnStatement = (
       props.push(`  ${binding.exported}: ${binding.local}`);
     }
   }
-  return `return {\n${props.join(',\n')}\n};`;
+  return `return {\n${props.join(",\n")}\n};`;
 };
 
 /**
@@ -82,37 +87,37 @@ export const iifeFormat: FormatWrapper = {
     const imports = options.externalImports ?? [];
     const exportBindings = options.exportBindings ?? [];
     const strict = options.strict !== false;
-    const indent = options.indent ?? '  ';
+    const indent = options.indent ?? "  ";
 
     const params = getParams(imports);
     const args = getArgs(imports, globals);
 
     /* Indent the body */
-    const lines = code.split('\n');
+    const lines = code.split("\n");
     const indentedLines: Array<string> = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      indentedLines.push(line.length > 0 ? `${indent}${line}` : '');
+      indentedLines.push(line.length > 0 ? `${indent}${line}` : "");
     }
 
     const parts: Array<string> = [];
     if (strict) {
       parts.push(`${indent}'use strict';`);
-      parts.push('');
+      parts.push("");
     }
     parts.push(...indentedLines);
 
     /* Return statement for exports */
     const returnStmt = getReturnStatement(exportBindings, options.exports);
     if (returnStmt) {
-      parts.push('');
-      const returnLines = returnStmt.split('\n');
+      parts.push("");
+      const returnLines = returnStmt.split("\n");
       for (let i = 0; i < returnLines.length; i++) {
         parts.push(`${indent}${returnLines[i]}`);
       }
     }
 
-    const body = parts.join('\n');
+    const body = parts.join("\n");
     const funcExpr = `(function(${params}) {\n${body}\n})(${args})`;
 
     if (name) {
@@ -128,19 +133,19 @@ export const iifeFormat: FormatWrapper = {
   getExternalImportCode(bindings: ReadonlyArray<ImportBinding>): string {
     /* IIFE imports are passed as function arguments, no separate import code */
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const comments: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
       comments.push(`/* external: ${bindings[i].source} */`);
     }
-    return comments.join('\n');
+    return comments.join("\n");
   },
 
   getExportCode(bindings: ReadonlyArray<ExportBinding>): string {
     /* IIFE exports are handled via the return statement in wrapChunk */
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const statements: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
@@ -151,6 +156,6 @@ export const iifeFormat: FormatWrapper = {
         statements.push(`${binding.exported}: ${binding.local}`);
       }
     }
-    return `return { ${statements.join(', ')} };`;
+    return `return { ${statements.join(", ")} };`;
   },
 };

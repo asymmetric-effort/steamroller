@@ -5,7 +5,12 @@
  * Addresses issue #77.
  */
 
-import type { ExportBinding, FormatOptions, FormatWrapper, ImportBinding } from './shared.js';
+import type {
+  ExportBinding,
+  FormatOptions,
+  FormatWrapper,
+  ImportBinding,
+} from "./shared.js";
 
 /**
  * Resolves the global variable name for an external dependency.
@@ -17,7 +22,7 @@ const resolveGlobal = (
   if (globals && source in globals) {
     return globals[source];
   }
-  return source.replace(/[^a-zA-Z0-9$_]/g, '_');
+  return source.replace(/[^a-zA-Z0-9$_]/g, "_");
 };
 
 /**
@@ -28,16 +33,17 @@ const getAmdDeps = (
   forceJsExt: boolean,
 ): string => {
   if (bindings.length === 0) {
-    return '[]';
+    return "[]";
   }
   const deps: Array<string> = [];
   for (let i = 0; i < bindings.length; i++) {
-    const source = forceJsExt && !bindings[i].source.endsWith('.js')
-      ? `${bindings[i].source}.js`
-      : bindings[i].source;
+    const source =
+      forceJsExt && !bindings[i].source.endsWith(".js")
+        ? `${bindings[i].source}.js`
+        : bindings[i].source;
     deps.push(`'${source}'`);
   }
-  return `[${deps.join(', ')}]`;
+  return `[${deps.join(", ")}]`;
 };
 
 /**
@@ -45,13 +51,13 @@ const getAmdDeps = (
  */
 const getCjsRequires = (bindings: ReadonlyArray<ImportBinding>): string => {
   if (bindings.length === 0) {
-    return '';
+    return "";
   }
   const requires: Array<string> = [];
   for (let i = 0; i < bindings.length; i++) {
     requires.push(`require('${bindings[i].source}')`);
   }
-  return requires.join(', ');
+  return requires.join(", ");
 };
 
 /**
@@ -62,13 +68,13 @@ const getGlobalDeps = (
   globals: Readonly<Record<string, string>> | undefined,
 ): string => {
   if (bindings.length === 0) {
-    return '';
+    return "";
   }
   const refs: Array<string> = [];
   for (let i = 0; i < bindings.length; i++) {
     refs.push(`global.${resolveGlobal(bindings[i].source, globals)}`);
   }
-  return refs.join(', ');
+  return refs.join(", ");
 };
 
 /**
@@ -76,13 +82,13 @@ const getGlobalDeps = (
  */
 const getParams = (bindings: ReadonlyArray<ImportBinding>): string => {
   if (bindings.length === 0) {
-    return '';
+    return "";
   }
   const params: Array<string> = [];
   for (let i = 0; i < bindings.length; i++) {
     params.push(bindings[i].local);
   }
-  return params.join(', ');
+  return params.join(", ");
 };
 
 /**
@@ -93,9 +99,9 @@ const getExportBlock = (
   exportMode: string,
 ): string => {
   if (bindings.length === 0) {
-    return '';
+    return "";
   }
-  if (exportMode === 'default' && bindings.length === 1) {
+  if (exportMode === "default" && bindings.length === 1) {
     return `return ${bindings[0].local};`;
   }
   const props: Array<string> = [];
@@ -107,7 +113,7 @@ const getExportBlock = (
       props.push(`  ${binding.exported}: ${binding.local}`);
     }
   }
-  return `return {\n${props.join(',\n')}\n};`;
+  return `return {\n${props.join(",\n")}\n};`;
 };
 
 /**
@@ -115,52 +121,55 @@ const getExportBlock = (
  */
 export const umdFormat: FormatWrapper = {
   wrapChunk(code: string, options: FormatOptions): string {
-    const name = options.name ?? 'module';
+    const name = options.name ?? "module";
     const globals = options.globals;
     const amdId = options.amd?.id;
-    const amdDefine = options.amd?.define ?? 'define';
+    const amdDefine = options.amd?.define ?? "define";
     const forceJsExt = options.amd?.forceJsExtensionForImports ?? false;
     const imports = options.externalImports ?? [];
     const exportBindings = options.exportBindings ?? [];
     const strict = options.strict !== false;
-    const indent = options.indent ?? '  ';
+    const indent = options.indent ?? "  ";
 
     const params = getParams(imports);
     const amdDeps = getAmdDeps(imports, forceJsExt);
     const cjsRequires = getCjsRequires(imports);
     const globalDeps = getGlobalDeps(imports, globals);
-    const amdIdStr = amdId ? `'${amdId}', ` : '';
+    const amdIdStr = amdId ? `'${amdId}', ` : "";
 
     /* Indent body */
-    const lines = code.split('\n');
+    const lines = code.split("\n");
     const indentedLines: Array<string> = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      indentedLines.push(line.length > 0 ? `${indent}${indent}${line}` : '');
+      indentedLines.push(line.length > 0 ? `${indent}${indent}${line}` : "");
     }
 
     const bodyParts: Array<string> = [];
     if (strict) {
       bodyParts.push(`${indent}${indent}'use strict';`);
-      bodyParts.push('');
+      bodyParts.push("");
     }
     bodyParts.push(...indentedLines);
 
     const exportBlock = getExportBlock(exportBindings, options.exports);
     if (exportBlock) {
-      bodyParts.push('');
-      const exportLines = exportBlock.split('\n');
+      bodyParts.push("");
+      const exportLines = exportBlock.split("\n");
       for (let i = 0; i < exportLines.length; i++) {
         bodyParts.push(`${indent}${indent}${exportLines[i]}`);
       }
     }
 
-    const body = bodyParts.join('\n');
+    const body = bodyParts.join("\n");
 
-    const factoryParams = params ? `exports, ${params}` : 'exports';
-    const amdDepsWithExports = imports.length > 0 ? `['exports', ${amdDeps.slice(1)}` : `['exports']`;
-    const cjsArgs = cjsRequires ? `exports, ${cjsRequires}` : 'exports';
-    const globalArgs = globalDeps ? `(global.${name} = {}), ${globalDeps}` : `(global.${name} = {})`;
+    const factoryParams = params ? `exports, ${params}` : "exports";
+    const amdDepsWithExports =
+      imports.length > 0 ? `['exports', ${amdDeps.slice(1)}` : `['exports']`;
+    const cjsArgs = cjsRequires ? `exports, ${cjsRequires}` : "exports";
+    const globalArgs = globalDeps
+      ? `(global.${name} = {}), ${globalDeps}`
+      : `(global.${name} = {})`;
 
     const wrapper = [
       `(function(global, factory) {`,
@@ -172,29 +181,31 @@ export const umdFormat: FormatWrapper = {
       `}));`,
     ];
 
-    return wrapper.join('\n');
+    return wrapper.join("\n");
   },
 
   getExternalImportCode(bindings: ReadonlyArray<ImportBinding>): string {
     /* UMD imports are handled by the wrapper preamble */
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const deps: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
       deps.push(`'${bindings[i].source}'`);
     }
-    return `/* dependencies: ${deps.join(', ')} */`;
+    return `/* dependencies: ${deps.join(", ")} */`;
   },
 
   getExportCode(bindings: ReadonlyArray<ExportBinding>): string {
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const statements: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
-      statements.push(`exports.${bindings[i].exported} = ${bindings[i].local};`);
+      statements.push(
+        `exports.${bindings[i].exported} = ${bindings[i].local};`,
+      );
     }
-    return statements.join('\n');
+    return statements.join("\n");
   },
 };

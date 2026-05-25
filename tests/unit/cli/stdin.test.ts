@@ -149,7 +149,7 @@ describe("handleWaitForBundleInput", () => {
     const { handleWaitForBundleInput } =
       await import("../../../src/cli/stdin.js");
     const result = await handleWaitForBundleInput(
-      ["/home/claude/git/worktree-cli/package.json"],
+      [new URL("../../../package.json", import.meta.url).pathname],
       2,
     );
     expect(result).toBe(true);

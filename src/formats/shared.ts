@@ -5,10 +5,10 @@
  * Addresses issue #84.
  */
 
-import type { ModuleFormat } from '../types.js';
+import type { ModuleFormat } from "../types.js";
 
 /** Export mode determines how exports are rendered in the output. */
-export type ExportMode = 'named' | 'default' | 'none' | 'auto';
+export type ExportMode = "named" | "default" | "none" | "auto";
 
 /** Binding representing an imported identifier. */
 export interface ImportBinding {
@@ -45,7 +45,9 @@ export interface FormatOptions {
 /** Interface that each format wrapper must implement. */
 export interface FormatWrapper {
   readonly wrapChunk: (code: string, options: FormatOptions) => string;
-  readonly getExternalImportCode: (bindings: ReadonlyArray<ImportBinding>) => string;
+  readonly getExternalImportCode: (
+    bindings: ReadonlyArray<ImportBinding>,
+  ) => string;
   readonly getExportCode: (bindings: ReadonlyArray<ExportBinding>) => string;
 }
 
@@ -54,7 +56,10 @@ export interface FormatWrapper {
  */
 export const insertStrictMode = (code: string): string => {
   const trimmed = code.trimStart();
-  if (trimmed.startsWith("'use strict'") || trimmed.startsWith('"use strict"')) {
+  if (
+    trimmed.startsWith("'use strict'") ||
+    trimmed.startsWith('"use strict"')
+  ) {
     return code;
   }
   return `'use strict';\n\n${code}`;
@@ -78,12 +83,12 @@ export const generateSourceMapComment = (
 /** Maps output format to the conventional file extension. */
 export const getFileExtension = (format: ModuleFormat): string => {
   const extensionMap: Readonly<Record<ModuleFormat, string>> = {
-    es: '.mjs',
-    cjs: '.cjs',
-    amd: '.js',
-    iife: '.js',
-    umd: '.js',
-    system: '.js',
+    es: ".mjs",
+    cjs: ".cjs",
+    amd: ".js",
+    iife: ".js",
+    umd: ".js",
+    system: ".js",
   };
   return extensionMap[format];
 };
@@ -100,23 +105,23 @@ export const getExportMode = (
   name?: string,
 ): ExportMode => {
   if (exports.length === 0) {
-    return 'none';
+    return "none";
   }
 
-  const hasDefault = exports.includes('default');
-  const hasNamed = exports.some((e) => e !== 'default');
+  const hasDefault = exports.includes("default");
+  const hasNamed = exports.some((e) => e !== "default");
 
   if (hasDefault && !hasNamed) {
-    if ((format === 'iife' || format === 'umd') && name) {
-      return 'default';
+    if ((format === "iife" || format === "umd") && name) {
+      return "default";
     }
-    return 'default';
+    return "default";
   }
 
   if (hasNamed && !hasDefault) {
-    return 'named';
+    return "named";
   }
 
   /* Both default and named exports present */
-  return 'named';
+  return "named";
 };

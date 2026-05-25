@@ -5,14 +5,19 @@
  * Addresses issue #82.
  */
 
-import type { ExportBinding, FormatOptions, FormatWrapper, ImportBinding } from './shared.js';
+import type {
+  ExportBinding,
+  FormatOptions,
+  FormatWrapper,
+  ImportBinding,
+} from "./shared.js";
 
 /**
  * Generates the dependency array for System.register().
  */
 const getDepsArray = (bindings: ReadonlyArray<ImportBinding>): string => {
   if (bindings.length === 0) {
-    return '[]';
+    return "[]";
   }
   const sources = new Set<string>();
   for (let i = 0; i < bindings.length; i++) {
@@ -22,7 +27,7 @@ const getDepsArray = (bindings: ReadonlyArray<ImportBinding>): string => {
   for (const source of sources) {
     deps.push(`'${source}'`);
   }
-  return `[${deps.join(', ')}]`;
+  return `[${deps.join(", ")}]`;
 };
 
 /**
@@ -58,18 +63,22 @@ const getSetters = (
     const assignments: Array<string> = [];
     for (let i = 0; i < sourceBindings.length; i++) {
       const binding = sourceBindings[i];
-      if (binding.imported === '*') {
-        assignments.push(`${indent}${indent}${indent}${indent}${indent}${binding.local} = module;`);
+      if (binding.imported === "*") {
+        assignments.push(
+          `${indent}${indent}${indent}${indent}${indent}${binding.local} = module;`,
+        );
       } else {
-        assignments.push(`${indent}${indent}${indent}${indent}${indent}${binding.local} = module.${binding.imported};`);
+        assignments.push(
+          `${indent}${indent}${indent}${indent}${indent}${binding.local} = module.${binding.imported};`,
+        );
       }
     }
     setters.push(
-      `${indent}${indent}${indent}${indent}function(module) {\n${assignments.join('\n')}\n${indent}${indent}${indent}${indent}}`
+      `${indent}${indent}${indent}${indent}function(module) {\n${assignments.join("\n")}\n${indent}${indent}${indent}${indent}}`,
     );
   }
 
-  return `${indent}${indent}${indent}setters: [\n${setters.join(',\n')}\n${indent}${indent}${indent}],`;
+  return `${indent}${indent}${indent}setters: [\n${setters.join(",\n")}\n${indent}${indent}${indent}],`;
 };
 
 /**
@@ -80,11 +89,13 @@ const getExecuteBody = (
   exportBindings: ReadonlyArray<ExportBinding>,
   indent: string,
 ): string => {
-  const lines = code.split('\n');
+  const lines = code.split("\n");
   const indentedLines: Array<string> = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    indentedLines.push(line.length > 0 ? `${indent}${indent}${indent}${indent}${line}` : '');
+    indentedLines.push(
+      line.length > 0 ? `${indent}${indent}${indent}${indent}${line}` : "",
+    );
   }
 
   const parts: Array<string> = [];
@@ -92,14 +103,16 @@ const getExecuteBody = (
 
   /* Live export calls */
   if (exportBindings.length > 0) {
-    parts.push('');
+    parts.push("");
     for (let i = 0; i < exportBindings.length; i++) {
       const binding = exportBindings[i];
-      parts.push(`${indent}${indent}${indent}${indent}_export('${binding.exported}', ${binding.local});`);
+      parts.push(
+        `${indent}${indent}${indent}${indent}_export('${binding.exported}', ${binding.local});`,
+      );
     }
   }
 
-  return parts.join('\n');
+  return parts.join("\n");
 };
 
 /**
@@ -111,7 +124,7 @@ export const systemFormat: FormatWrapper = {
     const exportBindings = options.exportBindings ?? [];
     const systemNullSetters = options.systemNullSetters ?? true;
     const strict = options.strict !== false;
-    const indent = options.indent ?? '  ';
+    const indent = options.indent ?? "  ";
 
     const deps = getDepsArray(imports);
     const setters = getSetters(imports, systemNullSetters, indent);
@@ -122,14 +135,16 @@ export const systemFormat: FormatWrapper = {
     for (let i = 0; i < imports.length; i++) {
       varDecls.push(`${indent}${indent}${indent}var ${imports[i].local};`);
     }
-    const varBlock = varDecls.length > 0 ? `\n${varDecls.join('\n')}\n` : '';
+    const varBlock = varDecls.length > 0 ? `\n${varDecls.join("\n")}\n` : "";
 
-    const strictDirective = strict ? `\n${indent}${indent}${indent}'use strict';` : '';
+    const strictDirective = strict
+      ? `\n${indent}${indent}${indent}'use strict';`
+      : "";
 
     const wrapper = [
       `System.register(${deps}, (function(_export, _context) {`,
-      `${indent}${strictDirective ? `${indent}${indent}'use strict';` : ''}`,
-      `${indent}return {${varBlock ? `\n${varBlock}` : ''}`,
+      `${indent}${strictDirective ? `${indent}${indent}'use strict';` : ""}`,
+      `${indent}return {${varBlock ? `\n${varBlock}` : ""}`,
       setters,
       `${indent}${indent}${indent}execute: (function() {`,
       executeBody,
@@ -138,13 +153,13 @@ export const systemFormat: FormatWrapper = {
       `}));`,
     ];
 
-    return wrapper.join('\n');
+    return wrapper.join("\n");
   },
 
   getExternalImportCode(bindings: ReadonlyArray<ImportBinding>): string {
     /* SystemJS imports are handled via setters in System.register */
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const sources: Array<string> = [];
     const seen = new Set<string>();
@@ -154,17 +169,19 @@ export const systemFormat: FormatWrapper = {
         sources.push(`'${bindings[i].source}'`);
       }
     }
-    return `/* System deps: ${sources.join(', ')} */`;
+    return `/* System deps: ${sources.join(", ")} */`;
   },
 
   getExportCode(bindings: ReadonlyArray<ExportBinding>): string {
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const statements: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
-      statements.push(`_export('${bindings[i].exported}', ${bindings[i].local});`);
+      statements.push(
+        `_export('${bindings[i].exported}', ${bindings[i].local});`,
+      );
     }
-    return statements.join('\n');
+    return statements.join("\n");
   },
 };

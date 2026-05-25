@@ -5,7 +5,12 @@
  * Addresses issue #79.
  */
 
-import type { ExportBinding, FormatOptions, FormatWrapper, ImportBinding } from './shared.js';
+import type {
+  ExportBinding,
+  FormatOptions,
+  FormatWrapper,
+  ImportBinding,
+} from "./shared.js";
 
 /**
  * Generates the dependency array for the define() call.
@@ -15,16 +20,17 @@ const getDepsArray = (
   forceJsExt: boolean,
 ): string => {
   if (bindings.length === 0) {
-    return '[]';
+    return "[]";
   }
   const deps: Array<string> = [];
   for (let i = 0; i < bindings.length; i++) {
-    const source = forceJsExt && !bindings[i].source.endsWith('.js')
-      ? `${bindings[i].source}.js`
-      : bindings[i].source;
+    const source =
+      forceJsExt && !bindings[i].source.endsWith(".js")
+        ? `${bindings[i].source}.js`
+        : bindings[i].source;
     deps.push(`'${source}'`);
   }
-  return `[${deps.join(', ')}]`;
+  return `[${deps.join(", ")}]`;
 };
 
 /**
@@ -32,13 +38,13 @@ const getDepsArray = (
  */
 const getParams = (bindings: ReadonlyArray<ImportBinding>): string => {
   if (bindings.length === 0) {
-    return '';
+    return "";
   }
   const params: Array<string> = [];
   for (let i = 0; i < bindings.length; i++) {
     params.push(bindings[i].local);
   }
-  return params.join(', ');
+  return params.join(", ");
 };
 
 /**
@@ -50,9 +56,9 @@ const getReturnStatement = (
   indent: string,
 ): string => {
   if (bindings.length === 0) {
-    return '';
+    return "";
   }
-  if (exportMode === 'default' && bindings.length === 1) {
+  if (exportMode === "default" && bindings.length === 1) {
     return `\n${indent}return ${bindings[0].local};`;
   }
   const props: Array<string> = [];
@@ -64,7 +70,7 @@ const getReturnStatement = (
       props.push(`${indent}${indent}${binding.exported}: ${binding.local}`);
     }
   }
-  return `\n${indent}return {\n${props.join(',\n')}\n${indent}};`;
+  return `\n${indent}return {\n${props.join(",\n")}\n${indent}};`;
 };
 
 /**
@@ -73,34 +79,38 @@ const getReturnStatement = (
 export const amdFormat: FormatWrapper = {
   wrapChunk(code: string, options: FormatOptions): string {
     const amdId = options.amd?.id;
-    const defineFn = options.amd?.define ?? 'define';
+    const defineFn = options.amd?.define ?? "define";
     const forceJsExt = options.amd?.forceJsExtensionForImports ?? false;
     const imports = options.externalImports ?? [];
     const exportBindings = options.exportBindings ?? [];
     const strict = options.strict !== false;
-    const indent = options.indent ?? '  ';
+    const indent = options.indent ?? "  ";
 
     const deps = getDepsArray(imports, forceJsExt);
     const params = getParams(imports);
-    const idStr = amdId ? `'${amdId}', ` : '';
+    const idStr = amdId ? `'${amdId}', ` : "";
 
     /* Indent body */
-    const lines = code.split('\n');
+    const lines = code.split("\n");
     const indentedLines: Array<string> = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      indentedLines.push(line.length > 0 ? `${indent}${line}` : '');
+      indentedLines.push(line.length > 0 ? `${indent}${line}` : "");
     }
 
     const bodyParts: Array<string> = [];
     if (strict) {
       bodyParts.push(`${indent}'use strict';`);
-      bodyParts.push('');
+      bodyParts.push("");
     }
     bodyParts.push(...indentedLines);
 
-    const returnStmt = getReturnStatement(exportBindings, options.exports, indent);
-    const body = bodyParts.join('\n') + returnStmt;
+    const returnStmt = getReturnStatement(
+      exportBindings,
+      options.exports,
+      indent,
+    );
+    const body = bodyParts.join("\n") + returnStmt;
 
     return `${defineFn}(${idStr}${deps}, (function(${params}) {\n${body}\n}));`;
   },
@@ -108,18 +118,18 @@ export const amdFormat: FormatWrapper = {
   getExternalImportCode(bindings: ReadonlyArray<ImportBinding>): string {
     /* AMD imports are specified in the dependency array */
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const deps: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
       deps.push(`'${bindings[i].source}'`);
     }
-    return `/* AMD deps: ${deps.join(', ')} */`;
+    return `/* AMD deps: ${deps.join(", ")} */`;
   },
 
   getExportCode(bindings: ReadonlyArray<ExportBinding>): string {
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const props: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
@@ -130,6 +140,6 @@ export const amdFormat: FormatWrapper = {
         props.push(`${binding.exported}: ${binding.local}`);
       }
     }
-    return `return { ${props.join(', ')} };`;
+    return `return { ${props.join(", ")} };`;
   },
 };

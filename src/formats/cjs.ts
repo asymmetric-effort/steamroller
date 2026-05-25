@@ -5,8 +5,13 @@
  * Addresses issue #75.
  */
 
-import type { ExportBinding, FormatOptions, FormatWrapper, ImportBinding } from './shared.js';
-import { insertStrictMode } from './shared.js';
+import type {
+  ExportBinding,
+  FormatOptions,
+  FormatWrapper,
+  ImportBinding,
+} from "./shared.js";
+import { insertStrictMode } from "./shared.js";
 
 /**
  * Generates the __esModule interop property definition.
@@ -18,10 +23,10 @@ const getEsModuleDefinition = (): string =>
  * Generates a require() statement for a given import binding.
  */
 const formatRequireStatement = (binding: ImportBinding): string => {
-  if (binding.imported === '*') {
+  if (binding.imported === "*") {
     return `const ${binding.local} = require('${binding.source}');`;
   }
-  if (binding.imported === 'default') {
+  if (binding.imported === "default") {
     return `const ${binding.local} = require('${binding.source}');`;
   }
   if (binding.imported === binding.local) {
@@ -34,7 +39,7 @@ const formatRequireStatement = (binding: ImportBinding): string => {
  * Generates a CJS exports assignment for a given export binding.
  */
 const formatExportsAssignment = (binding: ExportBinding): string => {
-  if (binding.exported === 'default') {
+  if (binding.exported === "default") {
     return `exports.default = ${binding.local};`;
   }
   return `exports.${binding.exported} = ${binding.local};`;
@@ -76,13 +81,13 @@ export const cjsFormat: FormatWrapper = {
     const useStrict = options.strict !== false;
     if (useStrict) {
       parts.push("'use strict';");
-      parts.push('');
+      parts.push("");
     }
 
     /* __esModule marker for named/default exports */
-    if (options.exports === 'named' || options.exports === 'default') {
+    if (options.exports === "named" || options.exports === "default") {
       parts.push(getEsModuleDefinition());
-      parts.push('');
+      parts.push("");
     }
 
     /* External imports */
@@ -90,7 +95,7 @@ export const cjsFormat: FormatWrapper = {
       for (let i = 0; i < options.externalImports.length; i++) {
         parts.push(formatRequireStatement(options.externalImports[i]));
       }
-      parts.push('');
+      parts.push("");
     }
 
     /* Module body */
@@ -98,35 +103,35 @@ export const cjsFormat: FormatWrapper = {
 
     /* Export assignments */
     if (options.exportBindings && options.exportBindings.length > 0) {
-      parts.push('');
+      parts.push("");
       for (let i = 0; i < options.exportBindings.length; i++) {
         parts.push(formatExportsAssignment(options.exportBindings[i]));
       }
     }
 
-    const result = parts.join('\n');
+    const result = parts.join("\n");
     return useStrict ? result : insertStrictMode(result);
   },
 
   getExternalImportCode(bindings: ReadonlyArray<ImportBinding>): string {
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const statements: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
       statements.push(formatRequireStatement(bindings[i]));
     }
-    return statements.join('\n');
+    return statements.join("\n");
   },
 
   getExportCode(bindings: ReadonlyArray<ExportBinding>): string {
     if (bindings.length === 0) {
-      return '';
+      return "";
     }
     const statements: Array<string> = [];
     for (let i = 0; i < bindings.length; i++) {
       statements.push(formatExportsAssignment(bindings[i]));
     }
-    return statements.join('\n');
+    return statements.join("\n");
   },
 };

@@ -10,29 +10,33 @@ export type {
   FormatOptions,
   FormatWrapper,
   ImportBinding,
-} from './shared.js';
+} from "./shared.js";
 
 export {
   generateSourceMapComment,
   getExportMode,
   getFileExtension,
   insertStrictMode,
-} from './shared.js';
+} from "./shared.js";
 
-export { esFormat } from './es.js';
-export { cjsFormat, getInteropHelper, getInteropNamespaceHelper } from './cjs.js';
-export { iifeFormat } from './iife.js';
-export { umdFormat } from './umd.js';
-export { amdFormat } from './amd.js';
-export { systemFormat } from './system.js';
+export { esFormat } from "./es.js";
+export {
+  cjsFormat,
+  getInteropHelper,
+  getInteropNamespaceHelper,
+} from "./cjs.js";
+export { iifeFormat } from "./iife.js";
+export { umdFormat } from "./umd.js";
+export { amdFormat } from "./amd.js";
+export { systemFormat } from "./system.js";
 
-import { esFormat } from './es.js';
-import { cjsFormat } from './cjs.js';
-import { iifeFormat } from './iife.js';
-import { umdFormat } from './umd.js';
-import { amdFormat } from './amd.js';
-import { systemFormat } from './system.js';
-import type { FormatWrapper } from './shared.js';
+import { esFormat } from "./es.js";
+import { cjsFormat } from "./cjs.js";
+import { iifeFormat } from "./iife.js";
+import { umdFormat } from "./umd.js";
+import { amdFormat } from "./amd.js";
+import { systemFormat } from "./system.js";
+import type { FormatWrapper } from "./shared.js";
 
 /**
  * Returns the appropriate format wrapper for the given format string.
@@ -41,17 +45,17 @@ import type { FormatWrapper } from './shared.js';
  */
 export const getFormatWrapper = (format: string): FormatWrapper | undefined => {
   switch (format) {
-    case 'es':
+    case "es":
       return esFormat;
-    case 'cjs':
+    case "cjs":
       return cjsFormat;
-    case 'iife':
+    case "iife":
       return iifeFormat;
-    case 'umd':
+    case "umd":
       return umdFormat;
-    case 'amd':
+    case "amd":
       return amdFormat;
-    case 'system':
+    case "system":
       return systemFormat;
     default:
       return undefined;

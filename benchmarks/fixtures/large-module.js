@@ -1,8 +1,9 @@
-import { createCalculator, sum, average } from './medium-module.js';
+import { createCalculator, sum, average } from "./medium-module.js";
 
 export const fibonacci = (n) => {
   if (n <= 1) return n;
-  let a = 0, b = 1;
+  let a = 0,
+    b = 1;
   for (let i = 2; i <= n; i++) {
     const temp = b;
     b = a + b;
@@ -51,14 +52,14 @@ export const quickSort = (arr) => {
 };
 
 export const deepClone = (obj) => {
-  if (obj === null || typeof obj !== 'object') return obj;
+  if (obj === null || typeof obj !== "object") return obj;
   const stack = [{ source: obj, target: Array.isArray(obj) ? [] : {} }];
   const root = stack[0].target;
   while (stack.length > 0) {
     const { source, target } = stack.pop();
     for (const key of Object.keys(source)) {
       const val = source[key];
-      if (val !== null && typeof val === 'object') {
+      if (val !== null && typeof val === "object") {
         const child = Array.isArray(val) ? [] : {};
         target[key] = child;
         stack.push({ source: val, target: child });
