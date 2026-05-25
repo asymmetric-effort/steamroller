@@ -24,6 +24,9 @@
       "types": "./dist/parse-ast.d.ts"
     }
   },
+  "bin": {
+    "steamroller": "./dist/cli/main.js"
+  },
   "files": [
     "dist",
     "LICENSE",
