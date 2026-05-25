@@ -4,16 +4,21 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { resolve } from "node:path";
 import {
   defaultResolve,
   isExternal,
   resolveId,
 } from "../../../src/module/resolve.js";
+import { normalizePath } from "../../../src/utils/path.js";
 import type {
   ResolveIdHook,
   ResolveOptions,
 } from "../../../src/module/resolve.js";
 import type { ResolvedId } from "../../../src/types.js";
+
+/** Helper to get platform-correct normalized absolute path */
+const np = (p: string): string => normalizePath(resolve(p));
 
 describe("defaultResolve", () => {
   it("should return normalized path for absolute source", () => {
@@ -262,7 +267,7 @@ describe("resolveId", () => {
       false,
       emptyAttributes,
     );
-    expect(result!.id).toBe("/project/src/utils.ts");
+    expect(result!.id).toBe(np("/project/src/utils.ts"));
     expect(result!.resolvedBy).toBe("default");
   });
 
@@ -276,7 +281,7 @@ describe("resolveId", () => {
       emptyAttributes,
     );
     expect(result).not.toBeNull();
-    expect(result!.id).toBe("/project/src/lib/helper.ts");
+    expect(result!.id).toBe(np("/project/src/lib/helper.ts"));
     expect(result!.external).toBe(false);
     expect(result!.resolvedBy).toBe("default");
   });
@@ -479,7 +484,7 @@ describe("resolveId", () => {
       false,
       emptyAttributes,
     );
-    expect(result!.id).toBe("/project/file.ts");
+    expect(result!.id).toBe(np("/project/file.ts"));
     expect(result!.resolvedBy).toBe("default");
   });
 
