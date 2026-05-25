@@ -1,8 +1,8 @@
 /**
  * @module watch-entry
  * @description The watch() entry function that creates a RollupWatcher.
- * Normalizes options (supports array of configs), creates a watcher,
- * and returns it for event-driven rebuild workflows.
+ * Normalizes options (supports array of configs), delegates to
+ * RollupWatcherImpl for real builds, file watching, and incremental rebuilds.
  */
 
 import type {
@@ -11,6 +11,10 @@ import type {
   RollupWatcherEvent,
   ChangeEvent,
 } from "./types.js";
+import {
+  RollupWatcherImpl,
+  type RollupWatcherOptions,
+} from "./watch/watcher.js";
 
 /** Listener types for the watcher. */
 type EventListener = (event: RollupWatcherEvent) => void;
@@ -20,65 +24,68 @@ type ChangeListener = (
 ) => void;
 type SimpleListener = () => void;
 
-/** Internal watcher state. */
-interface WatcherState {
-  readonly eventListeners: Array<EventListener>;
-  readonly changeListeners: Array<ChangeListener>;
-  readonly restartListeners: Array<SimpleListener>;
-  readonly closeListeners: Array<SimpleListener>;
-  closed: boolean;
-}
+/**
+ * Converts a RollupOptions config into RollupWatcherOptions
+ * suitable for constructing a RollupWatcherImpl.
+ *
+ * @param config - A single RollupOptions config
+ * @returns RollupWatcherOptions for the watcher
+ */
+const toWatcherOptions = (config: RollupOptions): RollupWatcherOptions => ({
+  input: config,
+  output: config.output,
+  buildDelay: 50,
+  clearScreen: false,
+});
 
 /**
- * Create a RollupWatcher instance from normalized configs.
+ * Creates an adapter around one or more RollupWatcherImpl instances
+ * that conforms to the RollupWatcher interface. Each config gets its
+ * own RollupWatcherImpl. The adapter fans out listener registration
+ * and close() to all underlying watchers.
  *
- * @param configs - Array of normalized rollup configs.
- * @returns A RollupWatcher with on/close methods.
+ * @param configs - Normalized array of RollupOptions
+ * @returns A RollupWatcher that delegates to real build watchers
  */
-const createWatcher = (
+const createWatcherAdapter = (
   configs: ReadonlyArray<RollupOptions>,
 ): RollupWatcher => {
-  const state: WatcherState = {
-    eventListeners: [],
-    changeListeners: [],
-    restartListeners: [],
-    closeListeners: [],
-    closed: false,
-  };
-
-  // Suppress unused variable lint — configs will be used in future file-watching implementation
-  void configs;
+  const impls: Array<RollupWatcherImpl> = [];
+  for (let i = 0; i < configs.length; i++) {
+    impls.push(new RollupWatcherImpl(toWatcherOptions(configs[i])));
+  }
 
   const watcher: RollupWatcher = {
     close: (): void => {
-      state.closed = true;
-      for (let i = 0; i < state.closeListeners.length; i++) {
-        state.closeListeners[i]();
+      for (let i = 0; i < impls.length; i++) {
+        impls[i].close();
       }
     },
     on: ((
       event: string,
       listener: EventListener | ChangeListener | SimpleListener,
     ): RollupWatcher => {
-      if (event === "event") {
-        state.eventListeners.push(listener as EventListener);
-      } else if (event === "change") {
-        state.changeListeners.push(listener as ChangeListener);
-      } else if (event === "restart") {
-        state.restartListeners.push(listener as SimpleListener);
-      } else if (event === "close") {
-        state.closeListeners.push(listener as SimpleListener);
+      for (let i = 0; i < impls.length; i++) {
+        if (event === "event") {
+          impls[i].on("event", listener as EventListener);
+        } else if (event === "change") {
+          impls[i].on("change", listener as ChangeListener);
+        } else if (event === "restart") {
+          impls[i].on("restart", listener as SimpleListener);
+        } else if (event === "close") {
+          impls[i].on("close", listener as SimpleListener);
+        }
       }
       return watcher;
     }) as RollupWatcher["on"],
   };
 
-  // Emit initial START event asynchronously
+  // Kick off initial builds asynchronously so listeners registered
+  // right after watch() can observe the first build events.
   Promise.resolve().then(() => {
-    if (!state.closed) {
-      const startEvent: RollupWatcherEvent = { code: "START" };
-      for (let i = 0; i < state.eventListeners.length; i++) {
-        state.eventListeners[i](startEvent);
+    for (let i = 0; i < impls.length; i++) {
+      if (!impls[i].isClosed) {
+        void impls[i].start();
       }
     }
   });
@@ -91,9 +98,9 @@ const createWatcher = (
  *
  * Steps:
  * 1. Normalize options (support array of configs)
- * 2. Create RollupWatcher
- * 3. Start watching
- * 4. Return watcher
+ * 2. Create RollupWatcherImpl instances for each config
+ * 3. Start watching and building
+ * 4. Return a unified watcher adapter
  *
  * @param rawOptions - A single RollupOptions or array of RollupOptions.
  * @returns A RollupWatcher instance.
@@ -101,11 +108,9 @@ const createWatcher = (
 export const watch = (
   rawOptions: RollupOptions | ReadonlyArray<RollupOptions>,
 ): RollupWatcher => {
-  // Step 1: Normalize to array of configs
   const configs: ReadonlyArray<RollupOptions> = Array.isArray(rawOptions)
     ? rawOptions
     : [rawOptions];
 
-  // Step 2 & 3: Create watcher (starts watching immediately)
-  return createWatcher(configs);
+  return createWatcherAdapter(configs);
 };
