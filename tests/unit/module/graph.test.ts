@@ -742,4 +742,90 @@ describe("buildModuleGraph", () => {
     expect(ext.importers.has(entry)).toBe(true);
     expect(entry.dependencies.has(ext)).toBe(true);
   });
+
+  it("calls resolveDynamicImport for dynamic imports before resolveId", async () => {
+    const moduleMap = new Map([
+      ["./entry.ts", {}],
+      ["./dynamic.ts", {}],
+    ]);
+    const astMap = new Map([
+      ["./entry.ts", createAst([], [], ["./dynamic.ts"])],
+      ["./dynamic.ts", createAst()],
+    ]);
+
+    const resolveDynamicImportFn = vi.fn().mockResolvedValue(null);
+
+    const result = await buildModuleGraph({
+      input: "./entry.ts",
+      resolveId: createResolver(moduleMap),
+      resolveDynamicImport: resolveDynamicImportFn,
+      loadModule: createLoader(astMap),
+      onWarning: vi.fn(),
+    });
+
+    expect(resolveDynamicImportFn).toHaveBeenCalledWith(
+      "./dynamic.ts",
+      "./entry.ts",
+    );
+    // Module should still be resolved via resolveId fallback
+    expect(result.modules.length).toBe(2);
+  });
+
+  it("uses resolveDynamicImport string result directly", async () => {
+    const moduleMap = new Map([
+      ["./entry.ts", {}],
+      ["./resolved-dynamic.ts", {}],
+    ]);
+    const astMap = new Map([
+      ["./entry.ts", createAst([], [], ["./dynamic.ts"])],
+      ["./resolved-dynamic.ts", createAst()],
+    ]);
+
+    const resolveDynamicImportFn = vi
+      .fn()
+      .mockResolvedValue("./resolved-dynamic.ts");
+
+    const result = await buildModuleGraph({
+      input: "./entry.ts",
+      resolveId: createResolver(moduleMap),
+      resolveDynamicImport: resolveDynamicImportFn,
+      loadModule: createLoader(astMap),
+      onWarning: vi.fn(),
+    });
+
+    // Should resolve to the string returned by resolveDynamicImport
+    const ids = result.modules.map((m) => m.id);
+    expect(ids).toContain("./resolved-dynamic.ts");
+  });
+
+  it("uses resolveDynamicImport object result directly", async () => {
+    const moduleMap = new Map([
+      ["./entry.ts", {}],
+      ["./obj-resolved.ts", {}],
+    ]);
+    const astMap = new Map([
+      ["./entry.ts", createAst([], [], ["./dynamic.ts"])],
+      ["./obj-resolved.ts", createAst()],
+    ]);
+
+    const resolveDynamicImportFn = vi.fn().mockResolvedValue({
+      id: "./obj-resolved.ts",
+      external: false,
+      moduleSideEffects: true,
+      syntheticNamedExports: false,
+      meta: {},
+      resolvedBy: "plugin",
+    });
+
+    const result = await buildModuleGraph({
+      input: "./entry.ts",
+      resolveId: createResolver(moduleMap),
+      resolveDynamicImport: resolveDynamicImportFn,
+      loadModule: createLoader(astMap),
+      onWarning: vi.fn(),
+    });
+
+    const ids = result.modules.map((m) => m.id);
+    expect(ids).toContain("./obj-resolved.ts");
+  });
 });

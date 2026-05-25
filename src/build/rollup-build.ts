@@ -16,7 +16,12 @@ import type {
   SerializedTimings,
   ModuleFormat,
   RenderedModule as OutputRenderedModule,
+  NormalizedInputOptions,
+  NormalizedOutputOptions,
+  RenderedChunk,
+  OutputBundle,
 } from "../types.js";
+import { normalizeOutputOptions } from "../config/normalize-output.js";
 import { Module } from "../module/Module.js";
 import { ExternalModule } from "../module/ExternalModule.js";
 import { MagicString } from "../sourcemap/magic-string.js";
@@ -49,6 +54,8 @@ export interface BuildState {
   readonly getTimings?: () => SerializedTimings;
   /** Optional executor for firing output-phase plugin hooks (e.g. closeBundle). */
   readonly outputHookExecutor?: OutputHookExecutor;
+  /** Normalized input options, needed for output hooks like renderStart. */
+  readonly inputOptions?: NormalizedInputOptions;
   /** Tree-shaking result summary, undefined if tree-shaking was disabled. */
   readonly treeShakeResult?: TreeShakeResult;
   /** Map from module ID to the set of included statement indices. */
@@ -257,9 +264,35 @@ const renderSingleModule = (
 const generateOutput = async (
   state: BuildState,
   options: OutputOptions,
+  isWrite: boolean = false,
 ): Promise<RollupOutput> => {
   const fileName = options.file ?? "bundle.js";
   const format: ModuleFormat = (options.format ?? "es") as ModuleFormat;
+  const hookExecutor = state.outputHookExecutor;
+
+  // Normalize output options for hooks that need NormalizedOutputOptions
+  const normalizedOutput: NormalizedOutputOptions | undefined =
+    state.inputOptions !== undefined
+      ? normalizeOutputOptions(options, state.inputOptions)
+      : undefined;
+
+  // Fire renderStart hook
+  if (
+    hookExecutor !== undefined &&
+    normalizedOutput !== undefined &&
+    state.inputOptions !== undefined
+  ) {
+    try {
+      await hookExecutor.renderStart(normalizedOutput, state.inputOptions);
+    } catch (renderStartError: unknown) {
+      await hookExecutor.renderError(
+        renderStartError instanceof Error
+          ? renderStartError
+          : new Error(String(renderStartError)),
+      );
+      throw renderStartError;
+    }
+  }
 
   const modules = state.modules as ReadonlyArray<Module>;
 
@@ -286,6 +319,13 @@ const generateOutput = async (
       modules: {},
       referencedFiles: [],
     };
+
+    // Fire generateBundle even for empty output
+    if (hookExecutor !== undefined && normalizedOutput !== undefined) {
+      const bundle: OutputBundle = { [fileName]: chunk };
+      await hookExecutor.generateBundle(normalizedOutput, bundle, isWrite);
+    }
+
     return { output: [chunk] };
   }
 
@@ -301,135 +341,169 @@ const generateOutput = async (
     entryModule = modules[modules.length - 1];
   }
 
-  // Render each module, skipping those excluded by tree-shaking
-  const renderedModules: Array<ConcatModule> = [];
-  for (let i = 0; i < modules.length; i++) {
-    const mod = modules[i];
+  try {
+    // Render each module, skipping those excluded by tree-shaking
+    const renderedModules: Array<ConcatModule> = [];
+    for (let i = 0; i < modules.length; i++) {
+      const mod = modules[i];
 
-    // If tree-shaking ran and the module is not included, skip it entirely
-    // (unless it is the entry module — always render entries)
-    if (
-      state.includedStatementsByModule !== undefined &&
-      !mod.isIncluded &&
-      mod !== entryModule
-    ) {
-      continue;
-    }
+      // If tree-shaking ran and the module is not included, skip it entirely
+      // (unless it is the entry module — always render entries)
+      if (
+        state.includedStatementsByModule !== undefined &&
+        !mod.isIncluded &&
+        mod !== entryModule
+      ) {
+        continue;
+      }
 
-    const isEntry = mod === entryModule;
-    const modStatements = state.includedStatementsByModule?.get(mod.id);
-    const rendered = renderSingleModule(mod, isEntry, format, modStatements);
-    if (rendered.length > 0) {
-      renderedModules.push({
-        id: mod.id,
-        code: rendered,
-      });
-    }
-  }
-
-  // Concatenate modules
-  const concatenated = concatenateModules(renderedModules);
-
-  // Collect external imports and export bindings from entry
-  const externalImports = getExternalImportBindings(entryModule);
-  const exportBindings = getExportBindings(entryModule);
-  const exportNames: Array<string> = [];
-  for (let i = 0; i < exportBindings.length; i++) {
-    exportNames.push(exportBindings[i].exported);
-  }
-
-  // Get external module IDs for imports array
-  const externalImportSources: Array<string> = [];
-  const importedBindingsRecord: Record<string, Array<string>> = {};
-  for (let i = 0; i < externalImports.length; i++) {
-    const imp = externalImports[i];
-    if (!externalImportSources.includes(imp.source)) {
-      externalImportSources.push(imp.source);
-    }
-    if (importedBindingsRecord[imp.source] === undefined) {
-      importedBindingsRecord[imp.source] = [];
-    }
-    importedBindingsRecord[imp.source].push(imp.imported);
-  }
-
-  // Apply format wrapper
-  const formatWrapper = getFormatWrapper(format);
-  const exports = getExportMode(exportNames, format);
-  const formatOptions: FormatOptions = {
-    exports,
-    strict: true,
-    externalImports,
-    exportBindings,
-  };
-
-  const wrappedCode =
-    formatWrapper !== undefined
-      ? formatWrapper.wrapChunk(concatenated.code, formatOptions)
-      : concatenated.code;
-
-  // Apply addons (banner/footer/intro/outro)
-  const resolvedAddons = await resolveAllAddons({
-    banner: options.banner as AddonValue,
-    footer: options.footer as AddonValue,
-    intro: options.intro as AddonValue,
-    outro: options.outro as AddonValue,
-  });
-  const finalCode = applyAddons(wrappedCode, resolvedAddons);
-
-  // Build module info record
-  const modulesRecord: Record<string, OutputRenderedModule> = {};
-  const removedBindingNames: ReadonlyArray<string> =
-    state.treeShakeResult?.removedBindings ?? [];
-  for (let i = 0; i < modules.length; i++) {
-    const mod = modules[i];
-    const renderedExports: Array<string> = [];
-    const removedExports: Array<string> = [];
-    for (let j = 0; j < mod.exports.length; j++) {
-      const name = mod.exports[j].exported ?? mod.exports[j].local ?? "";
-      if (removedBindingNames.includes(name) && !mod.isEntry) {
-        removedExports.push(name);
-      } else {
-        renderedExports.push(name);
+      const isEntry = mod === entryModule;
+      const modStatements = state.includedStatementsByModule?.get(mod.id);
+      const rendered = renderSingleModule(mod, isEntry, format, modStatements);
+      if (rendered.length > 0) {
+        renderedModules.push({
+          id: mod.id,
+          code: rendered,
+        });
       }
     }
-    modulesRecord[mod.id] = {
-      code: mod.isIncluded ? mod.code : "",
-      originalLength: mod.code.length,
-      removedExports,
-      renderedExports,
-      renderedLength: mod.isIncluded ? mod.code.length : 0,
+
+    // Concatenate modules
+    const concatenated = concatenateModules(renderedModules);
+
+    // Collect external imports and export bindings from entry
+    const externalImports = getExternalImportBindings(entryModule);
+    const exportBindings = getExportBindings(entryModule);
+    const exportNames: Array<string> = [];
+    for (let i = 0; i < exportBindings.length; i++) {
+      exportNames.push(exportBindings[i].exported);
+    }
+
+    // Get external module IDs for imports array
+    const externalImportSources: Array<string> = [];
+    const importedBindingsRecord: Record<string, Array<string>> = {};
+    for (let i = 0; i < externalImports.length; i++) {
+      const imp = externalImports[i];
+      if (!externalImportSources.includes(imp.source)) {
+        externalImportSources.push(imp.source);
+      }
+      if (importedBindingsRecord[imp.source] === undefined) {
+        importedBindingsRecord[imp.source] = [];
+      }
+      importedBindingsRecord[imp.source].push(imp.imported);
+    }
+
+    // Apply format wrapper
+    const formatWrapper = getFormatWrapper(format);
+    const exports = getExportMode(exportNames, format);
+    const formatOptions: FormatOptions = {
+      exports,
+      strict: true,
+      externalImports,
+      exportBindings,
     };
+
+    const wrappedCode =
+      formatWrapper !== undefined
+        ? formatWrapper.wrapChunk(concatenated.code, formatOptions)
+        : concatenated.code;
+
+    // Apply addons (banner/footer/intro/outro)
+    const resolvedAddons = await resolveAllAddons({
+      banner: options.banner as AddonValue,
+      footer: options.footer as AddonValue,
+      intro: options.intro as AddonValue,
+      outro: options.outro as AddonValue,
+    });
+    const finalCode = applyAddons(wrappedCode, resolvedAddons);
+
+    // Build module info record
+    const modulesRecord: Record<string, OutputRenderedModule> = {};
+    const removedBindingNames: ReadonlyArray<string> =
+      state.treeShakeResult?.removedBindings ?? [];
+    for (let i = 0; i < modules.length; i++) {
+      const mod = modules[i];
+      const renderedExports: Array<string> = [];
+      const removedExports: Array<string> = [];
+      for (let j = 0; j < mod.exports.length; j++) {
+        const name = mod.exports[j].exported ?? mod.exports[j].local ?? "";
+        if (removedBindingNames.includes(name) && !mod.isEntry) {
+          removedExports.push(name);
+        } else {
+          renderedExports.push(name);
+        }
+      }
+      modulesRecord[mod.id] = {
+        code: mod.isIncluded ? mod.code : "",
+        originalLength: mod.code.length,
+        removedExports,
+        renderedExports,
+        renderedLength: mod.isIncluded ? mod.code.length : 0,
+      };
+    }
+
+    // Collect moduleIds
+    const moduleIds: Array<string> = [];
+    for (let i = 0; i < modules.length; i++) {
+      moduleIds.push(modules[i].id);
+    }
+
+    // Build the rendered chunk info for hook arguments
+    const renderedChunkInfo: RenderedChunk = {
+      type: "chunk",
+      dynamicImports: [...entryModule.dynamicImports],
+      exports: exportNames,
+      facadeModuleId: entryModule.id,
+      fileName,
+      implicitlyLoadedBefore: [],
+      importedBindings: importedBindingsRecord,
+      imports: externalImportSources,
+      isDynamicEntry: false,
+      isEntry: true,
+      isImplicitEntry: false,
+      moduleIds,
+      modules: modulesRecord,
+      name: "bundle",
+      referencedFiles: [],
+    };
+
+    // Fire renderChunk hook for each chunk
+    let chunkCode = finalCode;
+    if (hookExecutor !== undefined && normalizedOutput !== undefined) {
+      const renderChunkResult = await hookExecutor.renderChunk(
+        chunkCode,
+        renderedChunkInfo,
+        normalizedOutput,
+      );
+      chunkCode = renderChunkResult.code;
+    }
+
+    const chunk: OutputChunk = {
+      ...renderedChunkInfo,
+      code: chunkCode,
+      preliminaryFileName: fileName,
+      sourcemapFileName: null,
+      map: null,
+    };
+
+    // Fire generateBundle hook
+    if (hookExecutor !== undefined && normalizedOutput !== undefined) {
+      const bundle: OutputBundle = { [fileName]: chunk };
+      await hookExecutor.generateBundle(normalizedOutput, bundle, isWrite);
+    }
+
+    return { output: [chunk] };
+  } catch (renderError: unknown) {
+    // Fire renderError hook on failure
+    if (hookExecutor !== undefined) {
+      await hookExecutor.renderError(
+        renderError instanceof Error
+          ? renderError
+          : new Error(String(renderError)),
+      );
+    }
+    throw renderError;
   }
-
-  // Collect moduleIds
-  const moduleIds: Array<string> = [];
-  for (let i = 0; i < modules.length; i++) {
-    moduleIds.push(modules[i].id);
-  }
-
-  const chunk: OutputChunk = {
-    type: "chunk",
-    code: finalCode,
-    fileName,
-    preliminaryFileName: fileName,
-    sourcemapFileName: null,
-    map: null,
-    exports: exportNames,
-    facadeModuleId: entryModule.id,
-    isDynamicEntry: false,
-    isEntry: true,
-    isImplicitEntry: false,
-    moduleIds,
-    name: "bundle",
-    dynamicImports: [...entryModule.dynamicImports],
-    implicitlyLoadedBefore: [],
-    importedBindings: importedBindingsRecord,
-    imports: externalImportSources,
-    modules: modulesRecord,
-    referencedFiles: [],
-  };
-
-  return { output: [chunk] };
 };
 
 /**
@@ -442,6 +516,7 @@ const generateOutput = async (
 const writeOutput = async (
   output: RollupOutput,
   options: OutputOptions,
+  state: BuildState,
 ): Promise<void> => {
   const dir = options.dir ?? (options.file ? dirname(options.file) : "dist");
 
@@ -467,6 +542,26 @@ const writeOutput = async (
         await writeFile(filePath, item.source);
       }
     }
+  }
+
+  // Fire writeBundle hook after writing to disk
+  if (
+    state.outputHookExecutor !== undefined &&
+    state.inputOptions !== undefined
+  ) {
+    const normalizedOutput = normalizeOutputOptions(
+      options,
+      state.inputOptions,
+    );
+    const bundleRecord: Record<string, OutputChunk> = {};
+    for (let i = 0; i < output.output.length; i++) {
+      const item = output.output[i];
+      if (item.type === "chunk") {
+        bundleRecord[item.fileName] = item;
+      }
+    }
+    const bundle: OutputBundle = bundleRecord;
+    await state.outputHookExecutor.writeBundle(normalizedOutput, bundle);
   }
 };
 
@@ -506,15 +601,15 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
       if (internal.closed) {
         throw new Error("Bundle is already closed");
       }
-      return generateOutput(state, outputOptions);
+      return generateOutput(state, outputOptions, false);
     },
 
     async write(outputOptions: OutputOptions): Promise<RollupOutput> {
       if (internal.closed) {
         throw new Error("Bundle is already closed");
       }
-      const output = await generateOutput(state, outputOptions);
-      await writeOutput(output, outputOptions);
+      const output = await generateOutput(state, outputOptions, true);
+      await writeOutput(output, outputOptions, state);
       return output;
     },
 

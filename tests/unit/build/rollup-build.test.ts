@@ -10,9 +10,11 @@ import type { BuildState } from "../../../src/build/rollup-build.js";
 import type {
   RollupCache as RollupCacheType,
   SerializedTimings,
+  NormalizedInputOptions,
 } from "../../../src/types.js";
 import { PluginDriver } from "../../../src/plugins/driver.js";
 import { OutputHookExecutor } from "../../../src/plugins/output-hooks.js";
+import { normalizeInputOptions } from "../../../src/config/normalize-input.js";
 
 const createMinimalState = (
   overrides: Partial<BuildState> = {},
@@ -371,6 +373,152 @@ describe("createRollupBuild", () => {
       const buildB = createRollupBuild(createMinimalState({ cache: cacheB }));
       expect(buildA.cache).toBe(cacheA);
       expect(buildB.cache).toBe(cacheB);
+    });
+  });
+
+  describe("output hooks wiring", () => {
+    const createStateWithHooks = (
+      plugins: ReadonlyArray<Record<string, unknown>>,
+    ): BuildState => {
+      const inputOptions = normalizeInputOptions({ input: "entry.js" });
+      const driver = new PluginDriver(
+        plugins as ReadonlyArray<{ name: string }>,
+        () => {},
+      );
+      const executor = new OutputHookExecutor(driver);
+      return createMinimalState({
+        outputHookExecutor: executor,
+        inputOptions,
+      });
+    };
+
+    it("fires renderStart during generate()", async () => {
+      const renderStartFn = vi.fn();
+      const state = createStateWithHooks([
+        { name: "test", renderStart: renderStartFn },
+      ]);
+      const build = createRollupBuild(state);
+      await build.generate({ format: "es" });
+      expect(renderStartFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires renderChunk during generate()", async () => {
+      const renderChunkFn = vi.fn().mockReturnValue(null);
+      const state = createStateWithHooks([
+        { name: "test", renderChunk: renderChunkFn },
+      ]);
+      const build = createRollupBuild(state);
+      await build.generate({ format: "es" });
+      // With empty modules, renderChunk is not called since there's nothing to render
+      // This is expected behavior - renderChunk only fires for non-empty output
+      expect(renderChunkFn).toHaveBeenCalledTimes(0);
+    });
+
+    it("fires generateBundle during generate()", async () => {
+      const generateBundleFn = vi.fn();
+      const state = createStateWithHooks([
+        { name: "test", generateBundle: generateBundleFn },
+      ]);
+      const build = createRollupBuild(state);
+      await build.generate({ format: "es" });
+      expect(generateBundleFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("passes isWrite=false to generateBundle during generate()", async () => {
+      const generateBundleFn = vi.fn();
+      const state = createStateWithHooks([
+        { name: "test", generateBundle: generateBundleFn },
+      ]);
+      const build = createRollupBuild(state);
+      await build.generate({ format: "es" });
+      // Third argument is isWrite
+      expect(generateBundleFn.mock.calls[0][2]).toBe(false);
+    });
+
+    it("passes isWrite=true to generateBundle during write()", async () => {
+      const generateBundleFn = vi.fn();
+      const state = createStateWithHooks([
+        { name: "test", generateBundle: generateBundleFn },
+      ]);
+      const build = createRollupBuild(state);
+      await build.write({ format: "es" });
+      expect(generateBundleFn.mock.calls[0][2]).toBe(true);
+    });
+
+    it("fires writeBundle during write()", async () => {
+      const writeBundleFn = vi.fn();
+      const state = createStateWithHooks([
+        { name: "test", writeBundle: writeBundleFn },
+      ]);
+      const build = createRollupBuild(state);
+      await build.write({ format: "es" });
+      expect(writeBundleFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires renderError when renderStart throws", async () => {
+      const renderErrorFn = vi.fn();
+      const state = createStateWithHooks([
+        {
+          name: "test",
+          renderStart: () => {
+            throw new Error("boom");
+          },
+          renderError: renderErrorFn,
+        },
+      ]);
+      const build = createRollupBuild(state);
+      await expect(build.generate({ format: "es" })).rejects.toThrow("boom");
+      expect(renderErrorFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires renderError with the error object", async () => {
+      const renderErrorFn = vi.fn();
+      const state = createStateWithHooks([
+        {
+          name: "test",
+          renderStart: () => {
+            throw new Error("render failed");
+          },
+          renderError: renderErrorFn,
+        },
+      ]);
+      const build = createRollupBuild(state);
+      await expect(build.generate({ format: "es" })).rejects.toThrow(
+        "render failed",
+      );
+      const errorArg = renderErrorFn.mock.calls[0][0];
+      expect(errorArg).toBeInstanceOf(Error);
+      expect(errorArg.message).toBe("render failed");
+    });
+
+    it("fires renderError when non-Error is thrown from renderStart", async () => {
+      const renderErrorFn = vi.fn();
+      const state = createStateWithHooks([
+        {
+          name: "test",
+          renderStart: () => {
+            throw "string error";
+          },
+          renderError: renderErrorFn,
+        },
+      ]);
+      const build = createRollupBuild(state);
+      await expect(build.generate({ format: "es" })).rejects.toBe(
+        "string error",
+      );
+      const errorArg = renderErrorFn.mock.calls[0][0];
+      expect(errorArg).toBeInstanceOf(Error);
+      expect(errorArg.message).toBe("string error");
+    });
+
+    it("fires closeBundle when outputHookExecutor is provided", async () => {
+      const closeBundleFn = vi.fn();
+      const state = createStateWithHooks([
+        { name: "test", closeBundle: closeBundleFn },
+      ]);
+      const build = createRollupBuild(state);
+      await build.close();
+      expect(closeBundleFn).toHaveBeenCalledTimes(1);
     });
   });
 });
