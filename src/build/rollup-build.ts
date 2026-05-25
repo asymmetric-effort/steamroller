@@ -33,6 +33,10 @@ import type {
 import { getExportMode } from "../formats/shared.js";
 import { OutputHookExecutor } from "../plugins/output-hooks.js";
 import type { TreeShakeResult } from "../tree-shaking/engine.js";
+import { detectSplitPoints } from "../splitting/split-points.js";
+import type { SplittableModule } from "../splitting/split-points.js";
+import { assignChunks } from "../splitting/chunk-assignment.js";
+import { resolveChunkFileName } from "../splitting/chunk-naming.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -246,13 +250,323 @@ const renderSingleModule = (
 };
 
 /**
+ * Check whether any module in the graph has dynamic imports.
+ *
+ * @param modules - The module list to inspect
+ * @returns true if at least one module contains a dynamic import
+ */
+const hasDynamicImports = (modules: ReadonlyArray<Module>): boolean => {
+  for (let i = 0; i < modules.length; i++) {
+    if (modules[i].dynamicImports.length > 0) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Build a module ID to Module lookup map.
+ *
+ * @param modules - Modules to index
+ * @returns Map from module ID to Module
+ */
+const buildModuleMap = (
+  modules: ReadonlyArray<Module>,
+): Map<string, Module> => {
+  const map = new Map<string, Module>();
+  for (let i = 0; i < modules.length; i++) {
+    map.set(modules[i].id, modules[i]);
+  }
+  return map;
+};
+
+/**
+ * Resolve a relative dynamic import source to its absolute module ID
+ * by matching against known dependency IDs.
+ *
+ * @param source - Relative import source (e.g. "./c.js")
+ * @param mod - The importing module
+ * @param allModuleIds - Set of all known absolute module IDs
+ * @returns The resolved absolute ID, or the original source if unresolvable
+ */
+const resolveDynamicImportId = (
+  source: string,
+  mod: Module,
+  allModuleIds: ReadonlySet<string>,
+): string => {
+  // Check dependencies for a match
+  for (const dep of mod.dependencies) {
+    if (dep instanceof Module) {
+      if (
+        dep.id.endsWith(source.replace(/^\.\//, "")) ||
+        dep.id.endsWith(source)
+      ) {
+        return dep.id;
+      }
+    }
+  }
+  // Fallback: check all module IDs
+  for (const id of allModuleIds) {
+    if (id.endsWith(source.replace(/^\.\//, "")) || id.endsWith(source)) {
+      return id;
+    }
+  }
+  return source;
+};
+
+/**
+ * Convert Module instances to the SplittableModule interface needed by the
+ * split-point detection and chunk assignment algorithms. Resolves dynamic
+ * import sources from relative paths to absolute module IDs.
+ *
+ * @param modules - Modules to convert
+ * @returns Array of SplittableModule representations
+ */
+const toSplittableModules = (
+  modules: ReadonlyArray<Module>,
+): Array<SplittableModule> => {
+  const allModuleIds = new Set<string>();
+  for (let i = 0; i < modules.length; i++) {
+    allModuleIds.add(modules[i].id);
+  }
+
+  const result: Array<SplittableModule> = [];
+  for (let i = 0; i < modules.length; i++) {
+    const mod = modules[i];
+    const importedIds: Array<string> = [];
+    const importerIds: Array<string> = [];
+    const dynamicImporterIds: Array<string> = [];
+
+    for (const dep of mod.dependencies) {
+      if (dep instanceof Module) {
+        importedIds.push(dep.id);
+      }
+    }
+    for (const imp of mod.importers) {
+      importerIds.push(imp.id);
+    }
+
+    // Resolve dynamic import sources to absolute IDs
+    const resolvedDynamicIds: Array<string> = [];
+    for (let j = 0; j < mod.dynamicImports.length; j++) {
+      resolvedDynamicIds.push(
+        resolveDynamicImportId(mod.dynamicImports[j], mod, allModuleIds),
+      );
+    }
+
+    result.push({
+      id: mod.id,
+      isEntry: mod.isEntry,
+      importedIds,
+      dynamicallyImportedIds: resolvedDynamicIds,
+      importers: importerIds,
+      dynamicImporters: dynamicImporterIds,
+    });
+  }
+  return result;
+};
+
+/**
+ * Build a single OutputChunk for a given set of modules.
+ *
+ * @param chunkModules - Ordered modules belonging to this chunk
+ * @param chunkName - Logical chunk name
+ * @param isEntry - Whether this chunk is the entry chunk
+ * @param facadeModule - The facade module for this chunk (entry or dynamic entry)
+ * @param format - Output module format
+ * @param state - Build state
+ * @param options - Output options
+ * @param dynamicChunkFileNames - Map from dynamic import source to the resolved chunk file name
+ * @returns The rendered OutputChunk
+ */
+const buildSingleChunk = async (
+  chunkModules: ReadonlyArray<Module>,
+  chunkName: string,
+  isEntry: boolean,
+  facadeModule: Module,
+  format: ModuleFormat,
+  state: BuildState,
+  options: OutputOptions,
+  dynamicChunkFileNames: ReadonlyMap<string, string>,
+): Promise<OutputChunk> => {
+  // Render each module
+  const renderedModules: Array<ConcatModule> = [];
+  for (let i = 0; i < chunkModules.length; i++) {
+    const mod = chunkModules[i];
+
+    if (
+      state.includedStatementsByModule !== undefined &&
+      !mod.isIncluded &&
+      mod !== facadeModule
+    ) {
+      continue;
+    }
+
+    const isFacade = mod === facadeModule;
+    const modStatements = state.includedStatementsByModule?.get(mod.id);
+    const rendered = renderSingleModule(mod, isFacade, format, modStatements);
+    if (rendered.length > 0) {
+      renderedModules.push({ id: mod.id, code: rendered });
+    }
+  }
+
+  // For entry chunks, rewrite dynamic import() calls to point to chunk file names
+  if (isEntry && dynamicChunkFileNames.size > 0) {
+    for (let i = 0; i < renderedModules.length; i++) {
+      const rm = renderedModules[i];
+      let code = rm.code;
+      for (const [source, chunkFile] of dynamicChunkFileNames) {
+        // Replace import("./source") with import("./chunkFile")
+        const patterns = [`import("${source}")`, `import('${source}')`];
+        for (let p = 0; p < patterns.length; p++) {
+          const target = `./${chunkFile}`;
+          code = code.split(patterns[p]).join(`import("${target}")`);
+        }
+      }
+      if (code !== rm.code) {
+        renderedModules[i] = { id: rm.id, code };
+      }
+    }
+  }
+
+  const concatenated = concatenateModules(renderedModules);
+
+  // Collect external imports and export bindings
+  const externalImports = getExternalImportBindings(facadeModule);
+  const exportBindings = isEntry ? getExportBindings(facadeModule) : [];
+  const exportNames: Array<string> = [];
+  for (let i = 0; i < exportBindings.length; i++) {
+    exportNames.push(exportBindings[i].exported);
+  }
+
+  const externalImportSources: Array<string> = [];
+  const importedBindingsRecord: Record<string, Array<string>> = {};
+  for (let i = 0; i < externalImports.length; i++) {
+    const imp = externalImports[i];
+    if (!externalImportSources.includes(imp.source)) {
+      externalImportSources.push(imp.source);
+    }
+    if (importedBindingsRecord[imp.source] === undefined) {
+      importedBindingsRecord[imp.source] = [];
+    }
+    importedBindingsRecord[imp.source].push(imp.imported);
+  }
+
+  // Apply format wrapper
+  const formatWrapper = getFormatWrapper(format);
+  const exportsMode = getExportMode(exportNames, format);
+  const formatOptions: FormatOptions = {
+    exports: exportsMode,
+    strict: true,
+    externalImports,
+    exportBindings,
+  };
+
+  // All valid ModuleFormat values produce a format wrapper; wrapChunk is
+  // always available.  The non-null assertion is safe here.
+  const wrappedCode = formatWrapper!.wrapChunk(
+    concatenated.code,
+    formatOptions,
+  );
+
+  // Apply addons
+  const resolvedAddons = await resolveAllAddons({
+    banner: options.banner as AddonValue,
+    footer: options.footer as AddonValue,
+    intro: options.intro as AddonValue,
+    outro: options.outro as AddonValue,
+  });
+  const finalCode = applyAddons(wrappedCode, resolvedAddons);
+
+  // Resolve chunk file name
+  const chunkFileName = resolveChunkFileName(
+    { name: chunkName, content: finalCode, format, isEntry },
+    isEntry
+      ? typeof options.entryFileNames === "string"
+        ? options.entryFileNames
+        : undefined
+      : typeof options.chunkFileNames === "string"
+        ? options.chunkFileNames
+        : undefined,
+  );
+
+  // Build module info record
+  const modulesRecord: Record<string, OutputRenderedModule> = {};
+  const removedBindingNames: ReadonlyArray<string> =
+    state.treeShakeResult?.removedBindings ?? [];
+  for (let i = 0; i < chunkModules.length; i++) {
+    const mod = chunkModules[i];
+    const renderedExports: Array<string> = [];
+    const removedExports: Array<string> = [];
+    for (let j = 0; j < mod.exports.length; j++) {
+      const name = mod.exports[j].exported ?? mod.exports[j].local ?? "";
+      if (removedBindingNames.includes(name) && !mod.isEntry) {
+        removedExports.push(name);
+      } else {
+        renderedExports.push(name);
+      }
+    }
+    modulesRecord[mod.id] = {
+      code: mod.isIncluded ? mod.code : "",
+      originalLength: mod.code.length,
+      removedExports,
+      renderedExports,
+      renderedLength: mod.isIncluded ? mod.code.length : 0,
+    };
+  }
+
+  const moduleIds: Array<string> = [];
+  for (let i = 0; i < chunkModules.length; i++) {
+    moduleIds.push(chunkModules[i].id);
+  }
+
+  // Collect dynamic imports that originate from this chunk
+  const chunkDynamicImports: Array<string> = [];
+  for (let i = 0; i < chunkModules.length; i++) {
+    for (let j = 0; j < chunkModules[i].dynamicImports.length; j++) {
+      const dynSource = chunkModules[i].dynamicImports[j];
+      const dynFileName = dynamicChunkFileNames.get(dynSource);
+      if (
+        dynFileName !== undefined &&
+        !chunkDynamicImports.includes(dynFileName)
+      ) {
+        chunkDynamicImports.push(dynFileName);
+      }
+    }
+  }
+
+  return {
+    type: "chunk",
+    code: finalCode,
+    fileName: chunkFileName,
+    preliminaryFileName: chunkFileName,
+    sourcemapFileName: null,
+    map: null,
+    exports: exportNames,
+    facadeModuleId: facadeModule.id,
+    isDynamicEntry: !isEntry,
+    isEntry,
+    isImplicitEntry: false,
+    moduleIds,
+    name: chunkName,
+    dynamicImports: chunkDynamicImports,
+    implicitlyLoadedBefore: [],
+    importedBindings: importedBindingsRecord,
+    imports: externalImportSources,
+    modules: modulesRecord,
+    referencedFiles: [],
+  };
+};
+
+/**
  * Generates output from build state and output options.
  * Renders modules via MagicString, concatenates in topological order,
- * and applies format wrappers.
+ * and applies format wrappers. When dynamic imports are present and
+ * inlineDynamicImports is not true, produces multiple chunks.
  *
  * @param state - The build state containing modules and cache
  * @param options - Output options controlling format, file names, etc.
- * @returns A RollupOutput containing at least one entry chunk
+ * @returns A RollupOutput containing one or more chunks
  */
 const generateOutput = async (
   state: BuildState,
@@ -300,6 +614,17 @@ const generateOutput = async (
   if (entryModule === undefined) {
     entryModule = modules[modules.length - 1];
   }
+
+  // Determine whether to split: only when there are dynamic imports and
+  // inlineDynamicImports is not explicitly true
+  const shouldSplit =
+    !options.inlineDynamicImports && hasDynamicImports(modules);
+
+  if (shouldSplit) {
+    return generateSplitOutput(modules, entryModule, format, state, options);
+  }
+
+  // --- Single-chunk path (original behavior) ---
 
   // Render each module, skipping those excluded by tree-shaking
   const renderedModules: Array<ConcatModule> = [];
@@ -362,10 +687,11 @@ const generateOutput = async (
     exportBindings,
   };
 
-  const wrappedCode =
-    formatWrapper !== undefined
-      ? formatWrapper.wrapChunk(concatenated.code, formatOptions)
-      : concatenated.code;
+  // All valid ModuleFormat values produce a format wrapper
+  const wrappedCode = formatWrapper!.wrapChunk(
+    concatenated.code,
+    formatOptions,
+  );
 
   // Apply addons (banner/footer/intro/outro)
   const resolvedAddons = await resolveAllAddons({
@@ -430,6 +756,212 @@ const generateOutput = async (
   };
 
   return { output: [chunk] };
+};
+
+/**
+ * Generate multi-chunk output when code splitting is active.
+ * Detects split points from dynamic imports, assigns modules to chunks,
+ * resolves chunk file names, and renders each chunk independently.
+ *
+ * @param modules - All modules in topological order
+ * @param entryModule - The entry point module
+ * @param format - Output module format
+ * @param state - Build state
+ * @param options - Output options
+ * @returns RollupOutput with multiple chunks
+ */
+const generateSplitOutput = async (
+  modules: ReadonlyArray<Module>,
+  entryModule: Module,
+  format: ModuleFormat,
+  state: BuildState,
+  options: OutputOptions,
+): Promise<RollupOutput> => {
+  const moduleMap = buildModuleMap(modules);
+  const splittableModules = toSplittableModules(modules);
+  const entryIds = [entryModule.id];
+
+  // Detect split points and assign modules to chunks
+  const splitPoints = detectSplitPoints(splittableModules, entryIds);
+  const chunkAssignment = assignChunks(
+    splittableModules,
+    entryIds,
+    splitPoints,
+  );
+
+  // Identify which chunk names are dynamic entry chunks (not the entry)
+  const dynamicEntryModuleIds = new Set<string>();
+  for (let i = 0; i < splitPoints.length; i++) {
+    if (splitPoints[i].reason === "dynamic-import") {
+      dynamicEntryModuleIds.add(splitPoints[i].moduleId);
+    }
+  }
+
+  // Derive a chunk name for each entry in the assignment, and find its facade module
+  interface ChunkInfo {
+    readonly name: string;
+    readonly moduleIds: ReadonlyArray<string>;
+    readonly isEntry: boolean;
+    readonly facadeModule: Module;
+  }
+
+  const chunks: Array<ChunkInfo> = [];
+  for (const [chunkName, chunkModuleIds] of chunkAssignment) {
+    // Find the facade module for this chunk
+    let facade: Module | undefined;
+    for (let i = 0; i < chunkModuleIds.length; i++) {
+      const mid = chunkModuleIds[i];
+      if (mid === entryModule.id) {
+        facade = entryModule;
+        break;
+      }
+      if (dynamicEntryModuleIds.has(mid)) {
+        facade = moduleMap.get(mid);
+        break;
+      }
+    }
+    if (facade === undefined) {
+      facade = moduleMap.get(chunkModuleIds[0]) ?? entryModule;
+    }
+
+    const isEntryChunk = chunkModuleIds.includes(entryModule.id);
+    chunks.push({
+      name: chunkName,
+      moduleIds: chunkModuleIds,
+      isEntry: isEntryChunk,
+      facadeModule: facade,
+    });
+  }
+
+  // Build a mapping from absolute dynamic entry module ID to the original
+  // relative source strings that appear in import() calls in the code.
+  const absoluteToRelativeSources = new Map<string, Array<string>>();
+  for (let i = 0; i < modules.length; i++) {
+    const mod = modules[i];
+    for (let j = 0; j < mod.dynamicImports.length; j++) {
+      const relSource = mod.dynamicImports[j];
+      const absId = resolveDynamicImportId(
+        relSource,
+        mod,
+        new Set(Array.from(moduleMap.keys())),
+      );
+      const existing = absoluteToRelativeSources.get(absId);
+      if (existing !== undefined) {
+        existing.push(relSource);
+      } else {
+        absoluteToRelativeSources.set(absId, [relSource]);
+      }
+    }
+  }
+
+  // First pass: build dynamic chunk file names so the entry chunk can
+  // rewrite import() calls to point to the correct file names.
+  // Keys are the relative source strings that appear in code.
+  const dynamicChunkFileNames = new Map<string, string>();
+
+  for (let i = 0; i < chunks.length; i++) {
+    const ci = chunks[i];
+    if (!ci.isEntry) {
+      // Render a quick concatenation to compute a content hash
+      const chunkMods: Array<Module> = [];
+      for (let j = 0; j < ci.moduleIds.length; j++) {
+        const m = moduleMap.get(ci.moduleIds[j]);
+        if (m !== undefined) {
+          chunkMods.push(m);
+        }
+      }
+      const tempRendered: Array<ConcatModule> = [];
+      for (let j = 0; j < chunkMods.length; j++) {
+        const mod = chunkMods[j];
+        const modStatements = state.includedStatementsByModule?.get(mod.id);
+        const rendered = renderSingleModule(
+          mod,
+          mod === ci.facadeModule,
+          format,
+          modStatements,
+        );
+        if (rendered.length > 0) {
+          tempRendered.push({ id: mod.id, code: rendered });
+        }
+      }
+      const tempConcat = concatenateModules(tempRendered);
+      const chunkFileName = resolveChunkFileName(
+        { name: ci.name, content: tempConcat.code, format, isEntry: false },
+        typeof options.chunkFileNames === "string"
+          ? options.chunkFileNames
+          : undefined,
+      );
+
+      // Map each dynamic import's relative source string to this chunk's file name
+      for (const dynModId of dynamicEntryModuleIds) {
+        if (ci.moduleIds.includes(dynModId)) {
+          const relSources = absoluteToRelativeSources.get(dynModId);
+          if (relSources !== undefined) {
+            for (let r = 0; r < relSources.length; r++) {
+              dynamicChunkFileNames.set(relSources[r], chunkFileName);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Second pass: build all output chunks
+  const outputChunks: Array<OutputChunk> = [];
+
+  // Entry chunk first
+  for (let i = 0; i < chunks.length; i++) {
+    if (chunks[i].isEntry) {
+      const ci = chunks[i];
+      const chunkMods: Array<Module> = [];
+      for (let j = 0; j < ci.moduleIds.length; j++) {
+        const m = moduleMap.get(ci.moduleIds[j]);
+        if (m !== undefined) {
+          chunkMods.push(m);
+        }
+      }
+      const outputChunk = await buildSingleChunk(
+        chunkMods,
+        ci.name,
+        true,
+        ci.facadeModule,
+        format,
+        state,
+        options,
+        dynamicChunkFileNames,
+      );
+      outputChunks.push(outputChunk);
+    }
+  }
+
+  // Dynamic/non-entry chunks
+  for (let i = 0; i < chunks.length; i++) {
+    if (!chunks[i].isEntry) {
+      const ci = chunks[i];
+      const chunkMods: Array<Module> = [];
+      for (let j = 0; j < ci.moduleIds.length; j++) {
+        const m = moduleMap.get(ci.moduleIds[j]);
+        if (m !== undefined) {
+          chunkMods.push(m);
+        }
+      }
+      const outputChunk = await buildSingleChunk(
+        chunkMods,
+        ci.name,
+        false,
+        ci.facadeModule,
+        format,
+        state,
+        options,
+        dynamicChunkFileNames,
+      );
+      outputChunks.push(outputChunk);
+    }
+  }
+
+  return {
+    output: outputChunks as unknown as readonly [OutputChunk, ...OutputChunk[]],
+  };
 };
 
 /**

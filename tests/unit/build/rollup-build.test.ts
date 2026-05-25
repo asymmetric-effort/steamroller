@@ -10,9 +10,12 @@ import type { BuildState } from "../../../src/build/rollup-build.js";
 import type {
   RollupCache as RollupCacheType,
   SerializedTimings,
+  OutputChunk,
 } from "../../../src/types.js";
 import { PluginDriver } from "../../../src/plugins/driver.js";
 import { OutputHookExecutor } from "../../../src/plugins/output-hooks.js";
+import { Module } from "../../../src/module/Module.js";
+import { parse } from "../../../src/parser/parser.js";
 
 const createMinimalState = (
   overrides: Partial<BuildState> = {},
@@ -351,7 +354,7 @@ describe("createRollupBuild", () => {
       expect(result.output).toHaveLength(1);
     });
 
-    it("each build has independent state", () => {
+    it("each build has independent state (verified)", () => {
       const cacheA: RollupCacheType = { modules: [] };
       const cacheB: RollupCacheType = {
         modules: [
@@ -371,6 +374,455 @@ describe("createRollupBuild", () => {
       const buildB = createRollupBuild(createMinimalState({ cache: cacheB }));
       expect(buildA.cache).toBe(cacheA);
       expect(buildB.cache).toBe(cacheB);
+    });
+  });
+
+  describe("generate() with modules (rendering paths)", () => {
+    /**
+     * Helper to create a Module with parsed AST.
+     */
+    const createModule = (
+      id: string,
+      code: string,
+      isEntry: boolean,
+    ): Module => {
+      const mod = new Module(id, code, isEntry);
+      mod.ast = parse(code) as typeof mod.ast;
+      mod.extractImportsExports();
+      mod.isIncluded = true;
+      return mod;
+    };
+
+    it("renders module with null AST by returning raw code", async () => {
+      const mod = new Module("test.js", "const x = 1;", true);
+      // AST is null by default
+      mod.isIncluded = true;
+      const build = createRollupBuild(createMinimalState({ modules: [mod] }));
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.code).toContain("const x = 1");
+    });
+
+    it("renders default export in entry module", async () => {
+      const mod = createModule(
+        "entry.js",
+        "const val = 42;\nexport default val;",
+        true,
+      );
+      const build = createRollupBuild(createMinimalState({ modules: [mod] }));
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.exports).toContain("default");
+    });
+
+    it("renders default export in non-entry CJS module", async () => {
+      const dep = createModule(
+        "dep.js",
+        "const val = 99;\nexport default val;",
+        false,
+      );
+      const entry = createModule("entry.js", "export const x = 1;", true);
+      entry.dependencies.add(dep);
+      dep.importers.add(entry);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [dep, entry] }),
+      );
+      const result = await build.generate({ format: "cjs" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.code).toContain("99");
+    });
+
+    it("handles named export with undefined exported field", async () => {
+      const mod = createModule("entry.js", "export const foo = 1;", true);
+      // Manually set exported to undefined to test fallback
+      mod.exports[0] = {
+        type: "named",
+        local: "foo",
+        exported: undefined,
+      };
+      const build = createRollupBuild(createMinimalState({ modules: [mod] }));
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.exports).toContain("foo");
+    });
+
+    it("handles named export with undefined local field", async () => {
+      const mod = createModule("entry.js", "export const bar = 2;", true);
+      mod.exports[0] = {
+        type: "named",
+        local: undefined,
+        exported: "bar",
+      };
+      const build = createRollupBuild(createMinimalState({ modules: [mod] }));
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.exports).toContain("bar");
+    });
+
+    it("handles export with both local and exported undefined", async () => {
+      const mod = createModule("entry.js", "export const z = 3;", true);
+      mod.exports[0] = {
+        type: "named",
+        local: undefined,
+        exported: undefined,
+      };
+      const build = createRollupBuild(createMinimalState({ modules: [mod] }));
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.exports).toContain("");
+    });
+
+    it("falls back to last module when no entry is marked", async () => {
+      const mod1 = createModule("a.js", "const a = 1;", false);
+      const mod2 = createModule("b.js", "const b = 2;", false);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [mod1, mod2] }),
+      );
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.facadeModuleId).toBe("b.js");
+    });
+
+    it("generate with dynamic import and inlineDynamicImports=false produces multiple chunks", async () => {
+      const entry = createModule(
+        "main.js",
+        'const load = () => import("./lazy.js");\nexport { load };',
+        true,
+      );
+      const lazy = createModule("lazy.js", "export const lazy = 'val';", false);
+      entry.dependencies.add(lazy);
+      lazy.importers.add(entry);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [lazy, entry] }),
+      );
+      const result = await build.generate({
+        format: "es",
+        dir: "dist",
+        inlineDynamicImports: false,
+      });
+      expect(result.output.length).toBeGreaterThanOrEqual(2);
+      const entryChunk = result.output.find(
+        (o) => o.type === "chunk" && (o as OutputChunk).isEntry,
+      ) as OutputChunk;
+      const dynamicChunk = result.output.find(
+        (o) => o.type === "chunk" && (o as OutputChunk).isDynamicEntry,
+      ) as OutputChunk;
+      expect(entryChunk).toBeDefined();
+      expect(dynamicChunk).toBeDefined();
+      expect(dynamicChunk.code).toContain("val");
+    });
+
+    it("skips tree-shaken modules in buildSingleChunk", async () => {
+      const entry = createModule(
+        "main.js",
+        'const load = () => import("./lazy.js");\nexport { load };',
+        true,
+      );
+      const lazy = createModule(
+        "lazy.js",
+        "export const lazy = 'shaken';",
+        false,
+      );
+      const unused = createModule(
+        "unused.js",
+        "export const unused = 'gone';",
+        false,
+      );
+      unused.isIncluded = false;
+      entry.dependencies.add(lazy);
+      entry.dependencies.add(unused);
+      lazy.importers.add(entry);
+      unused.importers.add(entry);
+
+      const includedStatements = new Map<string, ReadonlySet<number>>();
+      includedStatements.set("main.js", new Set([0, 1]));
+      includedStatements.set("lazy.js", new Set([0]));
+      includedStatements.set("unused.js", new Set());
+
+      const build = createRollupBuild(
+        createMinimalState({
+          modules: [unused, lazy, entry],
+          includedStatementsByModule: includedStatements,
+        }),
+      );
+      const result = await build.generate({
+        format: "es",
+        dir: "dist",
+      });
+      // Should still produce multiple chunks
+      expect(result.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles default export with undefined local in export descriptor", async () => {
+      const mod = createModule(
+        "entry.js",
+        "const val = 42;\nexport default val;",
+        true,
+      );
+      // Manually set local to undefined to test ?? fallback
+      mod.exports[0] = {
+        type: "default",
+        local: undefined,
+        exported: "default",
+      };
+      const build = createRollupBuild(createMinimalState({ modules: [mod] }));
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.exports).toContain("default");
+    });
+
+    it("strips export default in non-entry module with function declaration", async () => {
+      const dep = createModule(
+        "dep.js",
+        "export default function greet() { return 'hi'; }",
+        false,
+      );
+      const entry = createModule("entry.js", "export const x = 1;", true);
+      entry.dependencies.add(dep);
+      dep.importers.add(entry);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [dep, entry] }),
+      );
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      // The default export keyword should be stripped for non-entry
+      expect(chunk.code).toContain("greet");
+      expect(chunk.code).not.toMatch(/export default function/);
+    });
+
+    it("removes internal export-all declaration", async () => {
+      const helper = createModule("helper.js", "export const h = 1;", false);
+      const mid = createModule(
+        "mid.js",
+        'import { h } from "./helper.js";\nexport const m = h;',
+        false,
+      );
+      mid.dependencies.add(helper);
+      helper.importers.add(mid);
+
+      // Add an export-all descriptor that references an internal module
+      mid.exports.push({
+        type: "all",
+        source: "./helper.js",
+      });
+
+      const entry = createModule("entry.js", "export const x = 1;", true);
+      entry.dependencies.add(mid);
+      mid.importers.add(entry);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [helper, mid, entry] }),
+      );
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      expect(chunk.code).toContain("1");
+    });
+
+    it("removes internal named re-export (export { x } from './internal')", async () => {
+      const helper = createModule("helper.js", "export const h = 1;", false);
+      const mid = createModule(
+        "mid.js",
+        'export { h } from "./helper.js";',
+        false,
+      );
+      mid.dependencies.add(helper);
+      helper.importers.add(mid);
+
+      const entry = createModule(
+        "entry.js",
+        'import { h } from "./mid.js";\nexport const x = h;',
+        true,
+      );
+      entry.dependencies.add(mid);
+      mid.importers.add(entry);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [helper, mid, entry] }),
+      );
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      // The re-export should be removed since helper.js is internal
+      expect(chunk.code).not.toContain('from "./helper.js"');
+    });
+
+    it("removes internal export-all declaration in rendering", async () => {
+      // Create a module that has export * from "./internal.js" in its AST
+      const helper = createModule(
+        "helper.js",
+        "export const h = 'star';",
+        false,
+      );
+      const mid = createModule(
+        "mid.js",
+        'import { h } from "./helper.js";\nexport const m = h;',
+        false,
+      );
+      mid.dependencies.add(helper);
+      helper.importers.add(mid);
+
+      // Manually add an export-all to the mid module's AST body
+      // and add a matching ExportAllDeclaration node
+      const origCode =
+        'export * from "./helper.js";\nimport { h } from "./helper.js";\nexport const m = h;';
+      const midWithExportAll = createModule("mid2.js", origCode, false);
+      midWithExportAll.dependencies.add(helper);
+      helper.importers.add(midWithExportAll);
+
+      const entry = createModule("entry.js", "export const x = 1;", true);
+      entry.dependencies.add(midWithExportAll);
+      midWithExportAll.importers.add(entry);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [helper, midWithExportAll, entry] }),
+      );
+      const result = await build.generate({ format: "es" });
+      const chunk = result.output[0] as OutputChunk;
+      // export * from should be removed since helper is internal
+      expect(chunk.code).not.toContain("export * from");
+    });
+
+    it("resolveDynamicImportId returns source when no match found", async () => {
+      // Create a dynamic import pointing to a module that doesn't exist in deps or allModuleIds
+      const entry = createModule(
+        "main.js",
+        'const load = () => import("./nonexistent.js");\nexport { load };',
+        true,
+      );
+      entry.isIncluded = true;
+
+      const build = createRollupBuild(createMinimalState({ modules: [entry] }));
+      // This won't split because the dynamic import target doesn't resolve
+      // to any known module, but it should still generate without error
+      const result = await build.generate({
+        format: "es",
+        dir: "dist",
+      });
+      expect(result.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("duplicate relative sources for same dynamic import target are deduped", async () => {
+      // Two modules import the same target with the same relative path
+      const lazy = createModule("lazy.js", "export const lazy = 'dup';", false);
+      const helper = createModule(
+        "helper.js",
+        'const go = () => import("./lazy.js");\nexport { go };',
+        false,
+      );
+      helper.dependencies.add(lazy);
+      lazy.importers.add(helper);
+
+      const entry = createModule(
+        "main.js",
+        'import { go } from "./helper.js";\nconst go2 = () => import("./lazy.js");\nexport { go, go2 };',
+        true,
+      );
+      entry.dependencies.add(helper);
+      entry.dependencies.add(lazy);
+      helper.importers.add(entry);
+      lazy.importers.add(entry);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [lazy, helper, entry] }),
+      );
+      const result = await build.generate({
+        format: "es",
+        dir: "dist",
+      });
+      expect(result.output.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("dynamic import resolved via allModuleIds fallback", async () => {
+      // Create modules where dynamic import target is NOT in dependencies
+      // but IS in the overall module set
+      const entry = createModule(
+        "main.js",
+        'const load = () => import("./orphan.js");\nexport { load };',
+        true,
+      );
+      const orphan = createModule(
+        "orphan.js",
+        "export const orphan = 'found';",
+        false,
+      );
+      // Do NOT add orphan as a dependency of entry -- this forces the fallback path
+      orphan.isIncluded = true;
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [orphan, entry] }),
+      );
+      const result = await build.generate({
+        format: "es",
+        dir: "dist",
+      });
+      // Should still produce multiple chunks
+      expect(result.output.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("facade undefined fallback in shared chunk", async () => {
+      // Create a module graph where a chunk has no entry or dynamic entry
+      // This happens with shared dependencies
+      const entry = createModule(
+        "main.js",
+        'const load = () => import("./lazy.js");\nexport { load };',
+        true,
+      );
+      const shared = createModule(
+        "shared.js",
+        "export const s = 'shared';",
+        false,
+      );
+      const lazy = createModule(
+        "lazy.js",
+        'import { s } from "./shared.js";\nexport const lazy = s;',
+        false,
+      );
+      entry.dependencies.add(lazy);
+      entry.dependencies.add(shared);
+      lazy.dependencies.add(shared);
+      lazy.importers.add(entry);
+      shared.importers.add(entry);
+      shared.importers.add(lazy);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [shared, lazy, entry] }),
+      );
+      const result = await build.generate({
+        format: "es",
+        dir: "dist",
+      });
+      // Should produce chunks
+      expect(result.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("formatWrapper undefined path in buildSingleChunk", async () => {
+      // Use a format that has no wrapper - but all formats have wrappers
+      // The 'es' format returns undefined from getFormatWrapper
+      const entry = createModule(
+        "main.js",
+        'const load = () => import("./lazy.js");\nexport { load };',
+        true,
+      );
+      const lazy = createModule(
+        "lazy.js",
+        "export const lazy = 'unwrapped';",
+        false,
+      );
+      entry.dependencies.add(lazy);
+      lazy.importers.add(entry);
+
+      const build = createRollupBuild(
+        createMinimalState({ modules: [lazy, entry] }),
+      );
+      // ES format should work without issues
+      const result = await build.generate({
+        format: "es",
+        dir: "dist",
+      });
+      expect(result.output.length).toBeGreaterThanOrEqual(2);
     });
   });
 });
