@@ -38,6 +38,12 @@ import type {
 import { getExportMode } from "../formats/shared.js";
 import { OutputHookExecutor } from "../plugins/output-hooks.js";
 import type { TreeShakeResult } from "../tree-shaking/engine.js";
+import {
+  detectSplitPoints,
+  assignChunks,
+  resolveChunkFileName,
+} from "../splitting/index.js";
+import type { SplittableModule } from "../splitting/index.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -253,6 +259,425 @@ const renderSingleModule = (
 };
 
 /**
+ * Converts Module instances to SplittableModule for split-point detection.
+ * Resolves dynamic import sources (relative paths) to absolute module IDs.
+ */
+const toSplittableModules = (
+  modules: ReadonlyArray<Module>,
+): ReadonlyArray<SplittableModule> => {
+  // Build a lookup for resolving relative sources to absolute IDs
+  const moduleById = new Map<string, Module>();
+  for (let i = 0; i < modules.length; i++) {
+    moduleById.set(modules[i].id, modules[i]);
+  }
+
+  const result: Array<SplittableModule> = [];
+  for (let i = 0; i < modules.length; i++) {
+    const mod = modules[i];
+    const importedIds: Array<string> = [];
+    const importerIds: Array<string> = [];
+    for (const dep of mod.dependencies) {
+      if (dep instanceof Module) {
+        importedIds.push(dep.id);
+      }
+    }
+    for (const imp of mod.importers) {
+      importerIds.push(imp.id);
+    }
+
+    // Resolve dynamic import sources to absolute module IDs
+    const dynamicallyImportedIds: Array<string> = [];
+    for (let j = 0; j < mod.dynamicImports.length; j++) {
+      const source = mod.dynamicImports[j];
+      const resolved = resolveDynamicSource(source, mod, modules);
+      if (resolved !== undefined) {
+        dynamicallyImportedIds.push(resolved);
+      }
+    }
+
+    result.push({
+      id: mod.id,
+      isEntry: mod.isEntry,
+      importedIds,
+      dynamicallyImportedIds,
+      importers: importerIds,
+      dynamicImporters: [],
+    });
+  }
+  return result;
+};
+
+/**
+ * Resolves a dynamic import source string to an absolute module ID.
+ */
+const resolveDynamicSource = (
+  source: string,
+  importerMod: Module,
+  allModules: ReadonlyArray<Module>,
+): string | undefined => {
+  const cleanSource = source.replace(/^\.\//, "");
+  // Check dependencies of the importer first
+  for (const dep of importerMod.dependencies) {
+    if (dep instanceof Module) {
+      if (dep.id.endsWith(cleanSource)) {
+        return dep.id;
+      }
+    }
+  }
+  // Fallback: search all modules
+  for (let i = 0; i < allModules.length; i++) {
+    if (allModules[i].id.endsWith(cleanSource)) {
+      return allModules[i].id;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Generates split output with multiple chunks when dynamic imports are present.
+ * Each dynamic import target becomes its own chunk with a distinct file name.
+ * Cross-chunk import() calls are rewritten to reference the generated chunk filename.
+ */
+const generateSplitOutput = async (
+  state: BuildState,
+  modules: ReadonlyArray<Module>,
+  entryModule: Module,
+  format: ModuleFormat,
+  defaultFileName: string,
+  options: OutputOptions,
+  normalizedOutput: NormalizedOutputOptions | undefined,
+  hookExecutor: OutputHookExecutor | undefined,
+  isWrite: boolean,
+): Promise<RollupOutput> => {
+  const splittableModules = toSplittableModules(modules);
+  const splitPoints = detectSplitPoints(splittableModules, [entryModule.id]);
+  const chunkAssignment = assignChunks(
+    splittableModules,
+    [entryModule.id],
+    splitPoints,
+  );
+
+  // Build a module lookup
+  const moduleById = new Map<string, Module>();
+  for (let i = 0; i < modules.length; i++) {
+    moduleById.set(modules[i].id, modules[i]);
+  }
+
+  // Determine which dynamic import sources map to which resolved module IDs
+  const dynamicSourceToResolved = new Map<string, string>();
+  for (let i = 0; i < modules.length; i++) {
+    const mod = modules[i];
+    for (let j = 0; j < mod.dynamicImports.length; j++) {
+      const source = mod.dynamicImports[j];
+      if (!dynamicSourceToResolved.has(source)) {
+        const resolved = resolveDynamicSource(source, mod, modules);
+        if (resolved !== undefined) {
+          dynamicSourceToResolved.set(source, resolved);
+        }
+      }
+    }
+  }
+
+  // For each chunk, determine its root module (entry or dynamic entry)
+  // and which split point it corresponds to
+  const splitPointByModuleId = new Map<string, (typeof splitPoints)[number]>();
+  for (let i = 0; i < splitPoints.length; i++) {
+    splitPointByModuleId.set(splitPoints[i].moduleId, splitPoints[i]);
+  }
+
+  // Generate each chunk
+  const outputChunks: Array<OutputChunk> = [];
+  const chunkFileNameByModuleId = new Map<string, string>();
+
+  // First pass: render all chunks and compute file names
+  const chunkEntries = Array.from(chunkAssignment.entries());
+  const renderedChunks: Array<{
+    name: string;
+    moduleIds: Array<string>;
+    code: string;
+    isEntry: boolean;
+    isDynamicEntry: boolean;
+    facadeModuleId: string;
+    exports: ReadonlyArray<string>;
+    externalImports: ReadonlyArray<ImportBinding>;
+    externalImportSources: Array<string>;
+    importedBindingsRecord: Record<string, Array<string>>;
+  }> = [];
+
+  for (let ci = 0; ci < chunkEntries.length; ci++) {
+    const [chunkName, chunkModuleIds] = chunkEntries[ci];
+
+    // Determine the facade module for this chunk
+    let facadeModule: Module | undefined;
+    const isEntryChunk = chunkModuleIds.includes(entryModule.id);
+
+    if (isEntryChunk) {
+      facadeModule = entryModule;
+    } else {
+      // Find the split point module that acts as the facade
+      for (let m = 0; m < chunkModuleIds.length; m++) {
+        if (splitPointByModuleId.has(chunkModuleIds[m])) {
+          facadeModule = moduleById.get(chunkModuleIds[m]);
+          break;
+        }
+      }
+      if (facadeModule === undefined && chunkModuleIds.length > 0) {
+        facadeModule = moduleById.get(chunkModuleIds[0]);
+      }
+    }
+
+    if (facadeModule === undefined) {
+      continue;
+    }
+
+    const isDynamicEntry =
+      !isEntryChunk && splitPointByModuleId.has(facadeModule.id);
+
+    // Render modules belonging to this chunk
+    const chunkRenderedModules: Array<ConcatModule> = [];
+    for (let m = 0; m < chunkModuleIds.length; m++) {
+      const mod = moduleById.get(chunkModuleIds[m]);
+      if (mod === undefined) {
+        continue;
+      }
+
+      // Skip tree-shaken modules (unless entry/facade)
+      if (
+        state.includedStatementsByModule !== undefined &&
+        !mod.isIncluded &&
+        mod !== facadeModule
+      ) {
+        continue;
+      }
+
+      const isModEntry = mod === facadeModule;
+      const modStatements = state.includedStatementsByModule?.get(mod.id);
+      const rendered = renderSingleModule(
+        mod,
+        isModEntry,
+        format,
+        modStatements,
+      );
+      if (rendered.length > 0) {
+        chunkRenderedModules.push({ id: mod.id, code: rendered });
+      }
+    }
+
+    const concatenated = concatenateModules(chunkRenderedModules);
+
+    // Collect external imports for this chunk's facade
+    const externalImports = getExternalImportBindings(facadeModule);
+    const exportBindings = getExportBindings(facadeModule);
+    const exportNames: Array<string> = [];
+    for (let i = 0; i < exportBindings.length; i++) {
+      exportNames.push(exportBindings[i].exported);
+    }
+
+    const externalImportSources: Array<string> = [];
+    const importedBindingsRecord: Record<string, Array<string>> = {};
+    for (let i = 0; i < externalImports.length; i++) {
+      const imp = externalImports[i];
+      if (!externalImportSources.includes(imp.source)) {
+        externalImportSources.push(imp.source);
+      }
+      if (importedBindingsRecord[imp.source] === undefined) {
+        importedBindingsRecord[imp.source] = [];
+      }
+      importedBindingsRecord[imp.source].push(imp.imported);
+    }
+
+    // Apply format wrapper
+    const formatWrapper = getFormatWrapper(format);
+    const exportsMode = getExportMode(exportNames, format);
+    const formatOptions: FormatOptions = {
+      exports: exportsMode,
+      strict: true,
+      externalImports,
+      exportBindings,
+    };
+
+    const wrappedCode =
+      formatWrapper !== undefined
+        ? formatWrapper.wrapChunk(concatenated.code, formatOptions)
+        : concatenated.code;
+
+    renderedChunks.push({
+      name: chunkName,
+      moduleIds: chunkModuleIds,
+      code: wrappedCode,
+      isEntry: isEntryChunk,
+      isDynamicEntry,
+      facadeModuleId: facadeModule.id,
+      exports: exportNames,
+      externalImports,
+      externalImportSources,
+      importedBindingsRecord,
+    });
+  }
+
+  // Compute file names for all chunks
+  for (let i = 0; i < renderedChunks.length; i++) {
+    const rc = renderedChunks[i];
+    let chunkFileName: string;
+
+    if (rc.isEntry) {
+      // Entry chunk uses entryFileNames pattern or the default fileName
+      const entryPattern =
+        typeof options.entryFileNames === "string"
+          ? options.entryFileNames
+          : undefined;
+      if (entryPattern !== undefined) {
+        chunkFileName = resolveChunkFileName(
+          { name: rc.name, content: rc.code, format, isEntry: true },
+          entryPattern,
+        );
+      } else {
+        chunkFileName = defaultFileName;
+      }
+    } else {
+      // Dynamic chunk uses chunkFileNames pattern
+      const chunkPattern =
+        typeof options.chunkFileNames === "string"
+          ? options.chunkFileNames
+          : undefined;
+      chunkFileName = resolveChunkFileName(
+        { name: rc.name, content: rc.code, format, isEntry: false },
+        chunkPattern,
+      );
+    }
+
+    chunkFileNameByModuleId.set(rc.facadeModuleId, chunkFileName);
+  }
+
+  // Resolve addons once
+  const resolvedAddons = await resolveAllAddons({
+    banner: options.banner as AddonValue,
+    footer: options.footer as AddonValue,
+    intro: options.intro as AddonValue,
+    outro: options.outro as AddonValue,
+  });
+
+  // Second pass: rewrite import() calls in entry chunks and build final OutputChunks
+  for (let i = 0; i < renderedChunks.length; i++) {
+    const rc = renderedChunks[i];
+    let code = rc.code;
+
+    // Rewrite dynamic import() calls to reference chunk file names
+    if (rc.isEntry || rc.isDynamicEntry) {
+      for (const [source, resolvedId] of dynamicSourceToResolved) {
+        const targetFileName = chunkFileNameByModuleId.get(resolvedId);
+        if (targetFileName !== undefined) {
+          // Replace import("./source") or import('./source') with import("./chunkFile")
+          const escapedSource = source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const importPattern = new RegExp(
+            `import\\(\\s*(['"])${escapedSource}\\1\\s*\\)`,
+            "g",
+          );
+          code = code.replace(importPattern, `import("./${targetFileName}")`);
+        }
+      }
+    }
+
+    // Apply addons
+    code = applyAddons(code, resolvedAddons);
+
+    const chunkFileName = chunkFileNameByModuleId.get(rc.facadeModuleId)!;
+
+    // Collect dynamicImports array for the entry chunk
+    const dynamicImportFileNames: Array<string> = [];
+    if (rc.isEntry) {
+      for (const [, resolvedId] of dynamicSourceToResolved) {
+        const fn = chunkFileNameByModuleId.get(resolvedId);
+        if (fn !== undefined && !dynamicImportFileNames.includes(fn)) {
+          dynamicImportFileNames.push(fn);
+        }
+      }
+    }
+
+    // Build modules record
+    const modulesRecord: Record<string, OutputRenderedModule> = {};
+    const removedBindingNames: ReadonlyArray<string> =
+      state.treeShakeResult?.removedBindings ?? [];
+    for (let m = 0; m < rc.moduleIds.length; m++) {
+      const mod = moduleById.get(rc.moduleIds[m]);
+      if (mod === undefined) {
+        continue;
+      }
+      const renderedExports: Array<string> = [];
+      const removedExports: Array<string> = [];
+      for (let j = 0; j < mod.exports.length; j++) {
+        const name = mod.exports[j].exported ?? mod.exports[j].local ?? "";
+        if (removedBindingNames.includes(name) && !mod.isEntry) {
+          removedExports.push(name);
+        } else {
+          renderedExports.push(name);
+        }
+      }
+      modulesRecord[mod.id] = {
+        code: mod.isIncluded ? mod.code : "",
+        originalLength: mod.code.length,
+        removedExports,
+        renderedExports,
+        renderedLength: mod.isIncluded ? mod.code.length : 0,
+      };
+    }
+
+    const renderedChunkInfo: RenderedChunk = {
+      type: "chunk",
+      dynamicImports: dynamicImportFileNames,
+      exports: [...rc.exports],
+      facadeModuleId: rc.facadeModuleId,
+      fileName: chunkFileName,
+      implicitlyLoadedBefore: [],
+      importedBindings: rc.importedBindingsRecord,
+      imports: rc.externalImportSources,
+      isDynamicEntry: rc.isDynamicEntry,
+      isEntry: rc.isEntry,
+      isImplicitEntry: false,
+      moduleIds: rc.moduleIds,
+      modules: modulesRecord,
+      name: rc.name,
+      referencedFiles: [],
+    };
+
+    // Fire renderChunk hook
+    let chunkCode = code;
+    if (hookExecutor !== undefined && normalizedOutput !== undefined) {
+      const renderChunkResult = await hookExecutor.renderChunk(
+        chunkCode,
+        renderedChunkInfo,
+        normalizedOutput,
+      );
+      chunkCode = renderChunkResult.code;
+    }
+
+    const chunk: OutputChunk = {
+      ...renderedChunkInfo,
+      code: chunkCode,
+      preliminaryFileName: chunkFileName,
+      sourcemapFileName: null,
+      map: null,
+    };
+
+    outputChunks.push(chunk);
+  }
+
+  // Fire generateBundle hook
+  if (hookExecutor !== undefined && normalizedOutput !== undefined) {
+    const bundle: OutputBundle = {};
+    for (let i = 0; i < outputChunks.length; i++) {
+      (bundle as Record<string, OutputChunk>)[outputChunks[i].fileName] =
+        outputChunks[i];
+    }
+    await hookExecutor.generateBundle(normalizedOutput, bundle, isWrite);
+  }
+
+  return {
+    output: outputChunks as unknown as readonly [OutputChunk, ...OutputChunk[]],
+  };
+};
+
+/**
  * Generates output from build state and output options.
  * Renders modules via MagicString, concatenates in topological order,
  * and applies format wrappers.
@@ -341,7 +766,29 @@ const generateOutput = async (
     entryModule = modules[modules.length - 1];
   }
 
+  // Detect dynamic imports in the module graph
+  const hasDynamicImports = modules.some(
+    (mod) => mod.dynamicImports.length > 0,
+  );
+  const shouldSplit =
+    hasDynamicImports && options.inlineDynamicImports !== true;
+
   try {
+    if (shouldSplit) {
+      return await generateSplitOutput(
+        state,
+        modules,
+        entryModule,
+        format,
+        fileName,
+        options,
+        normalizedOutput,
+        hookExecutor,
+        isWrite,
+      );
+    }
+
+    // Single-chunk path (no dynamic imports or inlineDynamicImports=true)
     // Render each module, skipping those excluded by tree-shaking
     const renderedModules: Array<ConcatModule> = [];
     for (let i = 0; i < modules.length; i++) {
