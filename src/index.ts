@@ -14,3 +14,11 @@ export { RollupCache, PluginCache } from "./module/cache.js";
 export type { CachedModuleData, RollupCacheData } from "./module/cache.js";
 export { createRollupBuild } from "./build/rollup-build.js";
 export type { BuildState } from "./build/rollup-build.js";
+export { normalizeInputOptions } from "./config/normalize-input.js";
+export { normalizeOutputOptions } from "./config/normalize-output.js";
+export {
+  validateInputOptions,
+  validateOutputOptions,
+} from "./config/validate.js";
+export { rollup } from "./rollup.js";
+export { watch } from "./watch-entry.js";
