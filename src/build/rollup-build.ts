@@ -5,6 +5,8 @@
  * cache, watchFiles, and getTimings accessors.
  */
 
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type {
   RollupBuild,
   RollupOutput,
@@ -389,16 +391,40 @@ const generateOutput = async (
 
 /**
  * Writes generated output to disk.
- * Placeholder implementation — will use fs module in future.
+ * Creates output directories as needed and writes chunks and assets.
  *
- * @param _output - The generated output to write
- * @param _options - Output options specifying directory/file targets
+ * @param output - The generated output to write
+ * @param options - Output options specifying directory/file targets
  */
 const writeOutput = async (
-  _output: RollupOutput,
-  _options: OutputOptions,
+  output: RollupOutput,
+  options: OutputOptions,
 ): Promise<void> => {
-  // Will use fs module to write files when format implementations are complete.
+  const dir = options.dir ?? (options.file ? dirname(options.file) : "dist");
+
+  // Ensure output directory exists
+  await mkdir(dir, { recursive: true });
+
+  for (let i = 0; i < output.output.length; i++) {
+    const item = output.output[i];
+    if (item.type === "chunk") {
+      const filePath = options.file ?? join(dir, item.fileName);
+      await writeFile(filePath, item.code, "utf-8");
+
+      // Write source map if present
+      if (item.map) {
+        await writeFile(`${filePath}.map`, JSON.stringify(item.map), "utf-8");
+      }
+    } else if (item.type === "asset") {
+      const filePath = join(dir, item.fileName);
+      await mkdir(dirname(filePath), { recursive: true });
+      if (typeof item.source === "string") {
+        await writeFile(filePath, item.source, "utf-8");
+      } else {
+        await writeFile(filePath, item.source);
+      }
+    }
+  }
 };
 
 /**
