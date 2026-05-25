@@ -4,13 +4,15 @@
  * Covers createRollupBuild() interface shape, generate(), write(), close(),
  * post-close error behavior, and cache/watchFiles/getTimings accessors.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createRollupBuild } from "../../../src/build/rollup-build.js";
 import type { BuildState } from "../../../src/build/rollup-build.js";
 import type {
   RollupCache as RollupCacheType,
   SerializedTimings,
 } from "../../../src/types.js";
+import { PluginDriver } from "../../../src/plugins/driver.js";
+import { OutputHookExecutor } from "../../../src/plugins/output-hooks.js";
 
 const createMinimalState = (
   overrides: Partial<BuildState> = {},
@@ -275,6 +277,66 @@ describe("createRollupBuild", () => {
       const build = createRollupBuild(createMinimalState());
       await build.close();
       await expect(build.close()).resolves.toBeUndefined();
+    });
+
+    it("fires closeBundle hook when outputHookExecutor is provided", async () => {
+      const closeBundleSpy = vi.fn();
+      const plugin = { name: "test-close", closeBundle: closeBundleSpy };
+      const driver = new PluginDriver([plugin]);
+      const executor = new OutputHookExecutor(driver);
+      const build = createRollupBuild(
+        createMinimalState({ outputHookExecutor: executor }),
+      );
+      await build.close();
+      expect(closeBundleSpy).toHaveBeenCalledOnce();
+    });
+
+    it("fires closeBundle before setting closed flag", async () => {
+      let closedDuringHook: boolean | undefined;
+      const plugin = {
+        name: "test-order",
+        closeBundle: vi.fn(() => {
+          closedDuringHook = build.closed;
+        }),
+      };
+      const driver = new PluginDriver([plugin]);
+      const executor = new OutputHookExecutor(driver);
+      const build = createRollupBuild(
+        createMinimalState({ outputHookExecutor: executor }),
+      );
+      await build.close();
+      expect(closedDuringHook).toBe(false);
+      expect(build.closed).toBe(true);
+    });
+
+    it("still sets closed flag when no outputHookExecutor is provided", async () => {
+      const build = createRollupBuild(createMinimalState());
+      await build.close();
+      expect(build.closed).toBe(true);
+    });
+
+    it("generate throws after close with outputHookExecutor", async () => {
+      const plugin = { name: "test-noop", closeBundle: vi.fn() };
+      const driver = new PluginDriver([plugin]);
+      const executor = new OutputHookExecutor(driver);
+      const build = createRollupBuild(
+        createMinimalState({ outputHookExecutor: executor }),
+      );
+      await build.close();
+      await expect(build.generate({})).rejects.toThrow(
+        "Bundle is already closed",
+      );
+    });
+
+    it("write throws after close with outputHookExecutor", async () => {
+      const plugin = { name: "test-noop", closeBundle: vi.fn() };
+      const driver = new PluginDriver([plugin]);
+      const executor = new OutputHookExecutor(driver);
+      const build = createRollupBuild(
+        createMinimalState({ outputHookExecutor: executor }),
+      );
+      await build.close();
+      await expect(build.write({})).rejects.toThrow("Bundle is already closed");
     });
   });
 

@@ -31,6 +31,7 @@ import type {
   ExportBinding,
 } from "../formats/shared.js";
 import { getExportMode } from "../formats/shared.js";
+import { OutputHookExecutor } from "../plugins/output-hooks.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -45,6 +46,8 @@ export interface BuildState {
   readonly watchFiles: ReadonlyArray<string>;
   /** Optional timing function when perf mode is enabled. */
   readonly getTimings?: () => SerializedTimings;
+  /** Optional executor for firing output-phase plugin hooks (e.g. closeBundle). */
+  readonly outputHookExecutor?: OutputHookExecutor;
 }
 
 /**
@@ -476,6 +479,9 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
     },
 
     async close(): Promise<void> {
+      if (state.outputHookExecutor) {
+        await state.outputHookExecutor.closeBundle();
+      }
       internal.closed = true;
     },
   };
