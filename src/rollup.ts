@@ -19,6 +19,7 @@ import { PluginDriver } from "./plugins/driver.js";
 import { BuildHookExecutor } from "./plugins/build-hooks.js";
 import { createRollupBuild } from "./build/rollup-build.js";
 import type { BuildState } from "./build/rollup-build.js";
+import { OutputHookExecutor } from "./plugins/output-hooks.js";
 import { ModuleLoader } from "./module/loader.js";
 import type {
   LoadHook,
@@ -251,8 +252,10 @@ export const rollup = async (
   };
 
   // Create moduleParsed hook
-  const moduleParsedHook: ModuleParsedHook = async () => {
-    // moduleParsed notification handled by graph construction
+  const moduleParsedHook: ModuleParsedHook = async (info: unknown) => {
+    await buildHookExecutor.moduleParsed(
+      info as Parameters<typeof buildHookExecutor.moduleParsed>[0],
+    );
   };
 
   const moduleLoader = new ModuleLoader({
@@ -263,9 +266,20 @@ export const rollup = async (
     moduleParsedHooks: [moduleParsedHook],
   });
 
+  // Create resolveDynamicImport function
+  const resolveDynamicImportFn = async (
+    specifier: string,
+    importer: string,
+  ): Promise<ResolvedId | string | null> => {
+    return buildHookExecutor.resolveDynamicImport(specifier, importer, {
+      attributes: {},
+    });
+  };
+
   const graph = await buildModuleGraph({
     input: finalOptions.input,
     resolveId: resolveIdFn,
+    resolveDynamicImport: resolveDynamicImportFn,
     loadModule: async (id: string) => {
       const loaded = await moduleLoader.loadModule(id);
       return {
@@ -559,6 +573,9 @@ export const rollup = async (
     watchFiles.push(graph.externalModules[i].id);
   }
 
+  // Create output hook executor for output phase
+  const outputHookExecutor = new OutputHookExecutor(pluginDriver);
+
   const buildState: BuildState = {
     modules: graph.modules,
     cache: finalOptions.cache || undefined,
@@ -566,6 +583,8 @@ export const rollup = async (
     getTimings: finalOptions.perf ? () => ({}) : undefined,
     treeShakeResult,
     includedStatementsByModule,
+    outputHookExecutor,
+    inputOptions: finalOptions,
   };
 
   return createRollupBuild(buildState);

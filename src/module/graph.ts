@@ -26,6 +26,10 @@ export interface GraphOptions {
     importer: string | undefined,
     isEntry: boolean,
   ) => Promise<ResolvedId | null>;
+  readonly resolveDynamicImport?: (
+    specifier: string,
+    importer: string,
+  ) => Promise<ResolvedId | string | null>;
   readonly loadModule: (id: string) => Promise<{
     code: string;
     ast: unknown;
@@ -54,6 +58,7 @@ interface QueueItem {
   readonly source: string;
   readonly importer: string | undefined;
   readonly isEntry: boolean;
+  readonly isDynamicImport?: boolean;
 }
 
 /**
@@ -297,12 +302,40 @@ export const buildModuleGraph = async (
   while (queue.length > 0) {
     const item = queue.shift()!;
 
-    // Resolve the module
-    const resolved = await options.resolveId(
-      item.source,
-      item.importer,
-      item.isEntry,
-    );
+    // Resolve the module (try resolveDynamicImport first for dynamic imports)
+    let resolved: ResolvedId | null = null;
+    if (
+      item.isDynamicImport === true &&
+      options.resolveDynamicImport !== undefined &&
+      item.importer !== undefined
+    ) {
+      const dynResult = await options.resolveDynamicImport(
+        item.source,
+        item.importer,
+      );
+      if (dynResult !== null) {
+        if (typeof dynResult === "string") {
+          resolved = {
+            id: dynResult,
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "plugin",
+          };
+        } else {
+          resolved = dynResult;
+        }
+      }
+    }
+    // Fall back to resolveId if resolveDynamicImport returned null or wasn't called
+    if (resolved === null) {
+      resolved = await options.resolveId(
+        item.source,
+        item.importer,
+        item.isEntry,
+      );
+    }
 
     if (!resolved) {
       if (item.isEntry) {
@@ -394,6 +427,7 @@ export const buildModuleGraph = async (
         source: mod.dynamicImports[i],
         importer: resolved.id,
         isEntry: false,
+        isDynamicImport: true,
       });
     }
   }
