@@ -23,7 +23,7 @@ const np = (p: string): string => normalizePath(resolve(p));
 describe("defaultResolve", () => {
   it("should return normalized path for absolute source", () => {
     const result = defaultResolve("/home/user/project/src/index.ts", undefined);
-    expect(result).toBe("/home/user/project/src/index.ts");
+    expect(result).toBe(np("/home/user/project/src/index.ts"));
   });
 
   it("should normalize backslashes in absolute paths", () => {
@@ -31,23 +31,23 @@ describe("defaultResolve", () => {
       "/home/user/project\\src\\index.ts",
       undefined,
     );
-    expect(result).toBe("/home/user/project/src/index.ts");
+    expect(result).toBe(np("/home/user/project/src/index.ts"));
   });
 
   it("should resolve relative path against importer directory", () => {
     const result = defaultResolve(
       "./utils.ts",
-      "/home/user/project/src/index.ts",
+      np("/home/user/project/src/index.ts"),
     );
-    expect(result).toBe("/home/user/project/src/utils.ts");
+    expect(result).toBe(np("/home/user/project/src/utils.ts"));
   });
 
   it("should resolve parent-relative path against importer", () => {
     const result = defaultResolve(
       "../lib/helper.ts",
-      "/home/user/project/src/index.ts",
+      np("/home/user/project/src/index.ts"),
     );
-    expect(result).toBe("/home/user/project/lib/helper.ts");
+    expect(result).toBe(np("/home/user/project/lib/helper.ts"));
   });
 
   it("should return null for relative path without importer", () => {

@@ -149,7 +149,12 @@ describe("handleWaitForBundleInput", () => {
     const { handleWaitForBundleInput } =
       await import("../../../src/cli/stdin.js");
     const result = await handleWaitForBundleInput(
-      [new URL("../../../package.json", import.meta.url).pathname],
+      [
+        new URL("../../../package.json", import.meta.url).pathname.replace(
+          /^\/([A-Z]:)/i,
+          "$1",
+        ),
+      ],
       2,
     );
     expect(result).toBe(true);
