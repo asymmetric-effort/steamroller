@@ -400,6 +400,128 @@ describe("PluginContextImpl", () => {
   });
 });
 
+describe("PluginContextImpl — live graph wiring", () => {
+  it("resolve() calls the resolver pipeline and returns a ResolvedId", async () => {
+    const resolved = {
+      id: "/abs/dep.js",
+      external: false,
+      moduleSideEffects: true,
+      syntheticNamedExports: false,
+      meta: {},
+      resolvedBy: "test-plugin",
+    };
+    const resolver = vi.fn().mockResolvedValue(resolved);
+    const graph = new InMemoryModuleGraph();
+    const ctx = new PluginContextImpl(
+      createConfig({ resolver, moduleGraph: graph }),
+    );
+
+    const result = await ctx.resolve("./dep", "/abs/entry.js", {
+      isEntry: false,
+    });
+    expect(resolver).toHaveBeenCalledWith("./dep", "/abs/entry.js", {
+      isEntry: false,
+    });
+    expect(result).toEqual(resolved);
+  });
+
+  it("load() invokes the loader, stores the result in the graph, and returns it", async () => {
+    const graph = new InMemoryModuleGraph();
+    const info = createMockModuleInfo("mod.js");
+    const loader = vi.fn().mockResolvedValue(info);
+    const ctx = new PluginContextImpl(
+      createConfig({ loader, moduleGraph: graph }),
+    );
+
+    // Module is not yet in the graph
+    expect(graph.getModuleInfo("mod.js")).toBeNull();
+
+    const result = await ctx.load({ id: "mod.js" });
+    expect(loader).toHaveBeenCalledWith({ id: "mod.js" });
+    expect(result).toEqual(info);
+
+    // After load(), the module is present in the live graph
+    expect(graph.getModuleInfo("mod.js")).toEqual(info);
+  });
+
+  it("load() returns existing graph entry without calling the loader again", async () => {
+    const graph = new InMemoryModuleGraph();
+    const info = createMockModuleInfo("cached.js");
+    graph.addModule("cached.js", info);
+
+    const loader = vi.fn();
+    const ctx = new PluginContextImpl(
+      createConfig({ loader, moduleGraph: graph }),
+    );
+
+    const result = await ctx.load({ id: "cached.js" });
+    expect(result).toBe(info);
+    expect(loader).not.toHaveBeenCalled();
+  });
+
+  it("getModuleInfo() returns live data from the graph", async () => {
+    const graph = new InMemoryModuleGraph();
+    const loader = vi.fn().mockResolvedValue(createMockModuleInfo("live.js"));
+    const ctx = new PluginContextImpl(
+      createConfig({ loader, moduleGraph: graph }),
+    );
+
+    // Not yet in the graph
+    expect(ctx.getModuleInfo("live.js")).toBeNull();
+
+    // Load it via the context
+    await ctx.load({ id: "live.js" });
+
+    // Now getModuleInfo returns real data from the live graph
+    const info = ctx.getModuleInfo("live.js");
+    expect(info).not.toBeNull();
+    expect(info!.id).toBe("live.js");
+    expect(info!.code).toBe('console.log("live.js")');
+  });
+
+  it("getModuleIds() iterates over all modules in the live graph", async () => {
+    const graph = new InMemoryModuleGraph();
+    const makeLoader = () =>
+      vi.fn().mockImplementation(async (opts: { id: string }) => {
+        return createMockModuleInfo(opts.id);
+      });
+    const loader = makeLoader();
+    const ctx = new PluginContextImpl(
+      createConfig({ loader, moduleGraph: graph }),
+    );
+
+    // Load several modules
+    await ctx.load({ id: "a.js" });
+    await ctx.load({ id: "b.js" });
+    await ctx.load({ id: "c.js" });
+
+    const ids = [...ctx.getModuleIds()];
+    expect(ids).toEqual(["a.js", "b.js", "c.js"]);
+  });
+
+  it("multiple context instances share the same live graph", async () => {
+    const graph = new InMemoryModuleGraph();
+    const loader = vi
+      .fn()
+      .mockImplementation(async (opts: { id: string }) =>
+        createMockModuleInfo(opts.id),
+      );
+
+    const ctx1 = new PluginContextImpl(
+      createConfig({ pluginName: "plugin-a", loader, moduleGraph: graph }),
+    );
+    const ctx2 = new PluginContextImpl(
+      createConfig({ pluginName: "plugin-b", loader, moduleGraph: graph }),
+    );
+
+    await ctx1.load({ id: "shared.js" });
+
+    // ctx2 sees the module loaded by ctx1
+    expect(ctx2.getModuleInfo("shared.js")).not.toBeNull();
+    expect([...ctx2.getModuleIds()]).toContain("shared.js");
+  });
+});
+
 describe("InMemoryModuleGraph", () => {
   it("stores and retrieves modules", () => {
     const graph = new InMemoryModuleGraph();

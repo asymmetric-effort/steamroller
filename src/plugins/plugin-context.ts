@@ -15,6 +15,7 @@ import type {
   EmittedFile,
   RollupLog,
 } from "../types.js";
+import { PLUGIN_ERROR } from "../utils/error-codes.js";
 
 /** Options for module resolution within a plugin. */
 export interface ResolveOptions {
@@ -158,7 +159,16 @@ export class PluginContextImpl implements PluginContext {
 
   /** Load a module by ID, optionally resolving dependencies. */
   async load(options: LoadOptions): Promise<ModuleInfo> {
-    return this._loader(options);
+    // If the module is already in the graph, return the existing info.
+    const existing = this._moduleGraph.getModuleInfo(options.id);
+    if (existing !== null) {
+      return existing;
+    }
+
+    // Delegate to the loader pipeline and register the result in the live graph.
+    const info = await this._loader(options);
+    this._moduleGraph.addModule(info.id, info);
+    return info;
   }
 
   /** Resolve a module source to a ResolvedId. */
@@ -213,6 +223,10 @@ export class PluginContextImpl implements PluginContext {
     const msg = typeof error === "string" ? error : error.message;
     const err = new Error(msg);
     (err as unknown as Record<string, unknown>)["plugin"] = this._pluginName;
+    (err as unknown as Record<string, unknown>)["code"] =
+      typeof error === "string"
+        ? PLUGIN_ERROR
+        : (error.code ?? PLUGIN_ERROR);
     throw err;
   }
 
