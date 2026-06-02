@@ -13,15 +13,14 @@
  *   - circular dependencies between internal modules
  *   - test-only utilities that should be tree-shaken away
  *
- * The test bundles the project in both ES and CJS formats, asserts syntactic
- * validity, verifies expected exports, checks that tree-shaking removes
- * test-only code, and evaluates the CJS bundle via `new Function()`.
+ * The test bundles the project in both ES and CJS formats, verifies expected
+ * exports, checks that tree-shaking removes test-only code, and validates
+ * that the CJS bundle is evaluable via `new Function()`.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as vm from "node:vm";
 import { rollup } from "../../src/rollup.js";
 import type { OutputChunk } from "../../src/types.js";
 
@@ -32,7 +31,7 @@ import type { OutputChunk } from "../../src/types.js";
 /** Write a file, creating intermediate directories as needed. */
 const write = async (dir: string, rel: string, code: string): Promise<void> => {
   const full = join(dir, rel);
-  const parent = full.replace(/\/[^/]+$/, "");
+  const parent = join(full, "..");
   await mkdir(parent, { recursive: true });
   await writeFile(full, code);
 };
@@ -48,81 +47,6 @@ const firstChunk = (
   return chunk as OutputChunk;
 };
 
-/**
- * Strip ES module syntax so code can be evaluated as a plain script.
- * Mirrors the helper from differential.test.ts.
- */
-const stripModuleSyntax = (code: string): string => {
-  return code
-    .replace(/\bexport\s+default\s+function\s+/g, "function ")
-    .replace(/\bexport\s+default\s+class\s+/g, "class ")
-    .replace(/\bexport\s+default\s+/g, "var __default__ = ")
-    .replace(/\bexport\s*\{[^}]*\}\s*from\s*['"][^'"]*['"]\s*;?/g, "")
-    .replace(/\bexport\s*\*\s*from\s*['"][^'"]*['"]\s*;?/g, "")
-    .replace(/\bexport\s*\{[^}]*\}\s*;?/g, "")
-    .replace(/\bexport\s+(const|let|var|function|class)\s+/g, "$1 ")
-    .replace(/\bimport\s+[^;]*?\s*from\s*['"][^'"]*['"]\s*;?/g, "")
-    .replace(/\bimport\s*['"][^'"]*['"]\s*;?/g, "")
-    .replace(/\bimport\s*\(([^)]*)\)/g, "Promise.resolve({})");
-};
-
-/**
- * Clean up bundled code for evaluation.  The codegen may leave behind
- * residual import/export fragments from barrel re-export files (e.g.
- * bare `{ ... };` lines or standalone `;`).  This function removes
- * them, converts const/let to var for hoisting, and strips module
- * syntax keywords.
- */
-const cleanForEval = (code: string): string => {
-  let cleaned = stripModuleSyntax(code);
-  cleaned = cleaned.replace(/\bconst\s+/g, "var ");
-  cleaned = cleaned.replace(/\blet\s+/g, "var ");
-
-  // Process line-by-line to remove residual fragments from barrel files.
-  // A line that consists only of braces, commas, semicolons, and identifiers
-  // with no `=` or `(` is likely a stripped export/import remnant.
-  const lines = cleaned.split("\n");
-  const result: Array<string> = [];
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    // Remove bare semicolons and bare `};`
-    if (trimmed === ";" || trimmed === "};") {
-      continue;
-    }
-    // Remove lines that are only `{ ident, ident, ... };` (stripped export lists)
-    if (/^\{[\w\s,$]+\}\s*;?\s*$/.test(trimmed) && !trimmed.includes("(")) {
-      continue;
-    }
-    result.push(lines[i]);
-  }
-  return result.join("\n");
-};
-
-/**
- * Evaluate an ES module bundle in a VM context after cleaning.
- */
-const evaluateEsBundle = (code: string): Record<string, unknown> => {
-  const rewritten = cleanForEval(code);
-
-  const exports: Record<string, unknown> = {};
-  const context = vm.createContext({
-    __exports: exports,
-    console,
-    setTimeout,
-    clearTimeout,
-    Promise,
-    Object,
-    Array,
-    Set,
-    Map,
-    Number,
-    TypeError,
-  });
-
-  vm.runInNewContext(rewritten, context, { timeout: 5000 });
-  return exports;
-};
-
 // ---------------------------------------------------------------------------
 // Project scaffold
 // ---------------------------------------------------------------------------
@@ -130,12 +54,12 @@ const evaluateEsBundle = (code: string): Record<string, unknown> => {
 /**
  * Writes 16 modules into `dir`.  The layout mirrors a realistic library:
  *
- *   index.js          -- barrel entry (import+re-export pattern)
+ *   index.js          -- entry (imports through barrel files)
  *   utils/index.js    -- barrel
  *   utils/strings.js
  *   utils/arrays.js
  *   utils/guards.js
- *   utils/test-helpers.js   (test-only, should be tree-shaken)
+ *   utils/test-helpers.js   (test-only, never imported by barrels)
  *   core/index.js     -- barrel
  *   core/base.js
  *   core/registry.js
@@ -416,27 +340,18 @@ const scaffoldProject = async (dir: string): Promise<string> => {
   );
 
   // ---- root entry ----
-  // Import directly from leaf modules (not barrel files) to produce clean
-  // bundled output.  The barrel index files are still part of the project
-  // tree for structural completeness.
+  // Imports through barrel files to exercise the full module graph (15+
+  // modules across the dependency tree).
 
   const entryPath = join(dir, "index.js");
   await write(
     dir,
     "index.js",
     [
-      "// SpecifyJS main entry",
-      'import { capitalize, slugify } from "./utils/strings.js";',
-      'import { unique, chunk } from "./utils/arrays.js";',
-      'import { isString, isNumber, isDefined } from "./utils/guards.js";',
-      'import { BaseSpec } from "./core/base.js";',
-      'import { register, lookup, createAndRegister } from "./core/registry.js";',
-      'import { createValidator, createAndAutoRegister } from "./core/validator.js";',
-      'import { EventEmitter } from "./core/emitter.js";',
-      'import { createPipeline } from "./core/pipeline.js";',
-      'import { createClient } from "./api/client.js";',
-      'import { createRequest, withHeader } from "./api/request.js";',
-      'import { createResponse, isOk } from "./api/response.js";',
+      "// SpecifyJS main entry -- re-exports from all subpackages",
+      'import { capitalize, slugify, unique, chunk, isString, isNumber, isDefined } from "./utils/index.js";',
+      'import { BaseSpec, register, lookup, createAndRegister, createValidator, createAndAutoRegister, EventEmitter, createPipeline } from "./core/index.js";',
+      'import { createClient, createRequest, withHeader, createResponse, isOk } from "./api/index.js";',
       "export { capitalize, slugify, unique, chunk, isString, isNumber, isDefined };",
       "export { BaseSpec, register, lookup, createAndRegister, createValidator, createAndAutoRegister, EventEmitter, createPipeline };",
       "export { createClient, createRequest, withHeader, createResponse, isOk };",
@@ -506,8 +421,9 @@ describe("specifyjs integration -- realistic project bundling", () => {
     expect(chunk.code).not.toContain('from "./core/');
     expect(chunk.code).not.toContain('from "./api/');
 
-    // Module graph should contain multiple modules (entry + source files)
-    expect(chunk.moduleIds.length).toBeGreaterThanOrEqual(10);
+    // Module graph should contain 15+ modules
+    // (entry + 3 barrels + 3 utils + 5 core + 3 api = 15)
+    expect(chunk.moduleIds.length).toBeGreaterThanOrEqual(15);
 
     await build.close();
   });
@@ -541,11 +457,13 @@ describe("specifyjs integration -- realistic project bundling", () => {
     expect(chunk.code).toContain("capitalize");
     expect(chunk.code).toContain("BaseSpec");
     expect(chunk.code).toContain("EventEmitter");
+    expect(chunk.code).toContain("createPipeline");
+    expect(chunk.code).toContain("async");
 
     await build.close();
   });
 
-  it("CJS output contains valid CommonJS patterns", async () => {
+  it("CJS output contains valid CommonJS patterns and export assignments", async () => {
     const entry = await scaffoldProject(tempDir);
     const build = await rollup({ input: entry, treeshake: false });
     const { output } = await build.generate({ format: "cjs" });
@@ -561,6 +479,10 @@ describe("specifyjs integration -- realistic project bundling", () => {
     expect(chunk.code).toContain("createClient");
     expect(chunk.code).toContain("isString");
     expect(chunk.code).toContain("EventEmitter");
+
+    // The CJS output should have export assignments at the bottom
+    expect(chunk.code).toContain("exports.capitalize");
+    expect(chunk.code).toContain("exports.createClient");
 
     await build.close();
   });
