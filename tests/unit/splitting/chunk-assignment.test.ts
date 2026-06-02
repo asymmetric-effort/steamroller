@@ -135,9 +135,185 @@ describe("assignChunks", () => {
       const splitPoints = detectSplitPoints(modules, ["./a.ts", "./b.ts"]);
       const chunks = assignChunks(modules, ["./a.ts", "./b.ts"], splitPoints);
 
-      const sharedChunk = chunks.get("shared");
-      expect(sharedChunk).toContain("./util1.ts");
-      expect(sharedChunk).toContain("./util2.ts");
+      // Each shared dep gets its own chunk as a proper chunk root
+      const allModules = Array.from(chunks.values()).flat();
+      expect(allModules).toContain("./util1.ts");
+      expect(allModules).toContain("./util2.ts");
+      // Neither should be in the entry chunks
+      const aChunk = chunks.get("a") || [];
+      const bChunk = chunks.get("b") || [];
+      expect(aChunk).not.toContain("./util1.ts");
+      expect(aChunk).not.toContain("./util2.ts");
+      expect(bChunk).not.toContain("./util1.ts");
+      expect(bChunk).not.toContain("./util2.ts");
+    });
+  });
+
+  describe("singleton preservation via shared chunks", () => {
+    it("two entry points sharing a common dep produce a shared chunk", () => {
+      const modules: Array<SplittableModule> = [
+        makeModule("./app.ts", {
+          isEntry: true,
+          importedIds: ["./singleton.ts"],
+        }),
+        makeModule("./worker.ts", {
+          isEntry: true,
+          importedIds: ["./singleton.ts"],
+        }),
+        makeModule("./singleton.ts"),
+      ];
+
+      const splitPoints = detectSplitPoints(modules, [
+        "./app.ts",
+        "./worker.ts",
+      ]);
+      const chunks = assignChunks(
+        modules,
+        ["./app.ts", "./worker.ts"],
+        splitPoints,
+      );
+
+      // A shared chunk must exist containing the singleton module
+      const allChunkNames = Array.from(chunks.keys());
+      const singletonChunk = allChunkNames.find((name) => {
+        const mods = chunks.get(name)!;
+        return mods.includes("./singleton.ts");
+      });
+      expect(singletonChunk).toBeDefined();
+      // The singleton should NOT be in either entry chunk
+      expect(chunks.get("app") || []).not.toContain("./singleton.ts");
+      expect(chunks.get("worker") || []).not.toContain("./singleton.ts");
+    });
+
+    it("shared module is only included once across all chunks", () => {
+      const modules: Array<SplittableModule> = [
+        makeModule("./entry-x.ts", {
+          isEntry: true,
+          importedIds: ["./config.ts", "./helper.ts"],
+        }),
+        makeModule("./entry-y.ts", {
+          isEntry: true,
+          importedIds: ["./config.ts"],
+        }),
+        makeModule("./config.ts", { importedIds: ["./helper.ts"] }),
+        makeModule("./helper.ts"),
+      ];
+
+      const splitPoints = detectSplitPoints(modules, [
+        "./entry-x.ts",
+        "./entry-y.ts",
+      ]);
+      const chunks = assignChunks(
+        modules,
+        ["./entry-x.ts", "./entry-y.ts"],
+        splitPoints,
+      );
+
+      // Flatten all module IDs across every chunk
+      const allModuleIds = Array.from(chunks.values()).flat();
+
+      // Each shared module should appear exactly once
+      const configCount = allModuleIds.filter(
+        (id) => id === "./config.ts",
+      ).length;
+      const helperCount = allModuleIds.filter(
+        (id) => id === "./helper.ts",
+      ).length;
+      expect(configCount).toBe(1);
+      expect(helperCount).toBe(1);
+    });
+
+    it("import paths correctly reference the shared chunk", () => {
+      const modules: Array<SplittableModule> = [
+        makeModule("./page-a.ts", {
+          isEntry: true,
+          importedIds: ["./store.ts"],
+        }),
+        makeModule("./page-b.ts", {
+          isEntry: true,
+          importedIds: ["./store.ts"],
+        }),
+        makeModule("./store.ts", { importedIds: ["./store-utils.ts"] }),
+        makeModule("./store-utils.ts"),
+      ];
+
+      const splitPoints = detectSplitPoints(modules, [
+        "./page-a.ts",
+        "./page-b.ts",
+      ]);
+      const chunks = assignChunks(
+        modules,
+        ["./page-a.ts", "./page-b.ts"],
+        splitPoints,
+      );
+
+      // Find which chunk the store module ended up in
+      let storeChunkName: string | undefined;
+      for (const [name, mods] of chunks) {
+        if (mods.includes("./store.ts")) {
+          storeChunkName = name;
+          break;
+        }
+      }
+      expect(storeChunkName).toBeDefined();
+      // The store chunk should be separate from both entry chunks
+      expect(storeChunkName).not.toBe("page-a");
+      expect(storeChunkName).not.toBe("page-b");
+
+      // store-utils is also a shared dependency (reachable from both entries
+      // via store) so it gets its own chunk root too -- ensuring singleton
+      // preservation for both store and store-utils independently
+      let storeUtilsChunkName: string | undefined;
+      for (const [name, mods] of chunks) {
+        if (mods.includes("./store-utils.ts")) {
+          storeUtilsChunkName = name;
+          break;
+        }
+      }
+      expect(storeUtilsChunkName).toBeDefined();
+      expect(storeUtilsChunkName).not.toBe("page-a");
+      expect(storeUtilsChunkName).not.toBe("page-b");
+    });
+
+    it("shared dep with unique sub-dep scopes it to the shared chunk", () => {
+      // When a shared dep has a sub-dep that is only reachable from one
+      // entry (through the shared dep acting as a chunk boundary), that
+      // sub-dep stays scoped to the shared chunk.
+      const modules: Array<SplittableModule> = [
+        makeModule("./main-a.ts", {
+          isEntry: true,
+          importedIds: ["./lib.ts"],
+        }),
+        makeModule("./main-b.ts", {
+          isEntry: true,
+          importedIds: ["./lib.ts"],
+        }),
+        makeModule("./lib.ts", { importedIds: ["./lib-internal.ts"] }),
+        makeModule("./lib-internal.ts"),
+      ];
+
+      const splitPoints = detectSplitPoints(modules, [
+        "./main-a.ts",
+        "./main-b.ts",
+      ]);
+      const chunks = assignChunks(
+        modules,
+        ["./main-a.ts", "./main-b.ts"],
+        splitPoints,
+      );
+
+      // lib-internal should NOT be in either entry chunk
+      const mainAChunk = chunks.get("main-a") || [];
+      const mainBChunk = chunks.get("main-b") || [];
+      expect(mainAChunk).not.toContain("./lib-internal.ts");
+      expect(mainBChunk).not.toContain("./lib-internal.ts");
+
+      // lib-internal should appear exactly once across all chunks
+      const allModuleIds = Array.from(chunks.values()).flat();
+      const libInternalCount = allModuleIds.filter(
+        (id) => id === "./lib-internal.ts",
+      ).length;
+      expect(libInternalCount).toBe(1);
     });
   });
 

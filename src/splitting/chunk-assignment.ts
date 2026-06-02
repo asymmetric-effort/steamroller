@@ -151,7 +151,7 @@ export const assignChunks = (
     }
   }
 
-  // 2. Identify chunk roots (entries + dynamic import split points)
+  // 2. Identify chunk roots (entries + split points including shared deps)
   const chunkRoots: Array<string> = [];
   const chunkRootNames = new Map<string, string>();
 
@@ -163,12 +163,33 @@ export const assignChunks = (
     }
   }
 
+  // Track used chunk names to avoid collisions between dynamic and shared chunks
+  const usedChunkNames = new Set<string>();
+  for (const [, name] of chunkRootNames) {
+    usedChunkNames.add(name);
+  }
+
   for (let i = 0; i < splitPoints.length; i++) {
     const sp = splitPoints[i];
-    if (sp.reason === "dynamic-import" && !assigned.has(sp.moduleId)) {
+    if (assigned.has(sp.moduleId)) {
+      continue;
+    }
+    if (sp.reason === "dynamic-import") {
       const name = deriveChunkName(sp.moduleId);
       chunkRoots.push(sp.moduleId);
       chunkRootNames.set(sp.moduleId, name);
+      usedChunkNames.add(name);
+    } else if (sp.reason === "shared-dependency") {
+      // Shared dependencies imported by 2+ entry points become chunk roots
+      // so their sub-dependencies are properly scoped and the module is only
+      // instantiated once (singleton preservation).
+      let name = deriveChunkName(sp.moduleId);
+      if (usedChunkNames.has(name)) {
+        name = "shared-" + name;
+      }
+      chunkRoots.push(sp.moduleId);
+      chunkRootNames.set(sp.moduleId, name);
+      usedChunkNames.add(name);
     }
   }
 
