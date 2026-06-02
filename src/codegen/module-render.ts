@@ -102,8 +102,8 @@ export const renderModule = (
     ms.overwrite(rewrite.start, rewrite.end, rewrite.replacement);
   }
 
-  // 4. Apply variable deconflictions
-  applyDeconflictions(ms, source, deconflictions);
+  // 4. Apply variable deconflictions using AST-aware renaming
+  applyDeconflictions(ms, source, ast, deconflictions);
 
   // 5. Apply compact mode if requested
   const code =
@@ -119,56 +119,309 @@ export const renderModule = (
 };
 
 /**
- * Apply variable deconflictions by finding identifier occurrences in source.
- * Uses word-boundary matching to avoid partial replacements.
+ * Context used when collecting identifier references from the AST.
+ * Tracks whether a node is a shorthand property value so the replacement
+ * can expand `{ foo }` to `{ foo: newName }`.
+ */
+interface IdentifierRef {
+  readonly start: number;
+  readonly end: number;
+  readonly name: string;
+  /** When true, the identifier is the value of a shorthand property. */
+  readonly shorthandValue: boolean;
+  /** For shorthand properties, the key start position (same as value start). */
+  readonly shorthandKeyStart: number;
+  /** For shorthand properties, the key end position. */
+  readonly shorthandKeyEnd: number;
+}
+
+/**
+ * Apply variable deconflictions by walking the AST to find identifier
+ * references that need renaming. Only renames actual identifier references,
+ * not occurrences inside string literals, template literal quasis, comments,
+ * or non-computed property keys.
+ *
+ * For shorthand properties like `{ foo }`, expands to `{ foo: newName }`.
  *
  * @param ms - The MagicString instance to modify
  * @param source - The original source code
+ * @param ast - The parsed AST Program node
  * @param deconflictions - Map of original name to deconflicted name
  */
 const applyDeconflictions = (
   ms: MagicString,
   source: string,
+  ast: AST.Program,
   deconflictions: ReadonlyMap<string, string>,
 ): void => {
   if (deconflictions.size === 0) {
     return;
   }
 
-  // Build a list of all replacements to apply, sorted by position descending
-  // so later replacements don't shift earlier positions
-  const replacements: Array<{ start: number; end: number; text: string }> = [];
+  // Collect all identifier references from the AST that match names we need
+  // to rename
+  const refs = collectIdentifierRefs(ast, deconflictions);
 
-  for (const [original, deconflicted] of deconflictions) {
-    const pattern = new RegExp(`\\b${escapeRegExp(original)}\\b`, "g");
-    let match: RegExpExecArray | null = pattern.exec(source);
-    while (match !== null) {
-      replacements.push({
-        start: match.index,
-        end: match.index + original.length,
-        text: deconflicted,
-      });
-      match = pattern.exec(source);
+  // Sort descending by start position so later replacements don't shift
+  // earlier positions
+  refs.sort((a, b) => b.start - a.start);
+
+  for (let i = 0; i < refs.length; i++) {
+    const ref = refs[i];
+    const newName = deconflictions.get(ref.name);
+    if (newName === undefined) {
+      continue;
     }
-  }
-
-  // Sort descending by start position so we apply from end to beginning
-  replacements.sort((a, b) => b.start - a.start);
-
-  for (let i = 0; i < replacements.length; i++) {
-    const r = replacements[i];
-    ms.overwrite(r.start, r.end, r.text);
+    if (ref.shorthandValue) {
+      // Expand shorthand `{ foo }` to `{ foo: newName }`
+      ms.overwrite(
+        ref.shorthandKeyStart,
+        ref.shorthandKeyEnd,
+        `${ref.name}: ${newName}`,
+      );
+    } else {
+      ms.overwrite(ref.start, ref.end, newName);
+    }
   }
 };
 
 /**
- * Escape special regex characters in a string.
+ * Collect all Identifier nodes from the AST that are actual variable
+ * references and whose names appear in the deconflictions map.
  *
- * @param str - The string to escape
- * @returns The escaped string safe for use in RegExp
+ * Skips identifiers that are:
+ * - Non-computed property keys in member expressions (obj.foo)
+ * - Non-computed, non-shorthand property keys in object literals
+ * - Label identifiers
+ * - Import/export specifier nodes (these are rewritten separately)
+ *
+ * For shorthand properties `{ foo }`, marks the reference so it can be
+ * expanded to `{ foo: newName }`.
  */
-const escapeRegExp = (str: string): string => {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const collectIdentifierRefs = (
+  ast: AST.Program,
+  deconflictions: ReadonlyMap<string, string>,
+): IdentifierRef[] => {
+  const refs: IdentifierRef[] = [];
+
+  // Use an iterative stack-based walk to avoid deep recursion
+  // Each entry: [node, parentContext]
+  // parentContext helps us know when to skip an identifier
+  type StackEntry = {
+    node: Record<string, unknown>;
+    /** If this identifier is the property of a non-computed MemberExpression */
+    skipAsProperty?: boolean;
+    /** If this identifier is the key of a non-shorthand, non-computed Property */
+    skipAsKey?: boolean;
+    /** If this identifier is inside an import/export declaration specifier */
+    skipAsModuleSpecifier?: boolean;
+    /** If this is a shorthand property value */
+    shorthandProperty?: AST.Property;
+  };
+
+  const stack: StackEntry[] = [];
+
+  // Seed the stack with top-level body nodes
+  for (let i = ast.body.length - 1; i >= 0; i--) {
+    stack.push({ node: ast.body[i] as unknown as Record<string, unknown> });
+  }
+
+  while (stack.length > 0) {
+    const entry = stack.pop()!;
+    const node = entry.node;
+    const type = node["type"] as string;
+
+    if (type === undefined) {
+      continue;
+    }
+
+    // Handle Identifier nodes
+    if (type === "Identifier") {
+      if (
+        entry.skipAsProperty ||
+        entry.skipAsKey ||
+        entry.skipAsModuleSpecifier
+      ) {
+        continue;
+      }
+      const name = node["name"] as string;
+      if (!deconflictions.has(name)) {
+        continue;
+      }
+      const start = node["start"] as number;
+      const end = node["end"] as number;
+      if (entry.shorthandProperty !== undefined) {
+        const prop = entry.shorthandProperty;
+        refs.push({
+          start,
+          end,
+          name,
+          shorthandValue: true,
+          shorthandKeyStart: prop.key.start,
+          shorthandKeyEnd: prop.value.end,
+        });
+      } else {
+        refs.push({
+          start,
+          end,
+          name,
+          shorthandValue: false,
+          shorthandKeyStart: 0,
+          shorthandKeyEnd: 0,
+        });
+      }
+      continue;
+    }
+
+    // Skip string literals and template element quasis entirely
+    if (type === "Literal" || type === "TemplateElement") {
+      continue;
+    }
+
+    // For MemberExpression: skip the property if non-computed
+    if (type === "MemberExpression") {
+      const computed = node["computed"] as boolean;
+      const object = node["object"] as Record<string, unknown>;
+      const property = node["property"] as Record<string, unknown>;
+      if (object !== null && object !== undefined) {
+        stack.push({ node: object });
+      }
+      if (property !== null && property !== undefined) {
+        stack.push({ node: property, skipAsProperty: !computed });
+      }
+      continue;
+    }
+
+    // For Property nodes: handle shorthand and non-computed keys
+    if (type === "Property") {
+      const computed = node["computed"] as boolean;
+      const shorthand = node["shorthand"] as boolean;
+      const key = node["key"] as Record<string, unknown>;
+      const value = node["value"] as Record<string, unknown>;
+
+      if (shorthand) {
+        // For shorthand `{ foo }`, key and value are the same Identifier.
+        // We mark the value so replacement expands to `{ foo: newName }`.
+        if (value !== null && value !== undefined) {
+          stack.push({
+            node: value,
+            shorthandProperty: node as unknown as AST.Property,
+          });
+        }
+      } else {
+        // Non-shorthand: skip the key if non-computed (it's a literal property name)
+        if (key !== null && key !== undefined) {
+          stack.push({ node: key, skipAsKey: !computed });
+        }
+        if (value !== null && value !== undefined) {
+          stack.push({ node: value });
+        }
+      }
+      continue;
+    }
+
+    // For import/export declarations: skip specifier identifiers
+    // (these are handled by import/export rewrites)
+    if (
+      type === "ImportDeclaration" ||
+      type === "ExportNamedDeclaration" ||
+      type === "ExportDefaultDeclaration" ||
+      type === "ExportAllDeclaration"
+    ) {
+      // Skip entire import/export declarations - their specifiers are
+      // rewritten by the import/export rewrite passes
+      continue;
+    }
+
+    // For LabeledStatement: skip the label identifier
+    if (type === "LabeledStatement") {
+      const body = node["body"] as Record<string, unknown>;
+      if (body !== null && body !== undefined) {
+        stack.push({ node: body });
+      }
+      // Skip node["label"] - it's not a variable reference
+      continue;
+    }
+
+    // For BreakStatement / ContinueStatement: skip the label
+    if (type === "BreakStatement" || type === "ContinueStatement") {
+      continue;
+    }
+
+    // For MethodDefinition / PropertyDefinition: handle computed keys
+    if (type === "MethodDefinition" || type === "PropertyDefinition") {
+      const computed = node["computed"] as boolean;
+      const key = node["key"] as Record<string, unknown>;
+      const value = node["value"] as Record<string, unknown>;
+      if (key !== null && key !== undefined) {
+        stack.push({ node: key, skipAsKey: !computed });
+      }
+      if (value !== null && value !== undefined) {
+        stack.push({ node: value });
+      }
+      // Handle decorators
+      const decorators = node["decorators"] as
+        | ReadonlyArray<Record<string, unknown>>
+        | undefined;
+      if (decorators !== undefined) {
+        for (let i = decorators.length - 1; i >= 0; i--) {
+          stack.push({ node: decorators[i] });
+        }
+      }
+      continue;
+    }
+
+    // For MetaProperty: skip both meta and property (e.g., import.meta)
+    if (type === "MetaProperty") {
+      continue;
+    }
+
+    // Generic traversal: push all child nodes that look like AST nodes
+    // or arrays of AST nodes
+    const keys = Object.keys(node);
+    for (let k = keys.length - 1; k >= 0; k--) {
+      const key = keys[k];
+      // Skip non-child properties
+      if (
+        key === "type" ||
+        key === "start" ||
+        key === "end" ||
+        key === "loc" ||
+        key === "leadingComments" ||
+        key === "trailingComments" ||
+        key === "raw" ||
+        key === "regex" ||
+        key === "bigint" ||
+        key === "sourceType" ||
+        key === "directive" ||
+        key === "operator" ||
+        (key === "value" && type === "TemplateElement")
+      ) {
+        continue;
+      }
+      const child = node[key];
+      if (child === null || child === undefined) {
+        continue;
+      }
+      if (Array.isArray(child)) {
+        for (let j = child.length - 1; j >= 0; j--) {
+          const item = child[j];
+          if (
+            item !== null &&
+            item !== undefined &&
+            typeof item === "object" &&
+            "type" in item
+          ) {
+            stack.push({ node: item as Record<string, unknown> });
+          }
+        }
+      } else if (typeof child === "object" && "type" in (child as object)) {
+        stack.push({ node: child as Record<string, unknown> });
+      }
+    }
+  }
+
+  return refs;
 };
 
 /**

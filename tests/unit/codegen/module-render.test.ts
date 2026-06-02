@@ -327,12 +327,64 @@ describe("renderModule", () => {
 
   describe("variable deconfliction", () => {
     it("should rename deconflicted variables", () => {
+      // "const foo = 1;\nconsole.log(foo);\n"
       const source = "const foo = 1;\nconsole.log(foo);\n";
-      const stmts = [
-        { start: 0, end: 15, type: "VariableDeclaration" },
-        { start: 15, end: 32, type: "ExpressionStatement" },
-      ];
-      const ast = makeProgram(source, stmts);
+      const ast: AST.Program = {
+        type: "Program",
+        sourceType: "module",
+        start: 0,
+        end: source.length,
+        body: [
+          {
+            type: "VariableDeclaration",
+            kind: "const",
+            start: 0,
+            end: 15,
+            declarations: [
+              {
+                type: "VariableDeclarator",
+                start: 6,
+                end: 14,
+                id: { type: "Identifier", name: "foo", start: 6, end: 9 },
+                init: { type: "Literal", value: 1, start: 12, end: 13 },
+              },
+            ],
+          },
+          {
+            type: "ExpressionStatement",
+            start: 15,
+            end: 32,
+            expression: {
+              type: "CallExpression",
+              start: 15,
+              end: 31,
+              optional: false,
+              callee: {
+                type: "MemberExpression",
+                start: 15,
+                end: 26,
+                computed: false,
+                optional: false,
+                object: {
+                  type: "Identifier",
+                  name: "console",
+                  start: 15,
+                  end: 22,
+                },
+                property: {
+                  type: "Identifier",
+                  name: "log",
+                  start: 23,
+                  end: 26,
+                },
+              },
+              arguments: [
+                { type: "Identifier", name: "foo", start: 27, end: 30 },
+              ],
+            },
+          },
+        ],
+      };
       const included = new Set([0, 15]);
       const deconflictions = new Map([["foo", "foo_1"]]);
 
@@ -347,16 +399,60 @@ describe("renderModule", () => {
       );
 
       expect(result.code).toContain("foo_1");
-      expect(result.code).not.toMatch(/\bfoo\b(?!_1)/);
+      expect(result.code).toBe("const foo_1 = 1;\nconsole.log(foo_1);\n");
     });
 
     it("should not rename partial matches", () => {
+      // "const foobar = 1;\nconst foo = 2;\n"
       const source = "const foobar = 1;\nconst foo = 2;\n";
-      const stmts = [
-        { start: 0, end: 18, type: "VariableDeclaration" },
-        { start: 18, end: 33, type: "VariableDeclaration" },
-      ];
-      const ast = makeProgram(source, stmts);
+      const ast: AST.Program = {
+        type: "Program",
+        sourceType: "module",
+        start: 0,
+        end: source.length,
+        body: [
+          {
+            type: "VariableDeclaration",
+            kind: "const",
+            start: 0,
+            end: 18,
+            declarations: [
+              {
+                type: "VariableDeclarator",
+                start: 6,
+                end: 17,
+                id: {
+                  type: "Identifier",
+                  name: "foobar",
+                  start: 6,
+                  end: 12,
+                },
+                init: { type: "Literal", value: 1, start: 15, end: 16 },
+              },
+            ],
+          },
+          {
+            type: "VariableDeclaration",
+            kind: "const",
+            start: 18,
+            end: 33,
+            declarations: [
+              {
+                type: "VariableDeclarator",
+                start: 24,
+                end: 32,
+                id: {
+                  type: "Identifier",
+                  name: "foo",
+                  start: 24,
+                  end: 27,
+                },
+                init: { type: "Literal", value: 2, start: 30, end: 31 },
+              },
+            ],
+          },
+        ],
+      };
       const included = new Set([0, 18]);
       const deconflictions = new Map([["foo", "foo$1"]]);
 
@@ -372,6 +468,8 @@ describe("renderModule", () => {
 
       expect(result.code).toContain("foobar");
       expect(result.code).toContain("foo$1");
+      // foobar should NOT be renamed
+      expect(result.code).toBe("const foobar = 1;\nconst foo$1 = 2;\n");
     });
 
     it("should handle empty deconflictions map", () => {
@@ -391,6 +489,266 @@ describe("renderModule", () => {
       );
 
       expect(result.code).toBe(source);
+    });
+
+    it("should NOT modify string contents during deconfliction", () => {
+      // const foo = "foo is great";
+      const source = 'const foo = "foo is great";\n';
+      const ast: AST.Program = {
+        type: "Program",
+        sourceType: "module",
+        start: 0,
+        end: source.length,
+        body: [
+          {
+            type: "VariableDeclaration",
+            kind: "const",
+            start: 0,
+            end: 28,
+            declarations: [
+              {
+                type: "VariableDeclarator",
+                start: 6,
+                end: 27,
+                id: {
+                  type: "Identifier",
+                  name: "foo",
+                  start: 6,
+                  end: 9,
+                },
+                init: {
+                  type: "Literal",
+                  value: "foo is great",
+                  start: 12,
+                  end: 26,
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const included = new Set([0]);
+      const deconflictions = new Map([["foo", "foo$1"]]);
+
+      const result = renderModule(
+        source,
+        ast,
+        included,
+        [],
+        [],
+        deconflictions,
+        makeOptions(),
+      );
+
+      // The variable should be renamed but the string content should NOT
+      expect(result.code).toBe('const foo$1 = "foo is great";\n');
+    });
+
+    it("should NOT modify template literal quasis during deconfliction", () => {
+      // const foo = `foo ${foo}`;
+      const source = "const foo = `foo ${foo}`;\n";
+      const ast: AST.Program = {
+        type: "Program",
+        sourceType: "module",
+        start: 0,
+        end: source.length,
+        body: [
+          {
+            type: "VariableDeclaration",
+            kind: "const",
+            start: 0,
+            end: 25,
+            declarations: [
+              {
+                type: "VariableDeclarator",
+                start: 6,
+                end: 24,
+                id: {
+                  type: "Identifier",
+                  name: "foo",
+                  start: 6,
+                  end: 9,
+                },
+                init: {
+                  type: "TemplateLiteral",
+                  start: 12,
+                  end: 24,
+                  quasis: [
+                    {
+                      type: "TemplateElement",
+                      start: 13,
+                      end: 18,
+                      tail: false,
+                      value: { raw: "foo ", cooked: "foo " },
+                    },
+                    {
+                      type: "TemplateElement",
+                      start: 23,
+                      end: 23,
+                      tail: true,
+                      value: { raw: "", cooked: "" },
+                    },
+                  ],
+                  expressions: [
+                    {
+                      type: "Identifier",
+                      name: "foo",
+                      start: 19,
+                      end: 22,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const included = new Set([0]);
+      const deconflictions = new Map([["foo", "foo$1"]]);
+
+      const result = renderModule(
+        source,
+        ast,
+        included,
+        [],
+        [],
+        deconflictions,
+        makeOptions(),
+      );
+
+      // Variable declaration and expression reference renamed,
+      // but "foo " inside template quasis stays intact
+      expect(result.code).toBe("const foo$1 = `foo ${foo$1}`;\n");
+    });
+
+    it("should handle property shorthand correctly during deconfliction", () => {
+      // const obj = { foo };
+      const source = "const obj = { foo };\n";
+      const ast: AST.Program = {
+        type: "Program",
+        sourceType: "module",
+        start: 0,
+        end: source.length,
+        body: [
+          {
+            type: "VariableDeclaration",
+            kind: "const",
+            start: 0,
+            end: 21,
+            declarations: [
+              {
+                type: "VariableDeclarator",
+                start: 6,
+                end: 20,
+                id: {
+                  type: "Identifier",
+                  name: "obj",
+                  start: 6,
+                  end: 9,
+                },
+                init: {
+                  type: "ObjectExpression",
+                  start: 12,
+                  end: 19,
+                  properties: [
+                    {
+                      type: "Property",
+                      start: 14,
+                      end: 17,
+                      key: {
+                        type: "Identifier",
+                        name: "foo",
+                        start: 14,
+                        end: 17,
+                      },
+                      value: {
+                        type: "Identifier",
+                        name: "foo",
+                        start: 14,
+                        end: 17,
+                      },
+                      kind: "init",
+                      method: false,
+                      shorthand: true,
+                      computed: false,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const included = new Set([0]);
+      const deconflictions = new Map([["foo", "foo$1"]]);
+
+      const result = renderModule(
+        source,
+        ast,
+        included,
+        [],
+        [],
+        deconflictions,
+        makeOptions(),
+      );
+
+      // Shorthand { foo } should expand to { foo: foo$1 }
+      expect(result.code).toBe("const obj = { foo: foo$1 };\n");
+    });
+
+    it("should not rename non-computed member expression property", () => {
+      // foo.bar where bar is deconflicted - should NOT rename bar in obj.bar
+      const source = "foo.bar;\n";
+      const ast: AST.Program = {
+        type: "Program",
+        sourceType: "module",
+        start: 0,
+        end: source.length,
+        body: [
+          {
+            type: "ExpressionStatement",
+            start: 0,
+            end: 8,
+            expression: {
+              type: "MemberExpression",
+              start: 0,
+              end: 7,
+              computed: false,
+              optional: false,
+              object: {
+                type: "Identifier",
+                name: "foo",
+                start: 0,
+                end: 3,
+              },
+              property: {
+                type: "Identifier",
+                name: "bar",
+                start: 4,
+                end: 7,
+              },
+            },
+          },
+        ],
+      };
+      const included = new Set([0]);
+      const deconflictions = new Map([
+        ["foo", "foo$1"],
+        ["bar", "bar$1"],
+      ]);
+
+      const result = renderModule(
+        source,
+        ast,
+        included,
+        [],
+        [],
+        deconflictions,
+        makeOptions(),
+      );
+
+      // foo should be renamed but bar (property of non-computed member) should NOT
+      expect(result.code).toBe("foo$1.bar;\n");
     });
   });
 
