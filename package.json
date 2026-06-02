@@ -22,6 +22,16 @@
       "import": "./dist/parse-ast.mjs",
       "require": "./dist/parse-ast.cjs",
       "types": "./dist/parse-ast.d.ts"
+    },
+    "./parse-ast": {
+      "import": "./dist/parse-ast.mjs",
+      "require": "./dist/parse-ast.cjs",
+      "types": "./dist/parse-ast.d.ts"
+    },
+    "./sourcemap": {
+      "import": "./dist/sourcemap.mjs",
+      "require": "./dist/sourcemap.cjs",
+      "types": "./dist/sourcemap.d.ts"
     }
   },
   "bin": {
