@@ -284,4 +284,50 @@ describe("JSX Parser", () => {
       expect(() => parse("<div />;", { jsx: false })).toThrow();
     });
   });
+
+  describe("identifier edge cases", () => {
+    it("parses tag starting with $", () => {
+      const expr = parseJSX("<$comp />;") as unknown as AST.JSXElement;
+      const name = expr.openingElement.name as AST.JSXIdentifier;
+      expect(name.name).toBe("$comp");
+    });
+
+    it("parses tag starting with _", () => {
+      const expr = parseJSX("<_internal />;") as unknown as AST.JSXElement;
+      const name = expr.openingElement.name as AST.JSXIdentifier;
+      expect(name.name).toBe("_internal");
+    });
+
+    it("parses tag with digits in name", () => {
+      const expr = parseJSX("<Item2 />;") as unknown as AST.JSXElement;
+      const name = expr.openingElement.name as AST.JSXIdentifier;
+      expect(name.name).toBe("Item2");
+    });
+  });
+
+  describe("namespaced closing tags", () => {
+    it("parses matching namespaced opening and closing tags", () => {
+      const expr = parseJSX(
+        "<ns:tag>content</ns:tag>;",
+      ) as unknown as AST.JSXElement;
+      expect(expr.type).toBe("JSXElement");
+      expect(expr.closingElement).not.toBeNull();
+      const closeName = expr.closingElement!.name as AST.JSXNamespacedName;
+      expect(closeName.type).toBe("JSXNamespacedName");
+    });
+
+    it("parses matching member expression opening and closing tags", () => {
+      const expr = parseJSX("<A.B>content</A.B>;") as unknown as AST.JSXElement;
+      expect(expr.type).toBe("JSXElement");
+      expect(expr.closingElement).not.toBeNull();
+    });
+  });
+
+  describe("additional error cases", () => {
+    it("throws on invalid attribute value after equals", () => {
+      // Force the code path where = is followed by a non-string, non-brace, non-lt token
+      // Using a numeric literal which is none of those
+      expect(() => parseJSX("<Foo bar=123 />;")).toThrow();
+    });
+  });
 });

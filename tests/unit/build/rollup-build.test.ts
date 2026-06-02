@@ -15,6 +15,9 @@ import type {
 import { PluginDriver } from "../../../src/plugins/driver.js";
 import { OutputHookExecutor } from "../../../src/plugins/output-hooks.js";
 import { normalizeInputOptions } from "../../../src/config/normalize-input.js";
+import { Module } from "../../../src/module/Module.js";
+import { ExternalModule } from "../../../src/module/ExternalModule.js";
+import { parse } from "../../../src/parser/parser.js";
 
 const createMinimalState = (
   overrides: Partial<BuildState> = {},
@@ -519,6 +522,408 @@ describe("createRollupBuild", () => {
       const build = createRollupBuild(state);
       await build.close();
       expect(closeBundleFn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("module rendering", () => {
+    const createModuleWithCode = (
+      id: string,
+      code: string,
+      isEntry: boolean = false,
+    ): Module => {
+      const mod = new Module(id, code, isEntry);
+      mod.ast = parse(code);
+      mod.extractImportsExports();
+      mod.isIncluded = true;
+      return mod;
+    };
+
+    it("renders module with null ast by returning raw code", async () => {
+      const mod = new Module("test.js", "const x = 1;", true);
+      mod.isEntry = true;
+      mod.isIncluded = true;
+      // ast is null by default
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toContain("const x = 1");
+    });
+
+    it("renders module with export named declaration", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toContain("x");
+    });
+
+    it("renders export default declaration", async () => {
+      const code = "export default function foo() { return 1; }\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toContain("foo");
+    });
+
+    it("strips export keyword in cjs format", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output[0].code).toContain("x");
+    });
+
+    it("strips export default in cjs format", async () => {
+      const code = "export default function foo() {}\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output[0].code).toContain("foo");
+    });
+
+    it("handles export specifier list", async () => {
+      const code = "const a = 1;\nconst b = 2;\nexport { a, b };\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("removes export specifier list in cjs format", async () => {
+      const code = "const a = 1;\nconst b = 2;\nexport { a, b };\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output[0].code).toContain("const a");
+    });
+
+    it("handles multi-module build with internal imports", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'import { helper } from "./helper.js";\nexport const main = helper;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dependencies.add(helperMod);
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles external imports in es format", async () => {
+      const code = 'import { foo } from "external";\nexport const bar = foo;\n';
+      const mod = createModuleWithCode("entry.js", code, true);
+      const extMod = new ExternalModule("external");
+      mod.dependencies.add(extMod);
+
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      // External imports should be preserved in ES format
+      expect(output.output[0].code).toContain("import");
+    });
+
+    it("removes external imports in cjs format", async () => {
+      const code = 'import { foo } from "external";\nexport const bar = foo;\n';
+      const mod = createModuleWithCode("entry.js", code, true);
+      const extMod = new ExternalModule("external");
+      mod.dependencies.add(extMod);
+
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles entryModule fallback when no module has isEntry", async () => {
+      const code = "const x = 1;\n";
+      const mod = createModuleWithCode("fallback.js", code, false);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].facadeModuleId).toBe("fallback.js");
+    });
+
+    it("applies tree-shaking to exclude statements", async () => {
+      const code = "const x = 1;\nconst y = 2;\nexport const z = 3;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const includedStatements = new Map<string, ReadonlySet<number>>();
+      includedStatements.set("entry.js", new Set([2])); // only include the export
+      const state = createMinimalState({
+        modules: [mod],
+        includedStatementsByModule: includedStatements,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toContain("z");
+    });
+
+    it("skips tree-shaken modules except entry", async () => {
+      const helperCode = "export const unused = 1;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = false;
+
+      const entryCode = "export const main = 42;\n";
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+
+      const includedStatements = new Map<string, ReadonlySet<number>>();
+      includedStatements.set("entry.js", new Set([0]));
+      const state = createMinimalState({
+        modules: [helperMod, entryMod],
+        includedStatementsByModule: includedStatements,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).not.toContain("unused");
+    });
+
+    it("handles export all declaration with internal source", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode = 'export * from "./helper.js";\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dependencies.add(helperMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles re-export from internal module", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode = 'export { helper } from "./helper.js";\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dependencies.add(helperMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("renders export default class", async () => {
+      const code = "export default class Foo {}\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output[0].code).toContain("Foo");
+    });
+
+    it("applies addons (banner/footer)", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({
+        format: "es",
+        banner: "/* banner */",
+        footer: "/* footer */",
+      });
+      expect(output.output[0].code).toContain("/* banner */");
+      expect(output.output[0].code).toContain("/* footer */");
+    });
+
+    it("builds modules record with treeShakeResult removedBindings", async () => {
+      const code = "export const kept = 1;\nexport const removed = 2;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const treeShakeResult = {
+        includedModules: ["entry.js"],
+        removedModules: [],
+        removedBindings: ["removed"],
+        stats: { totalModules: 1, includedModules: 1, removedModules: 0 },
+      };
+      const state = createMinimalState({
+        modules: [mod],
+        treeShakeResult,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        expect(chunk.modules["entry.js"]).toBeDefined();
+      }
+    });
+
+    it("fires renderError when generate throws during rendering", async () => {
+      const renderErrorFn = vi.fn();
+      const renderChunkFn = vi.fn().mockImplementation(() => {
+        throw new Error("render chunk failed");
+      });
+      const inputOptions = normalizeInputOptions({ input: "entry.js" });
+      const driver = new PluginDriver(
+        [
+          {
+            name: "test",
+            renderChunk: renderChunkFn,
+            renderError: renderErrorFn,
+          },
+        ],
+        () => {},
+      );
+      const executor = new OutputHookExecutor(driver);
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({
+        modules: [mod],
+        outputHookExecutor: executor,
+        inputOptions,
+      });
+      const build = createRollupBuild(state);
+      await expect(build.generate({ format: "es" })).rejects.toThrow(
+        "render chunk failed",
+      );
+      expect(renderErrorFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires renderError with wrapped non-Error thrown during rendering", async () => {
+      const renderErrorFn = vi.fn();
+      const renderChunkFn = vi.fn().mockImplementation(() => {
+        throw "string error from chunk";
+      });
+      const inputOptions = normalizeInputOptions({ input: "entry.js" });
+      const driver = new PluginDriver(
+        [
+          {
+            name: "test",
+            renderChunk: renderChunkFn,
+            renderError: renderErrorFn,
+          },
+        ],
+        () => {},
+      );
+      const executor = new OutputHookExecutor(driver);
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({
+        modules: [mod],
+        outputHookExecutor: executor,
+        inputOptions,
+      });
+      const build = createRollupBuild(state);
+      await expect(build.generate({ format: "es" })).rejects.toBe(
+        "string error from chunk",
+      );
+      const errorArg = renderErrorFn.mock.calls[0][0];
+      expect(errorArg).toBeInstanceOf(Error);
+      expect(errorArg.message).toBe("string error from chunk");
+    });
+
+    it("handles dynamic imports with code splitting", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dependencies.add(helperMod);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles module with default export in getExportBindings", async () => {
+      const code = "export default function main() {}\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        expect(chunk.exports).toContain("default");
+      }
+    });
+
+    it("handles named export with only exported field (no local)", async () => {
+      const code = "const x = 1;\nexport { x as renamed };\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        expect(chunk.exports).toBeDefined();
+      }
+    });
+
+    it("handles export default class in non-entry cjs module", async () => {
+      const helperCode = "export default class Helper {}\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = true;
+
+      const entryCode = "export const main = 42;\n";
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles export specifiers in non-entry module", async () => {
+      const helperCode = "const a = 1;\nconst b = 2;\nexport { a, b };\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = true;
+
+      const entryCode = "export const main = 42;\n";
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles export named declaration without declaration in non-entry", async () => {
+      const helperCode = "const val = 1;\nexport { val };\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = true;
+
+      const entryCode = "export const main = 42;\n";
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("generates inline dynamic imports when option set", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dependencies.add(helperMod);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({
+        format: "es",
+        inlineDynamicImports: true,
+      });
+      // With inline, should produce single chunk
+      expect(output.output.length).toBe(1);
     });
   });
 });

@@ -128,6 +128,14 @@ describe("formats/system", () => {
       const result = systemFormat.wrapChunk("", options);
       expect(result).toContain("setters:");
     });
+
+    it("should omit use strict when strict is false", () => {
+      const options: FormatOptions = { exports: "none", strict: false };
+      const result = systemFormat.wrapChunk("", options);
+      // With strict false, the strict directive should not appear
+      const strictCount = (result.match(/'use strict'/g) ?? []).length;
+      expect(strictCount).toBe(0);
+    });
   });
 
   describe("getExternalImportCode", () => {

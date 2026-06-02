@@ -265,6 +265,29 @@ describe("normalizeOutputOptions", () => {
     expect(result.amd.basePath).toBe("");
   });
 
+  it("normalizes AMD options with defaults for missing fields", () => {
+    const result = normalizeOutputOptions(
+      { amd: {} },
+      getDefaultInputOptions(),
+    );
+    expect(result.amd.autoId).toBe(false);
+    expect(result.amd.basePath).toBe("");
+    expect(result.amd.define).toBe("define");
+    expect(result.amd.forceJsExtensionForImports).toBe(false);
+    expect(result.amd.id).toBeUndefined();
+  });
+
+  it("normalizes generatedCode with partial object fields", () => {
+    const result = normalizeOutputOptions(
+      { generatedCode: { arrowFunctions: true } },
+      getDefaultInputOptions(),
+    );
+    expect(result.generatedCode.arrowFunctions).toBe(true);
+    expect(result.generatedCode.constBindings).toBe(false);
+    expect(result.generatedCode.objectShorthand).toBe(false);
+    expect(result.generatedCode.symbols).toBe(false);
+  });
+
   it("sets minifyInternalExports based on format", () => {
     const es = normalizeOutputOptions(
       { format: "es" },

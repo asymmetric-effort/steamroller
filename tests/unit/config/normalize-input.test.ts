@@ -218,6 +218,17 @@ describe("normalizeInputOptions", () => {
     expect(logs).toHaveLength(1);
   });
 
+  it("calls onwarn handler when provided and level is warn", () => {
+    const warnings: Array<unknown> = [];
+    const result = normalizeInputOptions({
+      onwarn: (warning) => {
+        warnings.push(warning);
+      },
+    });
+    result.onLog("warn", { message: "test warning" });
+    expect(warnings).toHaveLength(1);
+  });
+
   it("normalizes moduleContext record", () => {
     const result = normalizeInputOptions({
       context: "globalThis",

@@ -198,4 +198,308 @@ describe("rollup", () => {
     });
     expect(build.getTimings).toBeUndefined();
   });
+
+  it("handles options hook as object with handler property", async () => {
+    const plugin: Plugin = {
+      name: "test-options-object",
+      options: {
+        handler: (opts: unknown) => {
+          return { ...(opts as Record<string, unknown>), context: "modified" };
+        },
+      } as unknown as (opts: unknown) => unknown,
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      plugins: [virtualPlugin, plugin],
+    });
+    expect(build).toBeDefined();
+  });
+
+  it("skips options hook when handler is not a function", async () => {
+    const plugin: Plugin = {
+      name: "test-options-non-function",
+      options: {
+        handler: "not-a-function",
+      } as unknown as (opts: unknown) => unknown,
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      plugins: [virtualPlugin, plugin],
+    });
+    expect(build).toBeDefined();
+  });
+
+  it("handles plugin resolveId returning a string", async () => {
+    const plugin: Plugin = {
+      name: "string-resolve",
+      resolveId(source: string) {
+        if (source === "src/index.ts" || source.endsWith("/src/index.ts")) {
+          return "src/index.ts";
+        }
+        return null;
+      },
+      load(id: string) {
+        if (id === "src/index.ts") {
+          return { code: "export const y = 2;\n" };
+        }
+        return null;
+      },
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      plugins: [plugin],
+    });
+    const output = await build.generate({ format: "es" });
+    expect(output.output[0].code).toContain("y");
+  });
+
+  it("handles load hook returning a string directly", async () => {
+    const plugin: Plugin = {
+      name: "string-load",
+      resolveId(source: string) {
+        if (source === "src/index.ts" || source.endsWith("/src/index.ts")) {
+          return {
+            id: "src/index.ts",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        return null;
+      },
+      load(id: string) {
+        if (id === "src/index.ts") {
+          return "export const z = 3;\n";
+        }
+        return null;
+      },
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      plugins: [plugin],
+    });
+    const output = await build.generate({ format: "es" });
+    expect(output.output[0].code).toContain("z");
+  });
+
+  it("handles transform hook that modifies code", async () => {
+    const plugin: Plugin = {
+      name: "transform-test",
+      resolveId(source: string) {
+        if (source === "src/index.ts" || source.endsWith("/src/index.ts")) {
+          return {
+            id: "src/index.ts",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        return null;
+      },
+      load(id: string) {
+        if (id === "src/index.ts") {
+          return { code: "export const original = 1;\n" };
+        }
+        return null;
+      },
+      transform(code: string) {
+        return {
+          code: code.replace("original", "transformed"),
+          map: undefined,
+        };
+      },
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      plugins: [plugin],
+    });
+    const output = await build.generate({ format: "es" });
+    expect(output.output[0].code).toContain("transformed");
+  });
+
+  it("handles multi-module build with imports and exports", async () => {
+    const modules: Record<string, string> = {
+      "src/index.ts":
+        'import { helper } from "./helper.js";\nexport const main = helper;\n',
+      "src/helper.js": "export const helper = 42;\n",
+    };
+    const plugin: Plugin = {
+      name: "multi-module",
+      resolveId(source: string, importer: string | undefined) {
+        if (source === "src/index.ts" || source.endsWith("/src/index.ts")) {
+          return {
+            id: "src/index.ts",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        if (source === "./helper.js" && importer === "src/index.ts") {
+          return {
+            id: "src/helper.js",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        return null;
+      },
+      load(id: string) {
+        if (modules[id] !== undefined) {
+          return { code: modules[id] };
+        }
+        return null;
+      },
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      plugins: [plugin],
+    });
+    const output = await build.generate({ format: "es" });
+    expect(output.output.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("handles treeshake disabled", async () => {
+    const build = await rollup({
+      input: "src/index.ts",
+      treeshake: false,
+      plugins: [virtualPlugin],
+    });
+    const output = await build.generate({ format: "es" });
+    expect(output.output.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("handles multi-module build with cross-module tree-shaking", async () => {
+    const modules: Record<string, string> = {
+      "src/index.ts":
+        'import { helper } from "./helper.js";\nexport const main = helper;\n',
+      "src/helper.js": "export const helper = 42;\nexport const unused = 99;\n",
+    };
+    const plugin: Plugin = {
+      name: "multi-treeshake",
+      resolveId(source: string, importer: string | undefined) {
+        if (source === "src/index.ts" || source.endsWith("/src/index.ts")) {
+          return {
+            id: "src/index.ts",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        if (source === "./helper.js" && importer === "src/index.ts") {
+          return {
+            id: "src/helper.js",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        return null;
+      },
+      load(id: string) {
+        if (modules[id] !== undefined) {
+          return { code: modules[id] };
+        }
+        return null;
+      },
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      plugins: [plugin],
+    });
+    const output = await build.generate({ format: "es" });
+    expect(output.output.length).toBeGreaterThanOrEqual(1);
+    expect(output.output[0].code).toContain("main");
+  });
+
+  it("handles export all re-export in entry module", async () => {
+    const modules: Record<string, string> = {
+      "src/index.ts": 'export * from "./helper.js";\n',
+      "src/helper.js": "export const helper = 42;\n",
+    };
+    const plugin: Plugin = {
+      name: "export-all",
+      resolveId(source: string, importer: string | undefined) {
+        if (source === "src/index.ts" || source.endsWith("/src/index.ts")) {
+          return {
+            id: "src/index.ts",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        if (source === "./helper.js" && importer === "src/index.ts") {
+          return {
+            id: "src/helper.js",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        return null;
+      },
+      load(id: string) {
+        if (modules[id] !== undefined) {
+          return { code: modules[id] };
+        }
+        return null;
+      },
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      plugins: [plugin],
+    });
+    const output = await build.generate({ format: "es" });
+    expect(output.output[0].code).toBeDefined();
+  });
+
+  it("handles external imports", async () => {
+    const plugin: Plugin = {
+      name: "external-test",
+      resolveId(source: string) {
+        if (source === "src/index.ts" || source.endsWith("/src/index.ts")) {
+          return {
+            id: "src/index.ts",
+            external: false,
+            moduleSideEffects: true,
+            syntheticNamedExports: false,
+            meta: {},
+            resolvedBy: "virtual",
+          };
+        }
+        return null;
+      },
+      load(id: string) {
+        if (id === "src/index.ts") {
+          return {
+            code: 'import { foo } from "external-pkg";\nexport const bar = foo;\n',
+          };
+        }
+        return null;
+      },
+    };
+    const build = await rollup({
+      input: "src/index.ts",
+      external: ["external-pkg"],
+      plugins: [plugin],
+    });
+    const output = await build.generate({ format: "es" });
+    expect(output.output[0].code).toBeDefined();
+  });
 });
