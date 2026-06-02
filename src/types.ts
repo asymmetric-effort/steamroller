@@ -422,6 +422,7 @@ export interface OutputOptions {
   readonly chunkFileNames?: string | ((chunkInfo: PreRenderedChunk) => string);
   readonly compact?: boolean;
   readonly dir?: string;
+  readonly dts?: boolean;
   readonly dynamicImportInCjs?: boolean;
   readonly entryFileNames?: string | ((chunkInfo: PreRenderedChunk) => string);
   readonly esModule?: boolean | "if-default-prop";
@@ -465,6 +466,8 @@ export interface OutputOptions {
   readonly sourcemapPathTransform?: SourcemapPathTransformOption;
   readonly strict?: boolean;
   readonly systemNullSetters?: boolean;
+  readonly minify?: boolean;
+  readonly target?: string;
   readonly validate?: boolean;
   readonly virtualDirname?: string;
 }

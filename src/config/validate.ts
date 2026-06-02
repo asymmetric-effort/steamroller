@@ -43,6 +43,7 @@ const KNOWN_OUTPUT_OPTIONS: ReadonlyArray<string> = [
   "chunkFileNames",
   "compact",
   "dir",
+  "dts",
   "dynamicImportInCjs",
   "entryFileNames",
   "esModule",

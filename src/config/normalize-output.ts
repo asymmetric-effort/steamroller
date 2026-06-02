@@ -26,6 +26,7 @@ import type {
   NullValue,
 } from "../types.js";
 import { INVALID_OPTION } from "../utils/error-codes.js";
+import { dtsPlugin } from "../plugins/dts-plugin.js";
 
 /** Valid module format values for validation. */
 const VALID_FORMATS: ReadonlyArray<ModuleFormat> = [
@@ -184,31 +185,35 @@ const normalizeSanitizeFileName = (
  */
 export const normalizeOutputPlugins = (
   plugins: ReadonlyArray<OutputPluginOption> | undefined,
+  enableDts: boolean = false,
 ): ReadonlyArray<OutputPlugin> => {
-  if (!plugins) {
-    return [];
-  }
   const result: Array<OutputPlugin> = [];
-  const stack: Array<unknown> = [...plugins];
-  while (stack.length > 0) {
-    const item = stack.pop();
-    if (item === null || item === undefined || item === false) {
-      continue;
-    }
-    if (Array.isArray(item)) {
-      for (let i = 0; i < item.length; i++) {
-        stack.push(item[i]);
+  if (plugins) {
+    const stack: Array<unknown> = [...plugins];
+    while (stack.length > 0) {
+      const item = stack.pop();
+      if (item === null || item === undefined || item === false) {
+        continue;
       }
-      continue;
+      if (Array.isArray(item)) {
+        for (let i = 0; i < item.length; i++) {
+          stack.push(item[i]);
+        }
+        continue;
+      }
+      if (
+        typeof item === "object" &&
+        "name" in (item as Record<string, unknown>)
+      ) {
+        result.push(item as OutputPlugin);
+      }
     }
-    if (
-      typeof item === "object" &&
-      "name" in (item as Record<string, unknown>)
-    ) {
-      result.push(item as OutputPlugin);
-    }
+    result.reverse();
   }
-  return result.reverse();
+  if (enableDts) {
+    result.push(dtsPlugin());
+  }
+  return result;
 };
 
 /**
@@ -290,6 +295,7 @@ export const normalizeOutputOptions = (
     paths: (options.paths as OptionsPaths) ?? {},
     plugins: normalizeOutputPlugins(
       options.plugins as ReadonlyArray<OutputPluginOption> | undefined,
+      options.dts === true,
     ),
     preserveModules: options.preserveModules ?? false,
     preserveModulesRoot: options.preserveModulesRoot ?? undefined,
