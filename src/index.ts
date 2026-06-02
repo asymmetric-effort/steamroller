@@ -21,6 +21,15 @@ export {
   validateOutputOptions,
 } from "./config/validate.js";
 export { rollup } from "./rollup.js";
+export { build } from "./build-api.js";
+export type {
+  BuildOptions,
+  BuildResult,
+  BuildOutputFile,
+  BuildMessage,
+  BuildFormat,
+  BuildPlatform,
+} from "./build-api.js";
 export { watch } from "./watch-entry.js";
 export { composeSourceMaps, composeMultipleMaps } from "./sourcemap/compose.js";
 export type { DecodedSourceMap, RawSourceMap } from "./sourcemap/compose.js";
