@@ -13,3 +13,4 @@ JavaScript API, configuration options, plugin development, CLI usage, and migrat
 - [Plugin Development](plugin-development.md) - Plugin hooks, context object, and emitted files
 - [CLI Usage](cli.md) - Command-line flags and usage
 - [Migration from Rollup](migration-from-rollup.md) - Guide for migrating existing Rollup projects
+- [TypeScript Strategy](typescript-strategy.md) - TypeScript support approach and migration guide
