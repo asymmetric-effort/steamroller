@@ -11,6 +11,9 @@ import { join } from "node:path";
 import { rollup } from "../../src/rollup.js";
 import type { OutputChunk } from "../../src/types.js";
 
+/** Normalize Windows backslashes to forward slashes for cross-platform comparison. */
+const norm = (p: string): string => p.replace(/\\/g, "/");
+
 describe("code splitting via dynamic imports", () => {
   let tempDir: string;
 
@@ -112,12 +115,12 @@ describe("code splitting via dynamic imports", () => {
     expect(dynamicChunk).toBeDefined();
 
     // Entry chunk should list A and B in moduleIds
-    expect(entryChunk.moduleIds).toContain(aPath);
-    expect(entryChunk.moduleIds).toContain(bPath);
-    expect(entryChunk.moduleIds).not.toContain(cPath);
+    expect(entryChunk.moduleIds.map(norm)).toContain(norm(aPath));
+    expect(entryChunk.moduleIds.map(norm)).toContain(norm(bPath));
+    expect(entryChunk.moduleIds.map(norm)).not.toContain(norm(cPath));
 
     // Dynamic chunk should list C
-    expect(dynamicChunk.moduleIds).toContain(cPath);
+    expect(dynamicChunk.moduleIds.map(norm)).toContain(norm(cPath));
 
     await build.close();
   });
@@ -258,7 +261,7 @@ describe("code splitting via dynamic imports", () => {
     ) as OutputChunk;
 
     expect(dynamicChunk).toBeDefined();
-    expect(dynamicChunk.facadeModuleId).toBe(cPath);
+    expect(norm(dynamicChunk.facadeModuleId ?? "")).toBe(norm(cPath));
 
     await build.close();
   });
@@ -510,8 +513,11 @@ describe("code splitting via dynamic imports", () => {
 
     expect(dynamicChunk).toBeDefined();
     expect(dynamicChunk.modules).toBeDefined();
-    expect(dynamicChunk.modules[cPath]).toBeDefined();
-    expect(dynamicChunk.modules[cPath].originalLength).toBeGreaterThan(0);
+    const normModules = Object.fromEntries(
+      Object.entries(dynamicChunk.modules).map(([k, v]) => [norm(k), v]),
+    );
+    expect(normModules[norm(cPath)]).toBeDefined();
+    expect(normModules[norm(cPath)].originalLength).toBeGreaterThan(0);
 
     await build.close();
   });
@@ -545,7 +551,7 @@ describe("code splitting via dynamic imports", () => {
     expect(entryChunk).toBeDefined();
     expect(dynamicChunk).toBeDefined();
     // Dynamic chunk should exist even with tree-shaking
-    expect(dynamicChunk.moduleIds).toContain(cPath);
+    expect(dynamicChunk.moduleIds.map(norm)).toContain(norm(cPath));
 
     await build.close();
   });

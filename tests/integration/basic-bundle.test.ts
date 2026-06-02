@@ -10,6 +10,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rollup } from "../../src/rollup.js";
 
+/** Normalize Windows backslashes to forward slashes for cross-platform comparison. */
+const norm = (p: string): string => p.replace(/\\/g, "/");
+
 describe("rollup() module graph integration", () => {
   let tempDir: string;
 
@@ -27,7 +30,7 @@ describe("rollup() module graph integration", () => {
 
     const build = await rollup({ input: indexPath });
 
-    expect(build.watchFiles).toContain(indexPath);
+    expect(build.watchFiles.map(norm)).toContain(norm(indexPath));
     expect(build.closed).toBe(false);
     await build.close();
     expect(build.closed).toBe(true);
@@ -45,8 +48,8 @@ describe("rollup() module graph integration", () => {
 
     const build = await rollup({ input: indexPath });
 
-    expect(build.watchFiles).toContain(indexPath);
-    expect(build.watchFiles).toContain(helperPath);
+    expect(build.watchFiles.map(norm)).toContain(norm(indexPath));
+    expect(build.watchFiles.map(norm)).toContain(norm(helperPath));
     expect(build.watchFiles.length).toBeGreaterThanOrEqual(2);
     await build.close();
   });
@@ -63,7 +66,7 @@ describe("rollup() module graph integration", () => {
       external: ["node:fs"],
     });
 
-    expect(build.watchFiles).toContain(indexPath);
+    expect(build.watchFiles.map(norm)).toContain(norm(indexPath));
     // External modules appear in watchFiles
     expect(build.watchFiles.some((f) => f === "node:fs")).toBe(true);
     await build.close();
@@ -77,8 +80,8 @@ describe("rollup() module graph integration", () => {
 
     const build = await rollup({ input: [aPath, bPath] });
 
-    expect(build.watchFiles).toContain(aPath);
-    expect(build.watchFiles).toContain(bPath);
+    expect(build.watchFiles.map(norm)).toContain(norm(aPath));
+    expect(build.watchFiles.map(norm)).toContain(norm(bPath));
     await build.close();
   });
 
@@ -114,9 +117,9 @@ describe("rollup() module graph integration", () => {
 
     const build = await rollup({ input: indexPath });
 
-    expect(build.watchFiles).toContain(indexPath);
-    expect(build.watchFiles).toContain(helperPath);
-    expect(build.watchFiles).toContain(utilPath);
+    expect(build.watchFiles.map(norm)).toContain(norm(indexPath));
+    expect(build.watchFiles.map(norm)).toContain(norm(helperPath));
+    expect(build.watchFiles.map(norm)).toContain(norm(utilPath));
     expect(build.watchFiles.length).toBe(3);
     await build.close();
   });
@@ -286,8 +289,8 @@ describe("generate() code generation", () => {
 
     const chunk = output[0];
     if (chunk.type === "chunk") {
-      expect(chunk.moduleIds).toContain(indexPath);
-      expect(chunk.moduleIds).toContain(helperPath);
+      expect(chunk.moduleIds.map(norm)).toContain(norm(indexPath));
+      expect(chunk.moduleIds.map(norm)).toContain(norm(helperPath));
     }
     await build.close();
   });
@@ -319,7 +322,7 @@ describe("generate() code generation", () => {
 
     const chunk = output[0];
     if (chunk.type === "chunk") {
-      expect(chunk.facadeModuleId).toBe(indexPath);
+      expect(norm(chunk.facadeModuleId ?? "")).toBe(norm(indexPath));
     }
     await build.close();
   });
