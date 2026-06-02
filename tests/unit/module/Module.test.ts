@@ -921,4 +921,91 @@ describe("Module", () => {
       expect(mod.syntheticNamedExports).toBe("default");
     });
   });
+
+  describe("extractImportsExports edge cases", () => {
+    it("handles ImportSpecifier (named import)", () => {
+      const mod = new Module("/src/a.ts", "", false);
+      mod.ast = createProgram([
+        {
+          type: "ImportDeclaration",
+          specifiers: [
+            {
+              type: "ImportSpecifier",
+              imported: { type: "Identifier", name: "foo" },
+              local: { type: "Identifier", name: "foo" },
+            },
+          ],
+          source: { type: "Literal", value: "./mod" },
+        },
+      ]);
+      mod.extractImportsExports();
+      expect(mod.imports.length).toBe(1);
+      expect(mod.imports[0].specifiers[0].imported).toBe("foo");
+    });
+
+    it("handles export named FunctionDeclaration", () => {
+      const mod = new Module("/src/a.ts", "", false);
+      mod.ast = createProgram([
+        {
+          type: "ExportNamedDeclaration",
+          declaration: {
+            type: "FunctionDeclaration",
+            id: { type: "Identifier", name: "myFunc" },
+            params: [],
+            body: { type: "BlockStatement", body: [] },
+            generator: false,
+            async: false,
+          },
+          specifiers: [],
+          source: null,
+        },
+      ]);
+      mod.extractImportsExports();
+      expect(mod.exports.length).toBe(1);
+      expect(mod.exports[0].local).toBe("myFunc");
+    });
+
+    it("handles export named ClassDeclaration", () => {
+      const mod = new Module("/src/a.ts", "", false);
+      mod.ast = createProgram([
+        {
+          type: "ExportNamedDeclaration",
+          declaration: {
+            type: "ClassDeclaration",
+            id: { type: "Identifier", name: "MyClass" },
+            superClass: null,
+            body: { type: "ClassBody", body: [] },
+            decorators: [],
+          },
+          specifiers: [],
+          source: null,
+        },
+      ]);
+      mod.extractImportsExports();
+      expect(mod.exports.length).toBe(1);
+      expect(mod.exports[0].local).toBe("MyClass");
+    });
+
+    it("handles export named FunctionDeclaration without id (null)", () => {
+      const mod = new Module("/src/a.ts", "", false);
+      mod.ast = createProgram([
+        {
+          type: "ExportNamedDeclaration",
+          declaration: {
+            type: "FunctionDeclaration",
+            id: null,
+            params: [],
+            body: { type: "BlockStatement", body: [] },
+            generator: false,
+            async: false,
+          },
+          specifiers: [],
+          source: null,
+        },
+      ]);
+      mod.extractImportsExports();
+      // No export added since id is null
+      expect(mod.exports.length).toBe(0);
+    });
+  });
 });

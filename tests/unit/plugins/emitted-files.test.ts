@@ -423,5 +423,57 @@ describe("emitted-files", () => {
         expect(mgr.size()).toBe(2);
       });
     });
+
+    describe("finalizeFileNames - chunk type", () => {
+      it("should finalize chunk file names with pattern", () => {
+        const mgr = new EmittedFileManager();
+        const refId = mgr.emitChunk({ id: "main.js", name: "main" });
+        mgr.finalizeFileNames("[name]-[hash].js");
+        const fileName = mgr.getFileName(refId);
+        expect(fileName).toContain("main");
+        expect(fileName).toContain(".js");
+      });
+
+      it("should finalize chunk without name using id", () => {
+        const mgr = new EmittedFileManager();
+        const refId = mgr.emitChunk({ id: "entry.js" });
+        mgr.finalizeFileNames("[name]-[hash].js");
+        const fileName = mgr.getFileName(refId);
+        expect(fileName).toContain("entry");
+      });
+    });
+
+    describe("finalizeFileNames - prebuilt-chunk type", () => {
+      it("should handle prebuilt-chunk type in finalization", () => {
+        const mgr = new EmittedFileManager();
+        const refId = mgr.emitPrebuiltChunk({
+          fileName: "vendor.js",
+          code: "var x = 1;",
+        });
+        mgr.finalizeFileNames("[name]-[hash].js");
+        const fileName = mgr.getFileName(refId);
+        expect(fileName).toBe("vendor.js");
+      });
+    });
+
+    describe("finalizeFileNames - asset without name", () => {
+      it("should use referenceId as fallback name for assets", () => {
+        const mgr = new EmittedFileManager();
+        const refId = mgr.emitAsset({ source: "body {}" });
+        mgr.finalizeFileNames("[name]-[hash].js");
+        const fileName = mgr.getFileName(refId);
+        expect(fileName).toBeDefined();
+      });
+    });
+
+    describe("getFileName after finalization", () => {
+      it("should return finalizedFileName when set", () => {
+        const mgr = new EmittedFileManager();
+        const refId = mgr.emitAsset({ name: "style.css", source: "body {}" });
+        mgr.finalizeFileNames("[name]-[hash].[ext]");
+        const fileName = mgr.getFileName(refId);
+        expect(fileName).toContain("style");
+      });
+    });
   });
 });

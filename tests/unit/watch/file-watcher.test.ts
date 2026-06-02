@@ -22,6 +22,7 @@ describe("FileWatcher", () => {
   let watcher: FileWatcher;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.useFakeTimers();
   });
 

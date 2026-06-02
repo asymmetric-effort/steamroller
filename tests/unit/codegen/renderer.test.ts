@@ -2422,4 +2422,45 @@ describe("codegen/renderer", () => {
       expect(parts.length).toBe(50);
     });
   });
+
+  describe("try-catch without finalizer", () => {
+    it("renders try-catch without finally", () => {
+      const tryStmt = makeNode({
+        type: "TryStatement" as const,
+        block: makeNode({
+          type: "BlockStatement" as const,
+          body: [],
+        }),
+        handler: makeNode({
+          type: "CatchClause" as const,
+          param: id("e"),
+          body: makeNode({
+            type: "BlockStatement" as const,
+            body: [],
+          }),
+        }),
+        finalizer: null,
+      });
+      const result = renderNode(tryStmt);
+      expect(result).toContain("try");
+      expect(result).toContain("catch");
+      expect(result).not.toContain("finally");
+    });
+  });
+
+  describe("ArrayPattern with null elements", () => {
+    it("renders array pattern with holes", () => {
+      const pattern = makeNode({
+        type: "ArrayPattern" as const,
+        elements: [id("a"), null, id("c")] as unknown as ReadonlyArray<
+          ArrayPattern["elements"][number]
+        >,
+      });
+      const result = renderNode(pattern);
+      expect(result).toContain("[");
+      expect(result).toContain("]");
+      expect(result).toContain("a");
+      expect(result).toContain("c");
+    });
+  });
 });

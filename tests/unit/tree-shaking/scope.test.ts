@@ -1105,4 +1105,310 @@ describe("analyzeScopes", () => {
       expect(allRefs).toContain("recover");
     });
   });
+
+  describe("rest element in object destructuring", () => {
+    it("handles rest element in ObjectPattern", () => {
+      const ast = createProgram([
+        {
+          type: "VariableDeclaration",
+          kind: "const",
+          declarations: [
+            {
+              type: "VariableDeclarator",
+              id: {
+                type: "ObjectPattern",
+                properties: [
+                  {
+                    type: "Property",
+                    key: id("a"),
+                    value: id("a"),
+                    kind: "init",
+                    method: false,
+                    shorthand: true,
+                    computed: false,
+                    start: 0,
+                    end: 5,
+                  },
+                  {
+                    type: "RestElement",
+                    argument: id("rest"),
+                    start: 0,
+                    end: 8,
+                  },
+                ],
+                start: 0,
+                end: 15,
+              },
+              init: id("obj"),
+              start: 0,
+              end: 20,
+            },
+          ],
+          start: 0,
+          end: 25,
+        },
+      ]);
+      const scope = analyzeScopes(ast);
+      expect(scope.bindings.has("a")).toBe(true);
+      expect(scope.bindings.has("rest")).toBe(true);
+    });
+  });
+
+  describe("null elements in array destructuring", () => {
+    it("handles null elements (holes) in ArrayPattern", () => {
+      const ast = createProgram([
+        {
+          type: "VariableDeclaration",
+          kind: "const",
+          declarations: [
+            {
+              type: "VariableDeclarator",
+              id: {
+                type: "ArrayPattern",
+                elements: [null, id("second"), null],
+                start: 0,
+                end: 20,
+              },
+              init: id("arr"),
+              start: 0,
+              end: 25,
+            },
+          ],
+          start: 0,
+          end: 30,
+        },
+      ]);
+      const scope = analyzeScopes(ast);
+      expect(scope.bindings.has("second")).toBe(true);
+      expect(scope.bindings.size).toBe(1);
+    });
+  });
+
+  describe("assignment pattern in destructuring", () => {
+    it("handles AssignmentPattern in destructuring", () => {
+      const ast = createProgram([
+        {
+          type: "VariableDeclaration",
+          kind: "const",
+          declarations: [
+            {
+              type: "VariableDeclarator",
+              id: {
+                type: "ObjectPattern",
+                properties: [
+                  {
+                    type: "Property",
+                    key: id("x"),
+                    value: {
+                      type: "AssignmentPattern",
+                      left: id("x"),
+                      right: { type: "Literal", value: 10, start: 0, end: 2 },
+                      start: 0,
+                      end: 6,
+                    },
+                    kind: "init",
+                    method: false,
+                    shorthand: false,
+                    computed: false,
+                    start: 0,
+                    end: 10,
+                  },
+                ],
+                start: 0,
+                end: 15,
+              },
+              init: id("obj"),
+              start: 0,
+              end: 20,
+            },
+          ],
+          start: 0,
+          end: 25,
+        },
+      ]);
+      const scope = analyzeScopes(ast);
+      expect(scope.bindings.has("x")).toBe(true);
+    });
+  });
+
+  describe("class expression id handling", () => {
+    it("does not treat class expression id as a reference", () => {
+      const ast = createProgram([
+        varDecl("const", "cls", {
+          type: "ClassExpression",
+          id: id("MyClass"),
+          superClass: null,
+          body: {
+            type: "ClassBody",
+            body: [],
+            start: 0,
+            end: 10,
+          },
+          decorators: [],
+          start: 0,
+          end: 20,
+        }),
+      ]);
+      const scope = analyzeScopes(ast);
+      expect(scope.bindings.has("cls")).toBe(true);
+      // MyClass id is a declaration id, not a reference
+      const refs = scope.references.filter((r) => r.name === "MyClass");
+      expect(refs.length).toBe(0);
+    });
+  });
+
+  describe("arrow function with expression body", () => {
+    it("handles arrow function with non-block body (expression)", () => {
+      const ast = createProgram([
+        varDecl("const", "fn", {
+          type: "ArrowFunctionExpression",
+          id: null,
+          params: [id("x")],
+          body: id("x"),
+          expression: true,
+          generator: false,
+          async: false,
+          start: 0,
+          end: 20,
+        }),
+      ]);
+      const scope = analyzeScopes(ast);
+      expect(scope.children.length).toBeGreaterThanOrEqual(1);
+      const arrowScope = scope.children[0];
+      expect(arrowScope.bindings.has("x")).toBe(true);
+    });
+  });
+
+  describe("for-in/for-of with non-declaration left", () => {
+    it("handles for-in with identifier left (not VariableDeclaration)", () => {
+      const ast = createProgram([
+        varDecl("let", "key"),
+        {
+          type: "ForInStatement",
+          left: id("key"),
+          right: id("obj"),
+          body: {
+            type: "BlockStatement",
+            body: [exprStmt(id("key"))],
+            start: 0,
+            end: 10,
+          },
+          start: 0,
+          end: 30,
+        },
+      ]);
+      const scope = analyzeScopes(ast);
+      expect(scope.bindings.has("key")).toBe(true);
+    });
+  });
+
+  describe("for-statement with non-declaration init", () => {
+    it("handles for-statement with expression init (not VariableDeclaration)", () => {
+      const ast = createProgram([
+        varDecl("let", "i"),
+        {
+          type: "ForStatement",
+          init: {
+            type: "AssignmentExpression",
+            operator: "=",
+            left: id("i"),
+            right: { type: "Literal", value: 0, start: 0, end: 1 },
+            start: 0,
+            end: 5,
+          },
+          test: null,
+          update: null,
+          body: {
+            type: "BlockStatement",
+            body: [],
+            start: 0,
+            end: 10,
+          },
+          start: 0,
+          end: 30,
+        },
+      ]);
+      const scope = analyzeScopes(ast);
+      expect(scope.bindings.has("i")).toBe(true);
+    });
+  });
+
+  describe("VariableDeclarator without init", () => {
+    it("handles VariableDeclarator with null init", () => {
+      const ast = createProgram([varDecl("let", "x", null)]);
+      const scope = analyzeScopes(ast);
+      expect(scope.bindings.has("x")).toBe(true);
+    });
+  });
+
+  describe("ClassDeclaration without id", () => {
+    it("handles anonymous class declaration (export default class)", () => {
+      const ast = createProgram([
+        {
+          type: "ClassDeclaration",
+          id: null,
+          superClass: null,
+          body: {
+            type: "ClassBody",
+            body: [],
+            start: 0,
+            end: 20,
+          },
+          decorators: [],
+          start: 0,
+          end: 30,
+        },
+      ]);
+      const scope = analyzeScopes(ast);
+      // No binding should be added for anonymous class
+      expect(scope.bindings.size).toBe(0);
+    });
+  });
+
+  describe("FunctionExpression with id in analyzeScopes", () => {
+    it("handles named function expression in scope analysis", () => {
+      const ast = createProgram([
+        exprStmt({
+          type: "FunctionExpression",
+          id: id("namedFn"),
+          params: [id("param")],
+          body: {
+            type: "BlockStatement",
+            body: [exprStmt(id("namedFn"))],
+            start: 0,
+            end: 20,
+          },
+          generator: false,
+          async: false,
+          start: 0,
+          end: 30,
+        }),
+      ]);
+      const scope = analyzeScopes(ast);
+      // Named function expression: name is in function scope, not parent
+      const funcScope = scope.children[0];
+      expect(funcScope.bindings.has("namedFn")).toBe(true);
+      expect(funcScope.bindings.get("namedFn")!.kind).toBe("function");
+    });
+  });
+
+  describe("VariableDeclaration inside block scope", () => {
+    it("processes VariableDeclaration children for references in initializers", () => {
+      const ast = createProgram([
+        varDecl("const", "outer", {
+          type: "Literal",
+          value: 1,
+          start: 0,
+          end: 1,
+        }),
+        varDecl("const", "derived", id("outer")),
+      ]);
+      const scope = analyzeScopes(ast);
+      expect(scope.bindings.has("outer")).toBe(true);
+      expect(scope.bindings.has("derived")).toBe(true);
+      // Reference to 'outer' in the initializer of 'derived'
+      const outerBinding = scope.bindings.get("outer")!;
+      expect(outerBinding.references.length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });

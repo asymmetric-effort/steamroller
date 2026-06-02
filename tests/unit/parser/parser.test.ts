@@ -206,4 +206,21 @@ describe("parse() function", () => {
     expect(program.type).toBe("Program");
     expect(program.sourceType).toBe("module");
   });
+
+  it("should parse decorator with spread argument", () => {
+    const program = parse("@dec(...args) class Foo {}", {
+      sourceType: "module",
+    });
+    expect(program.body.length).toBe(1);
+    const cls = program.body[0] as { decorators: Array<{ type: string }> };
+    expect(cls.decorators.length).toBe(1);
+  });
+
+  it("should parse recoverable mode and collect errors", () => {
+    const program = parse("const x = ;", {
+      sourceType: "module",
+      recoverable: true,
+    });
+    expect(program).toBeDefined();
+  });
 });

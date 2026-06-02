@@ -2106,4 +2106,223 @@ describe("side-effects", () => {
       expect(result.hasSideEffects).toBe(false);
     });
   });
+
+  describe("manual pure functions", () => {
+    it("treats manual pure function call as pure", () => {
+      const scope = createScope();
+      const result = isKnownPureCall(identifier("myCustomPure"), scope, [
+        "myCustomPure",
+      ]);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe("class expression side effects", () => {
+    it("detects side effects from StaticBlock in class expression", () => {
+      const scope = createScope();
+      const classExpr = {
+        type: "ClassExpression",
+        id: null,
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          body: [
+            {
+              type: "StaticBlock",
+              body: [],
+              start: 10,
+              end: 20,
+            },
+          ],
+          start: 5,
+          end: 25,
+        },
+        decorators: [],
+        start: 0,
+        end: 30,
+      } as unknown as AST.ClassExpression;
+      const result = hasExpressionSideEffects(classExpr, scope, NO_ANNOTATIONS);
+      expect(result).toBe("definite");
+    });
+
+    it("detects side effects from decorated MethodDefinition in class expression", () => {
+      const scope = createScope();
+      const classExpr = {
+        type: "ClassExpression",
+        id: null,
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          body: [
+            {
+              type: "MethodDefinition",
+              key: identifier("foo"),
+              value: {
+                type: "FunctionExpression",
+                id: null,
+                params: [],
+                body: { type: "BlockStatement", body: [], start: 0, end: 10 },
+                generator: false,
+                async: false,
+                start: 0,
+                end: 15,
+              },
+              kind: "method",
+              computed: false,
+              static: false,
+              decorators: [
+                {
+                  type: "Decorator",
+                  expression: identifier("dec"),
+                  start: 0,
+                  end: 4,
+                },
+              ],
+              start: 0,
+              end: 20,
+            },
+          ],
+          start: 5,
+          end: 25,
+        },
+        decorators: [],
+        start: 0,
+        end: 30,
+      } as unknown as AST.ClassExpression;
+      const result = hasExpressionSideEffects(classExpr, scope, NO_ANNOTATIONS);
+      expect(result).toBe("definite");
+    });
+
+    it("detects side effects from computed MethodDefinition key in class expression", () => {
+      const scope = createScope();
+      const classExpr = {
+        type: "ClassExpression",
+        id: null,
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          body: [
+            {
+              type: "MethodDefinition",
+              key: callExpr(identifier("getKey")),
+              value: {
+                type: "FunctionExpression",
+                id: null,
+                params: [],
+                body: { type: "BlockStatement", body: [], start: 0, end: 10 },
+                generator: false,
+                async: false,
+                start: 0,
+                end: 15,
+              },
+              kind: "method",
+              computed: true,
+              static: false,
+              decorators: [],
+              start: 0,
+              end: 20,
+            },
+          ],
+          start: 5,
+          end: 25,
+        },
+        decorators: [],
+        start: 0,
+        end: 30,
+      } as unknown as AST.ClassExpression;
+      const result = hasExpressionSideEffects(classExpr, scope, NO_ANNOTATIONS);
+      // computed method key with function call is a side effect
+      expect(result).toBe("definite");
+    });
+  });
+
+  describe("ForStatement side effects", () => {
+    it("detects side effects from for-statement init expression", () => {
+      const scope = createScope();
+      const forStmt = {
+        type: "ForStatement",
+        init: callExpr(identifier("setup")),
+        test: null,
+        update: null,
+        body: { type: "BlockStatement", body: [], start: 0, end: 10 },
+        start: 0,
+        end: 30,
+      } as unknown as AST.ForStatement;
+      const result = hasStatementSideEffects(forStmt, scope, NO_ANNOTATIONS);
+      expect(result).toBe("definite");
+    });
+
+    it("detects side effects from for-statement init as VariableDeclaration", () => {
+      const scope = createScope();
+      const forStmt = {
+        type: "ForStatement",
+        init: {
+          type: "VariableDeclaration",
+          kind: "let",
+          declarations: [
+            {
+              type: "VariableDeclarator",
+              id: identifier("i"),
+              init: literal(0),
+              start: 0,
+              end: 5,
+            },
+          ],
+          start: 0,
+          end: 10,
+        },
+        test: null,
+        update: null,
+        body: { type: "BlockStatement", body: [], start: 0, end: 10 },
+        start: 0,
+        end: 30,
+      } as unknown as AST.ForStatement;
+      const result = hasStatementSideEffects(forStmt, scope, NO_ANNOTATIONS);
+      expect(result).toBe("none");
+    });
+  });
+
+  describe("SwitchStatement side effects", () => {
+    it("detects side effects from switch case test", () => {
+      const scope = createScope();
+      const switchStmt = {
+        type: "SwitchStatement",
+        discriminant: identifier("x"),
+        cases: [
+          {
+            type: "SwitchCase",
+            test: callExpr(identifier("getValue")),
+            consequent: [],
+            start: 0,
+            end: 15,
+          },
+        ],
+        start: 0,
+        end: 30,
+      } as unknown as AST.SwitchStatement;
+      const result = hasStatementSideEffects(switchStmt, scope, NO_ANNOTATIONS);
+      expect(result).toBe("definite");
+    });
+
+    it("detects no side effects from switch with null case test (default)", () => {
+      const scope = createScope();
+      const switchStmt = {
+        type: "SwitchStatement",
+        discriminant: identifier("x"),
+        cases: [
+          {
+            type: "SwitchCase",
+            test: null,
+            consequent: [],
+            start: 0,
+            end: 15,
+          },
+        ],
+        start: 0,
+        end: 30,
+      } as unknown as AST.SwitchStatement;
+      const result = hasStatementSideEffects(switchStmt, scope, NO_ANNOTATIONS);
+      expect(result).toBe("none");
+    });
+  });
 });

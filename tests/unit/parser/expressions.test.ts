@@ -627,4 +627,72 @@ describe("Expression Parser", () => {
       expect(stmt.end).toBe(2);
     });
   });
+
+  describe("async arrow with parenthesized parameters", () => {
+    it("should parse async arrow with parens that is not an arrow", () => {
+      const program = parse("async(x);", { sourceType: "module" });
+      expect(program.body[0].type).toBe("ExpressionStatement");
+    });
+  });
+
+  describe("template literal expressions", () => {
+    it("should parse tagged template with middle parts", () => {
+      const program = parse("tag`a${1}b${2}c`;", { sourceType: "module" });
+      const stmt = program.body[0] as AST.ExpressionStatement;
+      const expr = stmt.expression as AST.TaggedTemplateExpression;
+      expect(expr.type).toBe("TaggedTemplateExpression");
+      expect(expr.quasi.expressions.length).toBe(2);
+      expect(expr.quasi.quasis.length).toBe(3);
+    });
+  });
+
+  describe("getter/setter method parsing", () => {
+    it("should parse object with getter", () => {
+      const program = parse("({ get x() { return 1; } });", {
+        sourceType: "module",
+      });
+      const stmt = program.body[0] as AST.ExpressionStatement;
+      const obj = stmt.expression as AST.ObjectExpression;
+      expect(obj.properties.length).toBe(1);
+    });
+
+    it("should parse object with setter", () => {
+      const program = parse("({ set x(v) { } });", {
+        sourceType: "module",
+      });
+      const stmt = program.body[0] as AST.ExpressionStatement;
+      const obj = stmt.expression as AST.ObjectExpression;
+      expect(obj.properties.length).toBe(1);
+    });
+  });
+
+  describe("object method with nested blocks", () => {
+    it("should parse method shorthand with nested braces", () => {
+      const program = parse("({ foo() { if (true) { } } });", {
+        sourceType: "module",
+      });
+      const stmt = program.body[0] as AST.ExpressionStatement;
+      const obj = stmt.expression as AST.ObjectExpression;
+      expect(obj.properties.length).toBe(1);
+    });
+
+    it("should parse computed property method", () => {
+      const program = parse("({ [key]() { } });", {
+        sourceType: "module",
+      });
+      const stmt = program.body[0] as AST.ExpressionStatement;
+      const obj = stmt.expression as AST.ObjectExpression;
+      expect(obj.properties.length).toBe(1);
+    });
+  });
+
+  describe("template literal with multiple parts", () => {
+    it("should parse template literal with 3+ interpolations", () => {
+      const program = parse("`${a}${b}${c}`;", { sourceType: "module" });
+      const stmt = program.body[0] as AST.ExpressionStatement;
+      const tmpl = stmt.expression as AST.TemplateLiteral;
+      expect(tmpl.expressions.length).toBe(3);
+      expect(tmpl.quasis.length).toBe(4);
+    });
+  });
 });

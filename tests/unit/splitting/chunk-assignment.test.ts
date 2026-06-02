@@ -381,6 +381,23 @@ describe("assignChunks", () => {
       expect(mainChunk).toContain("./lib/main.ts");
     });
 
+    it("assigns multiple modules to the same chunk", () => {
+      const modules: Array<SplittableModule> = [
+        makeModule("./main.ts", {
+          isEntry: true,
+          importedIds: ["./a.ts", "./b.ts"],
+        }),
+        makeModule("./a.ts", { importedIds: [] }),
+        makeModule("./b.ts", { importedIds: [] }),
+      ];
+
+      const chunks = assignChunks(modules, ["./main.ts"], []);
+      const mainChunk = chunks.get("main");
+      expect(mainChunk).toBeDefined();
+      expect(mainChunk).toContain("./a.ts");
+      expect(mainChunk).toContain("./b.ts");
+    });
+
     it("handles circular dependencies in reachability", () => {
       const modules: Array<SplittableModule> = [
         makeModule("./main.ts", {

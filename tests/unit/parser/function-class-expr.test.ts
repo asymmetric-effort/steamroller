@@ -739,4 +739,45 @@ describe("Additional edge cases for coverage", () => {
     expect(expr.type).toBe("Identifier");
     expect((expr as AST.Identifier).name).toBe("async");
   });
+
+  it("should parse class with decorated member", () => {
+    const program = parse("(class { @dec method() {} });", {
+      sourceType: "module",
+    });
+    const stmt = program.body[0] as AST.ExpressionStatement;
+    const cls = stmt.expression as AST.ClassExpression;
+    expect(cls.body.body.length).toBe(1);
+    const method = cls.body.body[0] as AST.MethodDefinition;
+    expect(method.decorators.length).toBe(1);
+  });
+
+  it("should parse class with decorator that has multiple arguments", () => {
+    const program = parse("(class { @dec(a, b) method() {} });", {
+      sourceType: "module",
+    });
+    const stmt = program.body[0] as AST.ExpressionStatement;
+    const cls = stmt.expression as AST.ClassExpression;
+    const method = cls.body.body[0] as AST.MethodDefinition;
+    expect(method.decorators.length).toBe(1);
+  });
+
+  it("should parse class with decorator that has spread argument", () => {
+    const program = parse("(class { @dec(...args) method() {} });", {
+      sourceType: "module",
+    });
+    const stmt = program.body[0] as AST.ExpressionStatement;
+    const cls = stmt.expression as AST.ClassExpression;
+    const method = cls.body.body[0] as AST.MethodDefinition;
+    expect(method.decorators.length).toBe(1);
+  });
+
+  it("should parse class with empty decorator arguments", () => {
+    const program = parse("(class { @dec() method() {} });", {
+      sourceType: "module",
+    });
+    const stmt = program.body[0] as AST.ExpressionStatement;
+    const cls = stmt.expression as AST.ClassExpression;
+    const method = cls.body.body[0] as AST.MethodDefinition;
+    expect(method.decorators.length).toBe(1);
+  });
 });

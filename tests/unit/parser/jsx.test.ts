@@ -329,5 +329,100 @@ describe("JSX Parser", () => {
       // Using a numeric literal which is none of those
       expect(() => parseJSX("<Foo bar=123 />;")).toThrow();
     });
+
+    it("throws on unclosed fragment (missing </>)", () => {
+      expect(() => parseJSX("<>content;")).toThrow();
+    });
+
+    it("throws on invalid closing fragment (missing >)", () => {
+      // Fragment where closing is malformed
+      expect(() => parseJSX("<>text</!>;")).toThrow();
+    });
+
+    it("throws when closing element is missing > after tag name", () => {
+      // Trigger branch 24[0]: !lexer.is(TokenType.GreaterThan) in closing element
+      expect(() => parseJSX("<div></div!;")).toThrow();
+    });
+
+    it("throws on missing > after JSX opening element", () => {
+      expect(() => parseJSX("<div !")).toThrow();
+    });
+
+    it("throws on missing closing tag for non-self-closing element", () => {
+      expect(() => parseJSX("<div>text;")).toThrow();
+    });
+
+    it("throws on empty identifier for JSX element name at end of input", () => {
+      // readJSXIdentifier returns empty name when position is past source length
+      expect(() => parseJSX("< />;")).toThrow();
+    });
+
+    it("throws on missing identifier after colon in JSX element name", () => {
+      expect(() => parseJSX("<ns: />;")).toThrow();
+    });
+
+    it("throws on missing identifier after dot in JSX member expression", () => {
+      // parseJSXElementName: prop.name === "" after dot
+      expect(() => parseJSX("<Foo. />;")).toThrow();
+    });
+
+    it("throws on missing ... in spread attribute", () => {
+      // parseJSXAttributes: !lexer.is(TokenType.Ellipsis) after {
+      expect(() => parseJSX("<Foo {abc} />;")).toThrow();
+    });
+
+    it("throws on missing } after spread attribute", () => {
+      expect(() => parseJSX("<Foo {...props />;")).toThrow();
+    });
+
+    it("throws on empty identifier after colon in attribute name", () => {
+      // parseJSXAttributes: sub.name === "" after ':'
+      expect(() => parseJSX("<Foo ns:=1 />;")).toThrow();
+    });
+
+    it("throws on missing } in JSX expression container", () => {
+      expect(() => parseJSX("<div>{x</div>;")).toThrow();
+    });
+  });
+
+  describe("JSX element as attribute value", () => {
+    it("parses a JSX element as an attribute value via expression container", () => {
+      const expr = parseJSX(
+        "<Foo bar={<Baz />} />;",
+      ) as unknown as AST.JSXElement;
+      const attr = expr.openingElement.attributes[0] as AST.JSXAttribute;
+      expect(attr.value).not.toBeNull();
+      const container = attr.value as AST.JSXExpressionContainer;
+      expect(container.type).toBe("JSXExpressionContainer");
+    });
+  });
+
+  describe("unicode identifier edge cases", () => {
+    it("parses tag with high unicode start character", () => {
+      // Character code >= 0xC0 (Latin capital A with grave: \u00C0)
+      const expr = parseJSX("<\u00C0comp />;") as unknown as AST.JSXElement;
+      const name = expr.openingElement.name as AST.JSXIdentifier;
+      expect(name.name).toBe("\u00C0comp");
+    });
+  });
+
+  describe("children edge cases", () => {
+    it("parses nested element child within element", () => {
+      const expr = parseJSX(
+        "<div><span>inner</span></div>;",
+      ) as unknown as AST.JSXElement;
+      expect(expr.children.length).toBe(1);
+      const child = expr.children[0] as unknown as AST.JSXElement;
+      expect(child.type).toBe("JSXElement");
+    });
+
+    it("parses fragment child within element", () => {
+      const expr = parseJSX(
+        "<div><>frag</></div>;",
+      ) as unknown as AST.JSXElement;
+      expect(expr.children.length).toBe(1);
+      const child = expr.children[0] as unknown as AST.JSXFragment;
+      expect(child.type).toBe("JSXFragment");
+    });
   });
 });

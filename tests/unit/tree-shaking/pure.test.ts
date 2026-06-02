@@ -494,5 +494,99 @@ describe("tree-shaking/pure", () => {
       const results = collectNoSideEffectsFunctions(source, program);
       expect(results.length).toBe(0);
     });
+
+    it("handles export named function with NO_SIDE_EFFECTS annotation", () => {
+      const source =
+        "/*@__NO_SIDE_EFFECTS__*/ export function pure() { return 1; }";
+      const funcStart = source.indexOf("function");
+      const exportStart = source.indexOf("export");
+      const program: AST.Program = {
+        type: "Program",
+        body: [
+          {
+            type: "ExportNamedDeclaration",
+            declaration: {
+              type: "FunctionDeclaration",
+              id: {
+                type: "Identifier",
+                name: "pure",
+                start: funcStart + 9,
+                end: funcStart + 13,
+              },
+              params: [],
+              body: {
+                type: "BlockStatement",
+                body: [],
+                start: funcStart + 16,
+                end: funcStart + 30,
+              },
+              generator: false,
+              async: false,
+              start: funcStart,
+              end: funcStart + 30,
+            } as unknown as AST.FunctionDeclaration,
+            specifiers: [],
+            source: null,
+            start: exportStart,
+            end: funcStart + 30,
+          } as unknown as AST.ExportNamedDeclaration,
+        ],
+        sourceType: "module",
+        start: 0,
+        end: source.length,
+      };
+
+      const results = collectNoSideEffectsFunctions(source, program);
+      expect(results.length).toBe(1);
+      expect(results[0].name).toBe("pure");
+    });
+
+    it("handles expressionToString with computed member expression", () => {
+      const expr: AST.MemberExpression = {
+        type: "MemberExpression",
+        object: {
+          type: "Identifier",
+          name: "obj",
+          start: 0,
+          end: 3,
+        } as AST.Identifier,
+        property: {
+          type: "Identifier",
+          name: "prop",
+          start: 4,
+          end: 8,
+        } as AST.Identifier,
+        computed: true,
+        optional: false,
+        start: 0,
+        end: 9,
+      } as AST.MemberExpression;
+      const result = expressionToString(expr);
+      expect(result).toBeNull();
+    });
+
+    it("handles expressionToString with non-identifier member property", () => {
+      const expr: AST.MemberExpression = {
+        type: "MemberExpression",
+        object: {
+          type: "Identifier",
+          name: "obj",
+          start: 0,
+          end: 3,
+        } as AST.Identifier,
+        property: {
+          type: "Literal",
+          value: 1,
+          start: 4,
+          end: 5,
+        } as AST.Literal,
+        computed: false,
+        optional: false,
+        start: 0,
+        end: 6,
+      } as AST.MemberExpression;
+      const result = expressionToString(expr);
+      expect(result).toBeNull();
+    });
   });
 });

@@ -829,14 +829,30 @@ describe("createRollupBuild", () => {
       const entryCode =
         'const p = import("./helper.js");\nexport const main = p;\n';
       const entryMod = createModuleWithCode("entry.js", entryCode, true);
-      entryMod.dependencies.add(helperMod);
+      // Only add dynamic import link, NOT static dependency
       entryMod.dynamicImports.push("./helper.js");
       helperMod.importers.add(entryMod);
 
       const state = createMinimalState({ modules: [helperMod, entryMod] });
       const build = createRollupBuild(state);
       const output = await build.generate({ format: "es" });
-      expect(output.output.length).toBeGreaterThanOrEqual(1);
+      // Should produce 2 chunks: entry and dynamic chunk
+      expect(output.output.length).toBe(2);
+      const entryChunk = output.output.find((c) => c.isEntry);
+      const dynamicChunk = output.output.find(
+        (c) => c.type === "chunk" && !c.isEntry,
+      );
+      expect(entryChunk).toBeDefined();
+      expect(dynamicChunk).toBeDefined();
+      if (dynamicChunk && dynamicChunk.type === "chunk") {
+        expect(dynamicChunk.isDynamicEntry).toBe(true);
+        // Entry chunk should have dynamicImports referencing the dynamic chunk
+        if (entryChunk && entryChunk.type === "chunk") {
+          expect(entryChunk.dynamicImports.length).toBeGreaterThanOrEqual(1);
+          // The entry chunk code should reference the dynamic chunk filename
+          expect(entryChunk.code).toContain("import(");
+        }
+      }
     });
 
     it("handles module with default export in getExportBindings", async () => {
@@ -912,7 +928,6 @@ describe("createRollupBuild", () => {
       const entryCode =
         'const p = import("./helper.js");\nexport const main = p;\n';
       const entryMod = createModuleWithCode("entry.js", entryCode, true);
-      entryMod.dependencies.add(helperMod);
       entryMod.dynamicImports.push("./helper.js");
       helperMod.importers.add(entryMod);
 
@@ -924,6 +939,693 @@ describe("createRollupBuild", () => {
       });
       // With inline, should produce single chunk
       expect(output.output.length).toBe(1);
+    });
+
+    it("handles isInternalImport when no dependency matches", async () => {
+      // Import from a source that doesn't match any dependency
+      const code =
+        'import { ext } from "nonexistent";\nexport const x = ext;\n';
+      const mod = createModuleWithCode("entry.js", code, true);
+      // No dependencies added, so isInternalImport returns false
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      // Import is kept (treated as external in ES format)
+      expect(output.output[0].code).toContain("import");
+    });
+
+    it("handles getExportBindings with named export without local", async () => {
+      // Export with exported but nullish local — triggers ?? fallback
+      const code = "const val = 1;\nexport { val };\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles getExportBindings with default export that has no local", async () => {
+      // Export default where local is undefined — triggers local ?? "default"
+      const code = "export default 42;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        expect(chunk.exports).toContain("default");
+      }
+    });
+
+    it("handles export named declaration with both declaration and non-entry format", async () => {
+      const helperCode = "export const x = 1;\nexport const y = 2;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = true;
+
+      const entryCode = "export const main = 42;\n";
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles dynamic import splitting with entryFileNames pattern", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({
+        format: "es",
+        entryFileNames: "[name].mjs",
+      });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles dynamic import splitting with chunkFileNames pattern", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({
+        format: "es",
+        chunkFileNames: "chunks/[name]-[hash].js",
+      });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles dynamic import with external imports in chunk", async () => {
+      const helperCode =
+        'import { ext } from "external";\nexport const helper = ext;\n';
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      const extMod = new ExternalModule("external");
+      helperMod.dependencies.add(extMod);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles resolveDynamicSource fallback search across all modules", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode(
+        "/abs/helper.js",
+        helperCode,
+        false,
+      );
+
+      const entryCode =
+        'const p = import("helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      // Don't add helper as a dependency — force the fallback search path
+      entryMod.dynamicImports.push("helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({
+        modules: [helperMod, entryMod],
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles resolveDynamicSource with unresolvable import", async () => {
+      const entryCode =
+        'const p = import("nonexistent.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("nonexistent.js");
+
+      const state = createMinimalState({ modules: [entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles split output with tree-shaking data", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = true;
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const includedStatements = new Map<string, ReadonlySet<number>>();
+      includedStatements.set("entry.js", new Set([0, 1]));
+      includedStatements.set("helper.js", new Set([0]));
+
+      const state = createMinimalState({
+        modules: [helperMod, entryMod],
+        includedStatementsByModule: includedStatements,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles split output with addons (banner/footer)", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({
+        format: "es",
+        banner: "/* split banner */",
+        footer: "/* split footer */",
+      });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+      // Entry chunk should have addons
+      expect(output.output[0].code).toContain("/* split banner */");
+    });
+
+    it("handles split output with cjs format", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles split output with renderChunk hook", async () => {
+      const renderChunkFn = vi.fn().mockReturnValue(null);
+      const inputOptions = normalizeInputOptions({ input: "entry.js" });
+      const driver = new PluginDriver(
+        [{ name: "test", renderChunk: renderChunkFn }],
+        () => {},
+      );
+      const executor = new OutputHookExecutor(driver);
+
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({
+        modules: [helperMod, entryMod],
+        outputHookExecutor: executor,
+        inputOptions,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles split output where tree-shaken module is not included", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = false;
+
+      const unusedCode = "export const unused = 99;\n";
+      const unusedMod = createModuleWithCode("unused.js", unusedCode, false);
+      unusedMod.isIncluded = false;
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const includedStatements = new Map<string, ReadonlySet<number>>();
+      includedStatements.set("entry.js", new Set([0, 1]));
+
+      const state = createMinimalState({
+        modules: [helperMod, unusedMod, entryMod],
+        includedStatementsByModule: includedStatements,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles split output with treeShakeResult removedBindings", async () => {
+      const helperCode =
+        "export const helper = 42;\nexport const removed = 0;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = true;
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const treeShakeResult = {
+        includedModules: ["entry.js", "helper.js"],
+        removedModules: [],
+        removedBindings: ["removed"],
+        stats: { totalModules: 2, includedModules: 2, removedModules: 0 },
+      };
+
+      const state = createMinimalState({
+        modules: [helperMod, entryMod],
+        treeShakeResult,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles write with output containing asset items", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.write({ dir: "/tmp/steamroller-test-write" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles write with file option", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.write({
+        file: "/tmp/steamroller-test-output/out.js",
+      });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles write with writeBundle hook", async () => {
+      const writeBundleFn = vi.fn();
+      const inputOptions = normalizeInputOptions({ input: "entry.js" });
+      const driver = new PluginDriver(
+        [{ name: "test", writeBundle: writeBundleFn }],
+        () => {},
+      );
+      const executor = new OutputHookExecutor(driver);
+
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({
+        modules: [mod],
+        outputHookExecutor: executor,
+        inputOptions,
+      });
+      const build = createRollupBuild(state);
+      await build.write({ dir: "/tmp/steamroller-test-hooks" });
+      expect(writeBundleFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("renders module with empty rendered output (all statements removed)", async () => {
+      const code = "const unused = 1;\n";
+      const mod = createModuleWithCode("unused.js", code, false);
+      mod.isIncluded = true;
+
+      const entryCode = "export const main = 42;\n";
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+
+      const includedStatements = new Map<string, ReadonlySet<number>>();
+      includedStatements.set("entry.js", new Set([0]));
+      includedStatements.set("unused.js", new Set([])); // nothing included
+
+      const state = createMinimalState({
+        modules: [mod, entryMod],
+        includedStatementsByModule: includedStatements,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles external import in entry with duplicate sources", async () => {
+      const code =
+        'import { foo } from "ext";\nimport { bar } from "ext";\nexport const x = foo + bar;\n';
+      const mod = createModuleWithCode("entry.js", code, true);
+      const extMod = new ExternalModule("ext");
+      mod.dependencies.add(extMod);
+
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles format wrapper returning undefined (no format wrapper)", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      // "es" format may not have a wrapper, testing that codepath
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles modules record with non-included module", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = false;
+
+      const entryCode = "export const main = 1;\n";
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+
+      const state = createMinimalState({
+        modules: [helperMod, entryMod],
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        const helperRecord = chunk.modules["helper.js"];
+        if (helperRecord) {
+          expect(helperRecord.code).toBe("");
+        }
+      }
+    });
+
+    it("handles split output with multiple external imports from same source", async () => {
+      const helperCode =
+        'import { a } from "ext";\nimport { b } from "ext";\nexport const helper = a + b;\n';
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      const extMod = new ExternalModule("ext");
+      helperMod.dependencies.add(extMod);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles split output with cjs format wrapper", async () => {
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'import { helper } from "./helper.js";\nconst p = import("./helper.js");\nexport const main = helper;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles generateSplitOutput with generateBundle hook", async () => {
+      const generateBundleFn = vi.fn();
+      const inputOptions = normalizeInputOptions({ input: "entry.js" });
+      const driver = new PluginDriver(
+        [{ name: "test", generateBundle: generateBundleFn }],
+        () => {},
+      );
+      const executor = new OutputHookExecutor(driver);
+
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+
+      const entryCode =
+        'const p = import("./helper.js");\nexport const main = p;\n';
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+      entryMod.dynamicImports.push("./helper.js");
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({
+        modules: [helperMod, entryMod],
+        outputHookExecutor: executor,
+        inputOptions,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+      expect(generateBundleFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("handles write with no dir or file option (defaults to dist)", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.write({});
+      expect(output.output.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("handles renderError without hookExecutor", async () => {
+      // Create a state with modules but no hook executor
+      // The renderError path should still throw
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      // This should work without error (no hook executor = no renderError call)
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles single module output with CJS format wrapper", async () => {
+      const code =
+        'import { foo } from "ext";\nexport const bar = foo;\nexport default function main() {}\n';
+      const mod = createModuleWithCode("entry.js", code, true);
+      const extMod = new ExternalModule("ext");
+      mod.dependencies.add(extMod);
+
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "cjs" });
+      expect(output.output[0].code).toBeDefined();
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        // CJS format should have imports and exports
+        expect(chunk.imports).toBeDefined();
+      }
+    });
+
+    it("handles isInternalImport with source matching via includes", async () => {
+      // Create a module with internal dependency where dep.id.includes works
+      const helperCode = "export const helper = 42;\n";
+      const helperMod = createModuleWithCode(
+        "/project/src/helper.js",
+        helperCode,
+        false,
+      );
+
+      const entryCode =
+        'import { helper } from "./helper.js";\nexport const main = helper;\n';
+      const entryMod = createModuleWithCode(
+        "/project/src/entry.js",
+        entryCode,
+        true,
+      );
+      entryMod.dependencies.add(helperMod);
+      helperMod.importers.add(entryMod);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles getExternalImportBindings with no external deps", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      // No external dependencies
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        expect(chunk.imports).toEqual([]);
+      }
+    });
+
+    it("handles getExportBindings with export that has no local field", async () => {
+      // Use a named export that triggers the ?? fallback paths
+      const code = "const x = 1;\nexport { x as y };\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles export specifier list in entry ES format (kept)", async () => {
+      const code = "const a = 1;\nconst b = 2;\nexport { a, b };\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      // In ES format entry, export specifiers should be kept
+      expect(output.output[0].code).toContain("export");
+    });
+
+    it("handles export named declaration with declaration in entry ES format (kept)", async () => {
+      const code = "export const x = 42;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      // In ES format entry, export keyword should be kept
+      expect(output.output[0].code).toContain("export");
+    });
+
+    it("generates output with sourcemap option", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es", sourcemap: true });
+      expect(output.output[0].code).toBeDefined();
+    });
+
+    it("handles intro/outro addons", async () => {
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({
+        format: "es",
+        intro: "/* intro */",
+        outro: "/* outro */",
+      });
+      expect(output.output[0].code).toContain("/* intro */");
+      expect(output.output[0].code).toContain("/* outro */");
+    });
+
+    it("handles write with output hook and writeBundle", async () => {
+      const renderStartFn = vi.fn();
+      const renderChunkFn = vi.fn().mockReturnValue(null);
+      const generateBundleFn = vi.fn();
+      const writeBundleFn = vi.fn();
+      const inputOptions = normalizeInputOptions({ input: "entry.js" });
+      const driver = new PluginDriver(
+        [
+          {
+            name: "test",
+            renderStart: renderStartFn,
+            renderChunk: renderChunkFn,
+            generateBundle: generateBundleFn,
+            writeBundle: writeBundleFn,
+          },
+        ],
+        () => {},
+      );
+      const executor = new OutputHookExecutor(driver);
+      const code = "export const x = 1;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({
+        modules: [mod],
+        outputHookExecutor: executor,
+        inputOptions,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.write({
+        format: "es",
+        dir: "/tmp/steamroller-write-hooks-test",
+      });
+      expect(renderStartFn).toHaveBeenCalledTimes(1);
+      expect(generateBundleFn).toHaveBeenCalledTimes(1);
+      expect(writeBundleFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("handles getExportBindings with named export that has only local (no exported)", async () => {
+      // A named export where exported is undefined triggers the ?? fallback
+      const code = "const val = 1;\nexport { val };\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        expect(chunk.exports).toBeDefined();
+      }
+    });
+
+    it("handles getExternalImportBindings with external module that matches source", async () => {
+      const code =
+        'import { foo } from "ext";\nimport { bar } from "ext";\nexport const result = foo + bar;\n';
+      const mod = createModuleWithCode("entry.js", code, true);
+      const extMod = new ExternalModule("ext");
+      mod.dependencies.add(extMod);
+
+      const state = createMinimalState({ modules: [mod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      const chunk = output.output[0];
+      if (chunk.type === "chunk") {
+        expect(chunk.imports).toContain("ext");
+        expect(chunk.importedBindings["ext"]).toBeDefined();
+        expect(chunk.importedBindings["ext"].length).toBeGreaterThanOrEqual(2);
+      }
+    });
+
+    it("handles renderSingleModule with tree-shaking removing statements", async () => {
+      const code =
+        "const unused1 = 1;\nconst unused2 = 2;\nexport const x = 3;\n";
+      const mod = createModuleWithCode("entry.js", code, true);
+      const includedStatements = new Map<string, ReadonlySet<number>>();
+      // Only include the export statement (index 2)
+      includedStatements.set("entry.js", new Set([2]));
+      const state = createMinimalState({
+        modules: [mod],
+        includedStatementsByModule: includedStatements,
+      });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      expect(output.output[0].code).toContain("x");
+      expect(output.output[0].code).not.toContain("unused1");
+    });
+
+    it("handles export specifiers removed in non-entry ES format", async () => {
+      const helperCode = "const a = 1;\nconst b = 2;\nexport { a, b };\n";
+      const helperMod = createModuleWithCode("helper.js", helperCode, false);
+      helperMod.isIncluded = true;
+
+      const entryCode = "export const main = 42;\n";
+      const entryMod = createModuleWithCode("entry.js", entryCode, true);
+
+      const state = createMinimalState({ modules: [helperMod, entryMod] });
+      const build = createRollupBuild(state);
+      const output = await build.generate({ format: "es" });
+      // Helper module's export specifier list should be removed
+      expect(output.output[0].code).toBeDefined();
     });
   });
 });

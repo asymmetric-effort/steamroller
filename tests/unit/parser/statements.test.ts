@@ -1565,4 +1565,42 @@ describe("Statement Parsing", () => {
       expect(stmt.expression.name).toBe("async");
     });
   });
+
+  describe("for-await-of", () => {
+    it("should parse for await...of statement", () => {
+      const program = parse(
+        "async function f() { for await (const x of items) {} }",
+      );
+      const func = program.body[0] as {
+        body: { body: Array<{ type: string }> };
+      };
+      expect(func.body.body[0].type).toBe("ForOfStatement");
+    });
+  });
+
+  describe("try-catch-finally edge cases", () => {
+    it("should parse try-catch without finally (handler end position)", () => {
+      const program = parse("try { x; } catch(e) { y; }");
+      const stmt = program.body[0] as {
+        type: string;
+        handler: { type: string };
+        finalizer: null;
+      };
+      expect(stmt.type).toBe("TryStatement");
+      expect(stmt.handler).not.toBeNull();
+      expect(stmt.finalizer).toBeNull();
+    });
+
+    it("should parse try-finally without catch", () => {
+      const program = parse("try { x; } finally { y; }");
+      const stmt = program.body[0] as {
+        type: string;
+        handler: null;
+        finalizer: { type: string };
+      };
+      expect(stmt.type).toBe("TryStatement");
+      expect(stmt.handler).toBeNull();
+      expect(stmt.finalizer).not.toBeNull();
+    });
+  });
 });

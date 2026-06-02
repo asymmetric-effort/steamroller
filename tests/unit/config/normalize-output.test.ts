@@ -342,4 +342,46 @@ describe("normalizeOutputOptions", () => {
       expect(result.format).toBe(formats[i]);
     }
   });
+
+  it("normalizes generatedCode with partial object", () => {
+    const result = normalizeOutputOptions(
+      { generatedCode: { arrowFunctions: true } },
+      getDefaultInputOptions(),
+    );
+    expect(result.generatedCode.arrowFunctions).toBe(true);
+    expect(result.generatedCode.constBindings).toBe(false);
+  });
+
+  it("normalizes output plugins with nested array", () => {
+    const p1: OutputPlugin = { name: "p1" };
+    const p2: OutputPlugin = { name: "p2" };
+    const result = normalizeOutputPlugins([p1, [p2]]);
+    expect(result.length).toBe(2);
+  });
+
+  it("normalizes output plugins with null/false entries", () => {
+    const p1: OutputPlugin = { name: "p1" };
+    const result = normalizeOutputPlugins([
+      p1,
+      null as unknown as OutputPlugin,
+      false as unknown as OutputPlugin,
+    ]);
+    expect(result.length).toBe(1);
+  });
+
+  it("normalizes indent option false to true", () => {
+    const result = normalizeOutputOptions(
+      { indent: false },
+      getDefaultInputOptions(),
+    );
+    expect(result.indent).toBe(true);
+  });
+
+  it("normalizes indent option string value", () => {
+    const result = normalizeOutputOptions(
+      { indent: "\t" },
+      getDefaultInputOptions(),
+    );
+    expect(result.indent).toBe("\t");
+  });
 });

@@ -643,4 +643,132 @@ describe("tree-shaking engine", () => {
       expect(result.includedStatements).toBe(1);
     });
   });
+
+  describe("statement inclusion via binding tracing", () => {
+    it("includes statements whose declared bindings are referenced by included bindings", () => {
+      const entryMod = createModule("entry.js", true);
+      const scope = createScope();
+
+      // Binding 'a' is exported and references 'b'
+      const bindingA = createBinding(scope, "a");
+      const bindingB = createBinding(scope, "b");
+      createReference(bindingA, bindingB);
+
+      const stmtA = createStatement(0, "none", [bindingA]);
+      const stmtB = createStatement(1, "none", [bindingB]);
+
+      const info = buildModuleInfo(
+        entryMod,
+        scope,
+        [bindingA, bindingB],
+        [stmtA, stmtB],
+      );
+      const moduleInfos = new Map<Module, ModuleBindingInfo>([
+        [entryMod, info],
+      ]);
+      const entryExports = new Map<Module, ReadonlyArray<string>>([
+        [entryMod, ["a"]],
+      ]);
+
+      const result = treeShake(
+        [entryMod],
+        entryExports,
+        createOptions(),
+        moduleInfos,
+      );
+
+      // Both bindings should be included since a references b
+      expect(bindingA.isIncluded).toBe(true);
+      expect(bindingB.isIncluded).toBe(true);
+      expect(stmtA.isIncluded).toBe(true);
+      expect(stmtB.isIncluded).toBe(true);
+      expect(result.includedStatements).toBe(2);
+    });
+
+    it("skips already-included statements during tracing", () => {
+      const entryMod = createModule("entry.js", true);
+      const scope = createScope();
+      const binding = createBinding(scope, "x");
+      const stmt = createStatement(0, "definite", [binding]);
+
+      const info = buildModuleInfo(entryMod, scope, [binding], [stmt]);
+      const moduleInfos = new Map<Module, ModuleBindingInfo>([
+        [entryMod, info],
+      ]);
+      const entryExports = new Map<Module, ReadonlyArray<string>>([
+        [entryMod, ["x"]],
+      ]);
+
+      const result = treeShake(
+        [entryMod],
+        entryExports,
+        createOptions(),
+        moduleInfos,
+      );
+
+      expect(stmt.isIncluded).toBe(true);
+      expect(result.includedStatements).toBe(1);
+    });
+
+    it("handles already-included statement that gets re-processed", () => {
+      const entryMod = createModule("entry.js", true);
+      const scope = createScope();
+
+      // Create two bindings that reference each other
+      const bindingA = createBinding(scope, "a");
+      const bindingB = createBinding(scope, "b");
+      createReference(bindingA, bindingB);
+      createReference(bindingB, bindingA);
+
+      // Both are in the same statement with side effects
+      const stmt = createStatement(0, "definite", [bindingA, bindingB]);
+
+      const info = buildModuleInfo(
+        entryMod,
+        scope,
+        [bindingA, bindingB],
+        [stmt],
+      );
+      const moduleInfos = new Map<Module, ModuleBindingInfo>([
+        [entryMod, info],
+      ]);
+      const entryExports = new Map<Module, ReadonlyArray<string>>([
+        [entryMod, ["a"]],
+      ]);
+
+      const result = treeShake(
+        [entryMod],
+        entryExports,
+        createOptions(),
+        moduleInfos,
+      );
+
+      // Both bindings should be included
+      expect(bindingA.isIncluded).toBe(true);
+      expect(bindingB.isIncluded).toBe(true);
+      expect(stmt.isIncluded).toBe(true);
+    });
+
+    it("includes side-effect statements with declared bindings", () => {
+      const mod = createModule("mod.js", false);
+      mod.moduleSideEffects = true;
+      const scope = createScope();
+      const binding = createBinding(scope, "sideEffect");
+      const stmt = createStatement(0, "definite", [binding]);
+
+      const info = buildModuleInfo(mod, scope, [binding], [stmt]);
+      const moduleInfos = new Map<Module, ModuleBindingInfo>([[mod, info]]);
+      const entryExports = new Map<Module, ReadonlyArray<string>>();
+
+      const result = treeShake(
+        [mod],
+        entryExports,
+        createOptions(),
+        moduleInfos,
+      );
+
+      expect(stmt.isIncluded).toBe(true);
+      expect(binding.isIncluded).toBe(true);
+    });
+  });
 });

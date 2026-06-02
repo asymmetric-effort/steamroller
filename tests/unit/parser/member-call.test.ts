@@ -573,4 +573,28 @@ describe("Member Access, Calls, and Optional Chaining", () => {
       );
     });
   });
+
+  describe("member access with keyword properties", () => {
+    it("should parse member access with 'class' as property", () => {
+      const expr = parseExpr("obj.class;") as AST.MemberExpression;
+      expect(expr.type).toBe("MemberExpression");
+    });
+
+    it("should parse member access with 'delete' as property", () => {
+      const expr = parseExpr("obj.delete;") as AST.MemberExpression;
+      expect(expr.type).toBe("MemberExpression");
+    });
+
+    it("should parse member access with 'return' as property", () => {
+      const expr = parseExpr("obj.return;") as AST.MemberExpression;
+      expect(expr.type).toBe("MemberExpression");
+    });
+  });
+
+  describe("new.target meta property", () => {
+    it("should parse new.target inside function", () => {
+      const program = parse("function f() { new.target; }");
+      expect(program.body.length).toBe(1);
+    });
+  });
 });
