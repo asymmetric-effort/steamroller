@@ -9,6 +9,8 @@ import {
   PluginDriver,
   getHookHandler,
   getHookOrder,
+  getHookFilter,
+  shouldRunHookForModule,
   sortPluginsByOrder,
   matchesFilter,
 } from "../../../src/plugins/driver.js";
@@ -212,6 +214,91 @@ describe("matchesFilter", () => {
 
   it("handles empty array", () => {
     expect(matchesFilter("anything", [])).toBe(false);
+  });
+});
+
+describe("getHookFilter", () => {
+  it("returns undefined for plain functions", () => {
+    expect(getHookFilter(() => {})).toBeUndefined();
+  });
+
+  it("returns undefined for objects without id property", () => {
+    expect(getHookFilter({ handler: () => {} })).toBeUndefined();
+  });
+
+  it("returns the id StringFilter from an object hook", () => {
+    const hook = { handler: () => {}, id: /\.ts$/ };
+    expect(getHookFilter(hook)).toEqual(/\.ts$/);
+  });
+
+  it("returns string filter", () => {
+    const hook = { handler: () => {}, id: "src/index.ts" };
+    expect(getHookFilter(hook)).toBe("src/index.ts");
+  });
+
+  it("returns array filter", () => {
+    const filter = [/\.ts$/, "foo.js"];
+    const hook = { handler: () => {}, id: filter };
+    expect(getHookFilter(hook)).toBe(filter);
+  });
+
+  it("returns undefined for null", () => {
+    expect(getHookFilter(null)).toBeUndefined();
+  });
+
+  it("returns undefined for undefined", () => {
+    expect(getHookFilter(undefined)).toBeUndefined();
+  });
+
+  it("returns undefined for primitives", () => {
+    expect(getHookFilter("string")).toBeUndefined();
+    expect(getHookFilter(42)).toBeUndefined();
+  });
+});
+
+describe("shouldRunHookForModule", () => {
+  it("returns true when moduleId is undefined", () => {
+    const hook = { handler: () => {}, id: /\.ts$/ };
+    expect(shouldRunHookForModule(hook, undefined)).toBe(true);
+  });
+
+  it("returns true when hook has no filter", () => {
+    expect(shouldRunHookForModule(() => {}, "anything.ts")).toBe(true);
+  });
+
+  it("returns true when hook is an object without id filter", () => {
+    const hook = { handler: () => {}, order: "pre" };
+    expect(shouldRunHookForModule(hook, "anything.ts")).toBe(true);
+  });
+
+  it("returns true when module ID matches string filter", () => {
+    const hook = { handler: () => {}, id: "index" };
+    expect(shouldRunHookForModule(hook, "src/index.ts")).toBe(true);
+  });
+
+  it("returns false when module ID does not match string filter", () => {
+    const hook = { handler: () => {}, id: "foo.js" };
+    expect(shouldRunHookForModule(hook, "src/index.ts")).toBe(false);
+  });
+
+  it("returns true when module ID matches regex filter", () => {
+    const hook = { handler: () => {}, id: /\.ts$/ };
+    expect(shouldRunHookForModule(hook, "src/index.ts")).toBe(true);
+  });
+
+  it("returns false when module ID does not match regex filter", () => {
+    const hook = { handler: () => {}, id: /\.css$/ };
+    expect(shouldRunHookForModule(hook, "src/index.ts")).toBe(false);
+  });
+
+  it("returns true when module ID matches one item in array filter", () => {
+    const hook = { handler: () => {}, id: [/\.css$/, /\.ts$/] };
+    expect(shouldRunHookForModule(hook, "src/index.ts")).toBe(true);
+  });
+
+  it("returns false when module ID matches no item in array filter", () => {
+    const hook = { handler: () => {}, id: [/\.css$/, "foo.js"] };
+    expect(shouldRunHookForModule(hook, "src/index.ts")).toBe(false);
   });
 });
 
@@ -676,6 +763,294 @@ describe("PluginDriver", () => {
         [],
       );
       expect(result).toBe("real");
+    });
+  });
+
+  describe("hook filter matching", () => {
+    describe("hookFirst with filterModuleId", () => {
+      it("skips hooks whose id filter does not match the module ID", async () => {
+        const tsOnly = vi.fn(() => "ts-result");
+        const plugins = [
+          makePlugin("ts-only", {
+            resolveId: { handler: tsOnly, id: /\.ts$/ },
+          }),
+          makePlugin("fallback", { resolveId: () => "fallback-result" }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        const result = await driver.hookFirst<string>(
+          "resolveId",
+          ["./foo.js"],
+          undefined,
+          "./foo.js",
+        );
+        expect(tsOnly).not.toHaveBeenCalled();
+        expect(result).toBe("fallback-result");
+      });
+
+      it("runs hooks whose id filter matches the module ID", async () => {
+        const tsOnly = vi.fn(() => "ts-result");
+        const plugins = [
+          makePlugin("ts-only", {
+            resolveId: { handler: tsOnly, id: /\.ts$/ },
+          }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        const result = await driver.hookFirst<string>(
+          "resolveId",
+          ["./foo.ts"],
+          undefined,
+          "./foo.ts",
+        );
+        expect(tsOnly).toHaveBeenCalled();
+        expect(result).toBe("ts-result");
+      });
+
+      it("runs all hooks when filterModuleId is not provided", async () => {
+        const fn = vi.fn(() => "result");
+        const plugins = [
+          makePlugin("filtered", {
+            resolveId: { handler: fn, id: /\.ts$/ },
+          }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        const result = await driver.hookFirst<string>("resolveId", [
+          "./foo.js",
+        ]);
+        expect(fn).toHaveBeenCalled();
+        expect(result).toBe("result");
+      });
+
+      it("runs plain function hooks regardless of filterModuleId", async () => {
+        const fn = vi.fn(() => "result");
+        const plugins = [makePlugin("plain", { resolveId: fn })];
+        const driver = new PluginDriver(plugins, () => {});
+        const result = await driver.hookFirst<string>(
+          "resolveId",
+          ["./foo.ts"],
+          undefined,
+          "./foo.ts",
+        );
+        expect(fn).toHaveBeenCalled();
+        expect(result).toBe("result");
+      });
+
+      it("supports string id filter for resolveId", async () => {
+        const fn = vi.fn(() => "matched");
+        const plugins = [
+          makePlugin("str-filter", {
+            resolveId: { handler: fn, id: "node_modules" },
+          }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+
+        const result1 = await driver.hookFirst<string>(
+          "resolveId",
+          ["lodash"],
+          undefined,
+          "/project/node_modules/lodash/index.js",
+        );
+        expect(fn).toHaveBeenCalled();
+        expect(result1).toBe("matched");
+
+        fn.mockClear();
+        const result2 = await driver.hookFirst<string>(
+          "resolveId",
+          ["./local"],
+          undefined,
+          "/project/src/local.ts",
+        );
+        expect(fn).not.toHaveBeenCalled();
+        expect(result2).toBe(null);
+      });
+    });
+
+    describe("hookSequential with filterModuleId", () => {
+      it("skips hooks whose filter does not match", async () => {
+        const tsHandler = vi.fn(() => "ts-result");
+        const jsHandler = vi.fn(() => "js-result");
+        const plugins = [
+          makePlugin("ts-only", {
+            transform: { handler: tsHandler, id: /\.ts$/ },
+          }),
+          makePlugin("js-only", {
+            transform: { handler: jsHandler, id: /\.js$/ },
+          }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        const results = await driver.hookSequential<string>(
+          "transform",
+          ["code", "file.js"],
+          undefined,
+          "file.js",
+        );
+        expect(tsHandler).not.toHaveBeenCalled();
+        expect(jsHandler).toHaveBeenCalled();
+        expect(results).toEqual(["js-result"]);
+      });
+
+      it("runs all hooks when filterModuleId is not provided", async () => {
+        const tsHandler = vi.fn(() => "ts-result");
+        const jsHandler = vi.fn(() => "js-result");
+        const plugins = [
+          makePlugin("ts-only", {
+            transform: { handler: tsHandler, id: /\.ts$/ },
+          }),
+          makePlugin("js-only", {
+            transform: { handler: jsHandler, id: /\.js$/ },
+          }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        const results = await driver.hookSequential<string>("transform", [
+          "code",
+          "file.js",
+        ]);
+        expect(tsHandler).toHaveBeenCalled();
+        expect(jsHandler).toHaveBeenCalled();
+        expect(results).toEqual(["ts-result", "js-result"]);
+      });
+    });
+
+    describe("hookParallel with filterModuleId", () => {
+      it("skips hooks whose filter does not match", async () => {
+        const tsHandler = vi.fn();
+        const anyHandler = vi.fn();
+        const plugins = [
+          makePlugin("ts-only", {
+            load: { handler: tsHandler, id: /\.ts$/ },
+          }),
+          makePlugin("any", { load: anyHandler }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        await driver.hookParallel("load", ["file.js"], undefined, "file.js");
+        expect(tsHandler).not.toHaveBeenCalled();
+        expect(anyHandler).toHaveBeenCalled();
+      });
+    });
+
+    describe("hookReduce with filterModuleId", () => {
+      it("skips hooks whose filter does not match", async () => {
+        const tsHandler = vi.fn(
+          (_code: unknown, _id: unknown, acc: unknown) => (acc as number) + 100,
+        );
+        const anyHandler = vi.fn(
+          (_code: unknown, _id: unknown, acc: unknown) => (acc as number) + 1,
+        );
+        const plugins = [
+          makePlugin("ts-only", {
+            transform: { handler: tsHandler, id: /\.ts$/ },
+          }),
+          makePlugin("any", { transform: anyHandler }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        const result = await driver.hookReduce<number>(
+          "transform",
+          0,
+          (_acc, r) => r as number,
+          ["code", "file.js"],
+          undefined,
+          "file.js",
+        );
+        expect(tsHandler).not.toHaveBeenCalled();
+        expect(anyHandler).toHaveBeenCalled();
+        expect(result).toBe(1);
+      });
+
+      it("runs matching hooks in reduce", async () => {
+        const plugins = [
+          makePlugin("ts-only", {
+            transform: {
+              handler: (_code: unknown, _id: unknown, acc: unknown) =>
+                (acc as number) + 10,
+              id: /\.ts$/,
+            },
+          }),
+          makePlugin("any", {
+            transform: (_code: unknown, _id: unknown, acc: unknown) =>
+              (acc as number) + 1,
+          }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        const result = await driver.hookReduce<number>(
+          "transform",
+          0,
+          (_acc, r) => r as number,
+          ["code", "file.ts"],
+          undefined,
+          "file.ts",
+        );
+        expect(result).toBe(11);
+      });
+    });
+
+    describe("filter with array of patterns", () => {
+      it("matches when any pattern in the array matches", async () => {
+        const fn = vi.fn(() => "matched");
+        const plugins = [
+          makePlugin("multi-filter", {
+            resolveId: { handler: fn, id: [/\.ts$/, /\.tsx$/] },
+          }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+
+        const r1 = await driver.hookFirst<string>(
+          "resolveId",
+          ["./comp"],
+          undefined,
+          "./comp.tsx",
+        );
+        expect(r1).toBe("matched");
+
+        fn.mockClear();
+        const r2 = await driver.hookFirst<string>(
+          "resolveId",
+          ["./style"],
+          undefined,
+          "./style.css",
+        );
+        expect(fn).not.toHaveBeenCalled();
+        expect(r2).toBe(null);
+      });
+    });
+
+    describe("filter with order and id combined", () => {
+      it("respects both order and filter on the same hook", async () => {
+        const order: Array<string> = [];
+        const plugins = [
+          makePlugin("post-ts", {
+            resolveId: {
+              handler: () => {
+                order.push("post-ts");
+                return null;
+              },
+              order: "post",
+              id: /\.ts$/,
+            },
+          }),
+          makePlugin("pre-any", {
+            resolveId: {
+              handler: () => {
+                order.push("pre-any");
+                return null;
+              },
+              order: "pre",
+            },
+          }),
+          makePlugin("normal-js", {
+            resolveId: {
+              handler: () => {
+                order.push("normal-js");
+                return null;
+              },
+              id: /\.js$/,
+            },
+          }),
+        ];
+        const driver = new PluginDriver(plugins, () => {});
+        await driver.hookFirst("resolveId", ["./mod"], undefined, "./mod.ts");
+        // pre-any runs (no filter), normal-js skipped (doesn't match .ts),
+        // post-ts runs (matches .ts)
+        expect(order).toEqual(["pre-any", "post-ts"]);
+      });
     });
   });
 });

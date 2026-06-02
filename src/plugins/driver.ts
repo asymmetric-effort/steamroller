@@ -6,7 +6,7 @@
  * duplicate plugin name detection.
  */
 
-import type { Plugin } from "../types.js";
+import type { Plugin, StringFilter } from "../types.js";
 import { DUPLICATE_PLUGIN_NAME } from "../utils/error-codes.js";
 
 /** Strategy for executing hooks across plugins. */
@@ -58,6 +58,38 @@ export const getHookOrder = (hook: unknown): "pre" | "post" | null => {
     return order ?? null;
   }
   return null;
+};
+
+/**
+ * Get the HookFilter id pattern from an ObjectHook.
+ * Returns the StringFilter for module ID matching, or undefined if none.
+ */
+export const getHookFilter = (hook: unknown): StringFilter | undefined => {
+  if (
+    hook !== null &&
+    hook !== undefined &&
+    typeof hook === "object" &&
+    "id" in (hook as Record<string, unknown>)
+  ) {
+    return (hook as { readonly id?: StringFilter }).id;
+  }
+  return undefined;
+};
+
+/**
+ * Check whether a hook should run for the given module ID.
+ * If the hook has no filter, it always runs. If it has an id filter,
+ * the module ID must match the filter pattern(s).
+ */
+export const shouldRunHookForModule = (
+  hook: unknown,
+  moduleId: string | undefined,
+): boolean => {
+  if (moduleId === undefined) {
+    return true;
+  }
+  const filter = getHookFilter(hook);
+  return matchesFilter(moduleId, filter);
 };
 
 /** Safely access a hook property from a plugin by name. */
@@ -170,11 +202,14 @@ export class PluginDriver {
   /**
    * Execute hook with 'first' strategy.
    * Stops at the first plugin that returns a non-null/undefined value.
+   * When filterModuleId is provided, hooks with an id filter that doesn't
+   * match the module ID will be skipped.
    */
   async hookFirst<R>(
     hookName: string,
     args: ReadonlyArray<unknown>,
     context?: unknown,
+    filterModuleId?: string,
   ): Promise<R | null> {
     const sorted = sortPluginsByOrder(this.plugins, hookName);
     for (const plugin of sorted) {
@@ -184,6 +219,9 @@ export class PluginDriver {
       }
       const handler = getHookHandler(hook) as HookHandlerFn;
       if (typeof handler !== "function") {
+        continue;
+      }
+      if (!shouldRunHookForModule(hook, filterModuleId)) {
         continue;
       }
       const result = await handler.apply(context, [...args]);
@@ -197,11 +235,14 @@ export class PluginDriver {
   /**
    * Execute hook with 'sequential' strategy.
    * Runs all plugins in order, collecting non-null results.
+   * When filterModuleId is provided, hooks with an id filter that doesn't
+   * match the module ID will be skipped.
    */
   async hookSequential<R>(
     hookName: string,
     args: ReadonlyArray<unknown>,
     context?: unknown,
+    filterModuleId?: string,
   ): Promise<ReadonlyArray<R>> {
     const sorted = sortPluginsByOrder(this.plugins, hookName);
     const results: Array<R> = [];
@@ -212,6 +253,9 @@ export class PluginDriver {
       }
       const handler = getHookHandler(hook) as HookHandlerFn;
       if (typeof handler !== "function") {
+        continue;
+      }
+      if (!shouldRunHookForModule(hook, filterModuleId)) {
         continue;
       }
       const result = await handler.apply(context, [...args]);
@@ -225,11 +269,14 @@ export class PluginDriver {
   /**
    * Execute hook with 'parallel' strategy.
    * All hooks start concurrently; waits for all to complete.
+   * When filterModuleId is provided, hooks with an id filter that doesn't
+   * match the module ID will be skipped.
    */
   async hookParallel(
     hookName: string,
     args: ReadonlyArray<unknown>,
     context?: unknown,
+    filterModuleId?: string,
   ): Promise<void> {
     const sorted = sortPluginsByOrder(this.plugins, hookName);
     const promises: Array<Promise<void>> = [];
@@ -240,6 +287,9 @@ export class PluginDriver {
       }
       const handler = getHookHandler(hook) as HookHandlerFn;
       if (typeof handler !== "function") {
+        continue;
+      }
+      if (!shouldRunHookForModule(hook, filterModuleId)) {
         continue;
       }
       promises.push(
@@ -254,6 +304,8 @@ export class PluginDriver {
   /**
    * Execute hook with 'reduce' strategy.
    * Threads an accumulator through each plugin's hook result.
+   * When filterModuleId is provided, hooks with an id filter that doesn't
+   * match the module ID will be skipped.
    */
   async hookReduce<R>(
     hookName: string,
@@ -261,6 +313,7 @@ export class PluginDriver {
     reducer: (acc: R, result: unknown) => R,
     args: ReadonlyArray<unknown>,
     context?: unknown,
+    filterModuleId?: string,
   ): Promise<R> {
     const sorted = sortPluginsByOrder(this.plugins, hookName);
     let acc = initial;
@@ -271,6 +324,9 @@ export class PluginDriver {
       }
       const handler = getHookHandler(hook) as HookHandlerFn;
       if (typeof handler !== "function") {
+        continue;
+      }
+      if (!shouldRunHookForModule(hook, filterModuleId)) {
         continue;
       }
       const result = await handler.apply(context, [...args, acc]);
