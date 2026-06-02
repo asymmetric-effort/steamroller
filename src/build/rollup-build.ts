@@ -1546,6 +1546,24 @@ const runBundleValidation = (result: RollupOutput, state: BuildState): void => {
       }
     }
   }
+
+  // Run import specifier verification
+  const importVerification = verifyBuild(
+    result.output as ReadonlyArray<OutputChunk | OutputAsset>,
+    externalIds,
+  );
+
+  if (!importVerification.valid) {
+    const onLog = state.inputOptions?.onLog;
+    for (let i = 0; i < importVerification.warnings.length; i++) {
+      const warning = importVerification.warnings[i];
+      if (onLog !== undefined) {
+        onLog("warn", warning);
+      } else {
+        console.warn(`[steamroller] ${warning.message}`);
+      }
+    }
+  }
 };
 
 /**
