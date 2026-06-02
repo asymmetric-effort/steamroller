@@ -6,7 +6,7 @@
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join, relative, basename, extname, posix } from "node:path";
+import { dirname, join, extname, posix } from "node:path";
 import type {
   RollupBuild,
   RollupOutput,
@@ -48,6 +48,7 @@ import type { SplittableModule } from "../splitting/index.js";
 import type { FileEmitter } from "../plugins/plugin-context-emit.js";
 import { ALREADY_CLOSED } from "../utils/error-codes.js";
 import { validateBundle } from "../validation/bundle-validator.js";
+import { verifyBuild } from "../validation/verify-imports.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -740,6 +741,400 @@ const generateSplitOutput = async (
 };
 
 /**
+ * Compute the output file path for a module in preserveModules mode.
+ * Strips the preserveModulesRoot prefix (if any) and replaces the extension with .js.
+ *
+ * @param moduleId - The absolute or relative module ID
+ * @param preserveModulesRoot - Optional root directory to strip from paths
+ * @returns The output file path relative to the output directory
+ */
+const getPreserveModulesOutputPath = (
+  moduleId: string,
+  preserveModulesRoot: string | undefined,
+): string => {
+  let relativePath = moduleId;
+
+  if (preserveModulesRoot !== undefined) {
+    // Strip the root prefix if the module path starts with it
+    const root = preserveModulesRoot.endsWith("/")
+      ? preserveModulesRoot
+      : preserveModulesRoot + "/";
+    if (relativePath.startsWith(root)) {
+      relativePath = relativePath.slice(root.length);
+    } else if (relativePath.startsWith(preserveModulesRoot)) {
+      relativePath = relativePath.slice(preserveModulesRoot.length);
+      if (relativePath.startsWith("/")) {
+        relativePath = relativePath.slice(1);
+      }
+    }
+  }
+
+  // Strip leading ./ or /
+  if (relativePath.startsWith("./")) {
+    relativePath = relativePath.slice(2);
+  } else if (relativePath.startsWith("/")) {
+    relativePath = relativePath.slice(1);
+  }
+
+  // Replace extension with .js
+  const ext = extname(relativePath);
+  if (ext) {
+    relativePath = relativePath.slice(0, -ext.length) + ".js";
+  } else {
+    relativePath = relativePath + ".js";
+  }
+
+  return relativePath;
+};
+
+/**
+ * Render a module for preserveModules mode - keeps all import/export statements
+ * intact (unlike renderSingleModule which strips internal imports).
+ * Only rewrites import sources to point to the correct output file paths.
+ *
+ * @param mod - The module to render
+ * @param format - The output format
+ * @param moduleOutputPaths - Map from module ID to output file path
+ * @param thisOutputPath - The output file path for this module
+ * @param includedStatements - Optional set of statement indices from tree-shaking
+ * @returns The rendered code string
+ */
+const renderPreserveModule = (
+  mod: Module,
+  format: ModuleFormat,
+  moduleOutputPaths: ReadonlyMap<string, string>,
+  thisOutputPath: string,
+  includedStatements?: ReadonlySet<number>,
+): string => {
+  const ms = new MagicString(mod.code);
+
+  if (mod.ast === null) {
+    return mod.code;
+  }
+
+  const body = mod.ast.body;
+  for (let i = 0; i < body.length; i++) {
+    const node = body[i];
+
+    // If tree-shaking is active and this statement is not included, remove it
+    if (
+      includedStatements !== undefined &&
+      !includedStatements.has(i) &&
+      node.type !== "ImportDeclaration"
+    ) {
+      ms.remove(node.start, node.end);
+      continue;
+    }
+
+    if (node.type === "ImportDeclaration") {
+      const importNode = node as {
+        start: number;
+        end: number;
+        source: { start: number; end: number; value: unknown; raw: string };
+      };
+      const source = importNode.source.value as string;
+
+      // Find which dependency this import resolves to
+      const resolvedId = resolveImportToModuleId(source, mod);
+      if (resolvedId !== undefined && moduleOutputPaths.has(resolvedId)) {
+        // Rewrite the source to point to the output path
+        const targetPath = moduleOutputPaths.get(resolvedId)!;
+        const newSource = computeRelativeImportPath(thisOutputPath, targetPath);
+        ms.overwrite(
+          importNode.source.start,
+          importNode.source.end,
+          JSON.stringify(newSource),
+        );
+      }
+      // External imports are kept as-is
+    } else if (node.type === "ExportNamedDeclaration") {
+      const exportNode = node as {
+        start: number;
+        end: number;
+        source: { start: number; end: number; value: unknown } | null;
+      };
+      if (exportNode.source !== null) {
+        const source = exportNode.source.value as string;
+        const resolvedId = resolveImportToModuleId(source, mod);
+        if (resolvedId !== undefined && moduleOutputPaths.has(resolvedId)) {
+          const targetPath = moduleOutputPaths.get(resolvedId)!;
+          const newSource = computeRelativeImportPath(
+            thisOutputPath,
+            targetPath,
+          );
+          ms.overwrite(
+            exportNode.source.start,
+            exportNode.source.end,
+            JSON.stringify(newSource),
+          );
+        }
+      }
+    } else if (node.type === "ExportAllDeclaration") {
+      const exportAll = node as {
+        start: number;
+        end: number;
+        source: { start: number; end: number; value: unknown };
+      };
+      const source = exportAll.source.value as string;
+      const resolvedId = resolveImportToModuleId(source, mod);
+      if (resolvedId !== undefined && moduleOutputPaths.has(resolvedId)) {
+        const targetPath = moduleOutputPaths.get(resolvedId)!;
+        const newSource = computeRelativeImportPath(thisOutputPath, targetPath);
+        ms.overwrite(
+          exportAll.source.start,
+          exportAll.source.end,
+          JSON.stringify(newSource),
+        );
+      }
+    }
+  }
+
+  return ms.toString().trim();
+};
+
+/**
+ * Resolve an import source string to a module ID by checking module dependencies.
+ */
+const resolveImportToModuleId = (
+  source: string,
+  mod: Module,
+): string | undefined => {
+  for (const dep of mod.dependencies) {
+    if (dep instanceof Module) {
+      if (
+        dep.id === source ||
+        dep.id.endsWith(source) ||
+        dep.id.includes(source.replace(/^\.\//, ""))
+      ) {
+        return dep.id;
+      }
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Compute the relative import path from one output file to another.
+ */
+const computeRelativeImportPath = (from: string, to: string): string => {
+  const fromDir = from.includes("/")
+    ? from.slice(0, from.lastIndexOf("/"))
+    : ".";
+  const rel = posix.relative(fromDir, to);
+  if (!rel.startsWith(".")) {
+    return "./" + rel;
+  }
+  return rel;
+};
+
+/**
+ * Generates output in preserveModules mode - each module becomes its own chunk.
+ * No bundling/concatenation occurs. The output directory structure mirrors
+ * the module graph structure relative to preserveModulesRoot.
+ */
+const generatePreserveModulesOutput = async (
+  state: BuildState,
+  modules: ReadonlyArray<Module>,
+  entryModule: Module,
+  format: ModuleFormat,
+  options: OutputOptions,
+  normalizedOutput: NormalizedOutputOptions | undefined,
+  hookExecutor: OutputHookExecutor | undefined,
+  isWrite: boolean,
+): Promise<RollupOutput> => {
+  const preserveModulesRoot = options.preserveModulesRoot;
+
+  // Build output path map for all modules
+  const moduleOutputPaths = new Map<string, string>();
+  for (let i = 0; i < modules.length; i++) {
+    const outputPath = getPreserveModulesOutputPath(
+      modules[i].id,
+      preserveModulesRoot,
+    );
+    moduleOutputPaths.set(modules[i].id, outputPath);
+  }
+
+  // Build a module lookup
+  const moduleById = new Map<string, Module>();
+  for (let i = 0; i < modules.length; i++) {
+    moduleById.set(modules[i].id, modules[i]);
+  }
+
+  // Resolve addons once
+  const resolvedAddons = await resolveAllAddons({
+    banner: options.banner as AddonValue,
+    footer: options.footer as AddonValue,
+    intro: options.intro as AddonValue,
+    outro: options.outro as AddonValue,
+  });
+
+  const outputChunks: Array<OutputChunk> = [];
+
+  for (let i = 0; i < modules.length; i++) {
+    const mod = modules[i];
+    const outputPath = moduleOutputPaths.get(mod.id)!;
+    const isEntry = mod === entryModule;
+
+    // Skip tree-shaken modules (unless entry)
+    if (
+      state.includedStatementsByModule !== undefined &&
+      !mod.isIncluded &&
+      !isEntry
+    ) {
+      continue;
+    }
+
+    // Render the module preserving import/export statements
+    const modStatements = state.includedStatementsByModule?.get(mod.id);
+    const renderedCode = renderPreserveModule(
+      mod,
+      format,
+      moduleOutputPaths,
+      outputPath,
+      modStatements,
+    );
+
+    // Collect external imports
+    const externalImports = getExternalImportBindings(mod);
+    const exportBindings = getExportBindings(mod);
+    const exportNames: Array<string> = [];
+    for (let j = 0; j < exportBindings.length; j++) {
+      exportNames.push(exportBindings[j].exported);
+    }
+
+    const externalImportSources: Array<string> = [];
+    const importedBindingsRecord: Record<string, Array<string>> = {};
+    for (let j = 0; j < externalImports.length; j++) {
+      const imp = externalImports[j];
+      if (!externalImportSources.includes(imp.source)) {
+        externalImportSources.push(imp.source);
+      }
+      if (importedBindingsRecord[imp.source] === undefined) {
+        importedBindingsRecord[imp.source] = [];
+      }
+      importedBindingsRecord[imp.source].push(imp.imported);
+    }
+
+    // Apply format wrapper
+    const formatWrapper = getFormatWrapper(format);
+    const exportsMode = getExportMode(exportNames, format);
+    const formatOptions: FormatOptions = {
+      exports: exportsMode,
+      strict: true,
+      externalImports,
+      exportBindings,
+    };
+
+    const wrappedCode =
+      formatWrapper !== undefined
+        ? formatWrapper.wrapChunk(renderedCode, formatOptions)
+        : renderedCode;
+
+    // Apply addons
+    const finalCode = applyAddons(wrappedCode, resolvedAddons);
+
+    // Collect import sources (internal modules this module imports)
+    const internalImportSources: Array<string> = [];
+    for (const dep of mod.dependencies) {
+      if (dep instanceof Module && moduleOutputPaths.has(dep.id)) {
+        const depPath = moduleOutputPaths.get(dep.id)!;
+        if (!internalImportSources.includes(depPath)) {
+          internalImportSources.push(depPath);
+        }
+      }
+    }
+
+    // Build modules record for this chunk (just this one module)
+    const modulesRecord: Record<string, OutputRenderedModule> = {};
+    const removedBindingNames: ReadonlyArray<string> =
+      state.treeShakeResult?.removedBindings ?? [];
+    const renderedExports: Array<string> = [];
+    const removedExports: Array<string> = [];
+    for (let j = 0; j < mod.exports.length; j++) {
+      const name = mod.exports[j].exported ?? mod.exports[j].local ?? "";
+      if (removedBindingNames.includes(name) && !mod.isEntry) {
+        removedExports.push(name);
+      } else {
+        renderedExports.push(name);
+      }
+    }
+    modulesRecord[mod.id] = {
+      code: mod.isIncluded ? mod.code : "",
+      originalLength: mod.code.length,
+      removedExports,
+      renderedExports,
+      renderedLength: mod.isIncluded ? mod.code.length : 0,
+    };
+
+    // Compute the chunk name from the output path (without extension)
+    const chunkName = outputPath.replace(/\.js$/, "").replace(/\//g, "_");
+
+    const renderedChunkInfo: RenderedChunk = {
+      type: "chunk",
+      dynamicImports: [...mod.dynamicImports],
+      exports: exportNames,
+      facadeModuleId: mod.id,
+      fileName: outputPath,
+      implicitlyLoadedBefore: [],
+      importedBindings: importedBindingsRecord,
+      imports: [...externalImportSources, ...internalImportSources],
+      isDynamicEntry: false,
+      isEntry,
+      isImplicitEntry: false,
+      moduleIds: [mod.id],
+      modules: modulesRecord,
+      name: chunkName,
+      referencedFiles: [],
+    };
+
+    // Fire renderChunk hook
+    let chunkCode = finalCode;
+    if (hookExecutor !== undefined && normalizedOutput !== undefined) {
+      const renderChunkResult = await hookExecutor.renderChunk(
+        chunkCode,
+        renderedChunkInfo,
+        normalizedOutput,
+      );
+      chunkCode = renderChunkResult.code;
+    }
+
+    const chunk: OutputChunk = {
+      ...renderedChunkInfo,
+      code: chunkCode,
+      preliminaryFileName: outputPath,
+      sourcemapFileName: null,
+      map: null,
+    };
+
+    outputChunks.push(chunk);
+  }
+
+  // Fire generateBundle hook
+  if (hookExecutor !== undefined && normalizedOutput !== undefined) {
+    const bundle: OutputBundle = {};
+    for (let i = 0; i < outputChunks.length; i++) {
+      (bundle as Record<string, OutputChunk>)[outputChunks[i].fileName] =
+        outputChunks[i];
+    }
+    await hookExecutor.generateBundle(normalizedOutput, bundle, isWrite);
+  }
+
+  // Collect emitted assets from plugins
+  const emittedAssets = collectEmittedAssets(state.fileEmitter);
+  const outputItems: Array<OutputChunk | OutputAsset> = [
+    ...outputChunks,
+    ...emittedAssets,
+  ];
+
+  return {
+    output: outputItems as unknown as readonly [
+      OutputChunk,
+      ...(OutputChunk | OutputAsset)[],
+    ],
+  };
+};
+
+/**
  * Generates output from build state and output options.
  * Renders modules via MagicString, concatenates in topological order,
  * and applies format wrappers.
@@ -848,6 +1243,20 @@ const generateOutput = async (
     hasDynamicImports && options.inlineDynamicImports !== true;
 
   try {
+    // preserveModules mode: each module becomes its own chunk
+    if (options.preserveModules === true) {
+      return await generatePreserveModulesOutput(
+        state,
+        modules,
+        entryModule,
+        format,
+        options,
+        normalizedOutput,
+        hookExecutor,
+        isWrite,
+      );
+    }
+
     if (shouldSplit) {
       return await generateSplitOutput(
         state,
@@ -1095,6 +1504,47 @@ const writeOutput = async (
     }
     const bundle: OutputBundle = bundleRecord;
     await state.outputHookExecutor.writeBundle(normalizedOutput, bundle);
+  }
+};
+
+/**
+ * Runs post-bundle validation on the output and emits warnings via the
+ * input options onLog handler. Collects external IDs from the build state
+ * modules to pass to the validator.
+ *
+ * @param result - The generated RollupOutput
+ * @param state - The build state containing modules and input options
+ */
+const runBundleValidation = (result: RollupOutput, state: BuildState): void => {
+  const modules = state.modules as ReadonlyArray<Module>;
+  const externalIds = new Set<string>();
+  for (let i = 0; i < modules.length; i++) {
+    const mod = modules[i];
+    for (const dep of mod.dependencies) {
+      if (dep instanceof ExternalModule) {
+        externalIds.add(dep.id);
+      }
+    }
+  }
+
+  const validationResult = validateBundle(
+    result.output as ReadonlyArray<OutputChunk | OutputAsset>,
+    externalIds,
+  );
+
+  if (!validationResult.valid) {
+    const onLog = state.inputOptions?.onLog;
+    for (let i = 0; i < validationResult.results.length; i++) {
+      const chunkResult = validationResult.results[i];
+      for (let j = 0; j < chunkResult.warnings.length; j++) {
+        const warning = chunkResult.warnings[j];
+        if (onLog !== undefined) {
+          onLog("warn", warning);
+        } else {
+          console.warn(`[steamroller] ${warning.message}`);
+        }
+      }
+    }
   }
 };
 
