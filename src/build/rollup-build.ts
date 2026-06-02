@@ -6,13 +6,14 @@
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, basename, extname, posix } from "node:path";
 import type {
   RollupBuild,
   RollupOutput,
   OutputOptions,
   RollupCache as RollupCacheType,
   OutputChunk,
+  OutputAsset,
   SerializedTimings,
   ModuleFormat,
   RenderedModule as OutputRenderedModule,
@@ -44,6 +45,8 @@ import {
   resolveChunkFileName,
 } from "../splitting/index.js";
 import type { SplittableModule } from "../splitting/index.js";
+import type { FileEmitter } from "../plugins/plugin-context-emit.js";
+import { ALREADY_CLOSED } from "../utils/error-codes.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -69,6 +72,8 @@ export interface BuildState {
     string,
     ReadonlySet<number>
   >;
+  /** File emitter for collecting assets/chunks emitted by plugins. */
+  readonly fileEmitter?: FileEmitter;
 }
 
 /**
@@ -92,6 +97,52 @@ const isInternalImport = (source: string, importerModule: Module): boolean => {
     }
   }
   return false;
+};
+
+/**
+ * Collect emitted files from a FileEmitter and convert them to OutputAsset entries.
+ *
+ * @param fileEmitter - The file emitter containing emitted files
+ * @returns Array of OutputAsset entries
+ */
+const collectEmittedAssets = (
+  fileEmitter: FileEmitter | undefined,
+): ReadonlyArray<OutputAsset> => {
+  if (fileEmitter === undefined) {
+    return [];
+  }
+  const emittedFiles = fileEmitter.getEmittedFiles();
+  const assets: Array<OutputAsset> = [];
+  for (let i = 0; i < emittedFiles.length; i++) {
+    const entry = emittedFiles[i];
+    if (entry.type === "asset" && entry.source !== undefined) {
+      const fileName =
+        entry.fileName ?? `assets/${entry.name ?? entry.referenceId}`;
+      assets.push({
+        type: "asset",
+        fileName,
+        name: entry.name,
+        names: entry.name ? [entry.name] : [],
+        needsCodeReference: false,
+        originalFileName: null,
+        originalFileNames: [],
+        source: entry.source,
+      });
+    } else if (entry.type === "prebuilt-chunk" && entry.code !== undefined) {
+      const fileName = entry.fileName ?? `assets/${entry.referenceId}`;
+      assets.push({
+        type: "asset",
+        fileName,
+        name: entry.name,
+        names: entry.name ? [entry.name] : [],
+        needsCodeReference: false,
+        originalFileName: null,
+        originalFileNames: [],
+        source: entry.code,
+      });
+    }
+  }
+  return assets;
 };
 
 /**
@@ -672,8 +723,18 @@ const generateSplitOutput = async (
     await hookExecutor.generateBundle(normalizedOutput, bundle, isWrite);
   }
 
+  // Collect emitted assets from plugins
+  const emittedAssets = collectEmittedAssets(state.fileEmitter);
+  const outputItems: Array<OutputChunk | OutputAsset> = [
+    ...outputChunks,
+    ...emittedAssets,
+  ];
+
   return {
-    output: outputChunks as unknown as readonly [OutputChunk, ...OutputChunk[]],
+    output: outputItems as unknown as readonly [
+      OutputChunk,
+      ...(OutputChunk | OutputAsset)[],
+    ],
   };
 };
 
@@ -751,7 +812,19 @@ const generateOutput = async (
       await hookExecutor.generateBundle(normalizedOutput, bundle, isWrite);
     }
 
-    return { output: [chunk] };
+    // Collect emitted assets from plugins
+    const emittedAssets = collectEmittedAssets(state.fileEmitter);
+    const outputItems: Array<OutputChunk | OutputAsset> = [
+      chunk,
+      ...emittedAssets,
+    ];
+
+    return {
+      output: outputItems as unknown as readonly [
+        OutputChunk,
+        ...(OutputChunk | OutputAsset)[],
+      ],
+    };
   }
 
   // Find the entry module (last module in topological order is typically the entry)
@@ -939,7 +1012,19 @@ const generateOutput = async (
       await hookExecutor.generateBundle(normalizedOutput, bundle, isWrite);
     }
 
-    return { output: [chunk] };
+    // Collect emitted assets from plugins
+    const emittedAssets = collectEmittedAssets(state.fileEmitter);
+    const outputItems: Array<OutputChunk | OutputAsset> = [
+      chunk,
+      ...emittedAssets,
+    ];
+
+    return {
+      output: outputItems as unknown as readonly [
+        OutputChunk,
+        ...(OutputChunk | OutputAsset)[],
+      ],
+    };
   } catch (renderError: unknown) {
     // Fire renderError hook on failure
     if (hookExecutor !== undefined) {
@@ -1046,14 +1131,24 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
 
     async generate(outputOptions: OutputOptions): Promise<RollupOutput> {
       if (internal.closed) {
-        throw new Error("Bundle is already closed");
+        throw Object.assign(
+          new Error(
+            "Bundle is already closed, no more calls to 'generate' are allowed.",
+          ),
+          { code: ALREADY_CLOSED },
+        );
       }
       return generateOutput(state, outputOptions, false);
     },
 
     async write(outputOptions: OutputOptions): Promise<RollupOutput> {
       if (internal.closed) {
-        throw new Error("Bundle is already closed");
+        throw Object.assign(
+          new Error(
+            "Bundle is already closed, no more calls to 'write' are allowed.",
+          ),
+          { code: ALREADY_CLOSED },
+        );
       }
       const output = await generateOutput(state, outputOptions, true);
       await writeOutput(output, outputOptions, state);

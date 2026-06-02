@@ -5,6 +5,8 @@
  * and PluginCache for per-plugin key-value storage.
  */
 
+import { ANONYMOUS_PLUGIN_CACHE } from "../utils/error-codes.js";
+
 /** Cached data for a single module. */
 export interface CachedModuleData {
   readonly code: string;
@@ -145,8 +147,11 @@ export class PluginCache {
   /** Retrieve a value by key. Throws if key does not exist. */
   get<T = unknown>(id: string): T {
     if (!this.store.has(id)) {
-      throw new Error(
-        `PluginCache.get: no entry found for key "${id}". Use has() to check existence first.`,
+      throw Object.assign(
+        new Error(
+          `PluginCache.get: no entry found for key "${id}". Use has() to check existence first.`,
+        ),
+        { code: ANONYMOUS_PLUGIN_CACHE },
       );
     }
     return this.store.get(id) as T;

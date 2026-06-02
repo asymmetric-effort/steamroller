@@ -8,6 +8,8 @@
 const BASE64_CHARS =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+import { SOURCEMAP_ERROR } from "../utils/error-codes.js";
+
 const charToInt = new Map<string, number>();
 for (let i = 0; i < BASE64_CHARS.length; i++) {
   charToInt.set(BASE64_CHARS[i], i);
@@ -76,7 +78,9 @@ export const decodeVlq = (
     const char = encoded[i];
     const digit = charToInt.get(char);
     if (digit === undefined) {
-      throw new Error(`Invalid Base64 VLQ character: ${char}`);
+      throw Object.assign(new Error(`Invalid Base64 VLQ character: ${char}`), {
+        code: SOURCEMAP_ERROR,
+      });
     }
     charsConsumed++;
     continuation = (digit & VLQ_CONTINUATION_BIT) !== 0;
@@ -85,7 +89,9 @@ export const decodeVlq = (
   }
 
   if (continuation) {
-    throw new Error("Unexpected end of VLQ encoded string");
+    throw Object.assign(new Error("Unexpected end of VLQ encoded string"), {
+      code: SOURCEMAP_ERROR,
+    });
   }
 
   return { value: fromVlqSigned(result), length: charsConsumed };

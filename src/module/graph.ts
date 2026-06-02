@@ -339,8 +339,9 @@ export const buildModuleGraph = async (
 
     if (!resolved) {
       if (item.isEntry) {
-        throw new Error(
-          `[${UNRESOLVED_ENTRY}] Could not resolve entry: ${item.source}`,
+        throw Object.assign(
+          new Error(`Could not resolve entry module "${item.source}".`),
+          { code: UNRESOLVED_ENTRY },
         );
       }
       options.onWarning({

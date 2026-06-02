@@ -224,9 +224,7 @@ export class PluginContextImpl implements PluginContext {
     const err = new Error(msg);
     (err as unknown as Record<string, unknown>)["plugin"] = this._pluginName;
     (err as unknown as Record<string, unknown>)["code"] =
-      typeof error === "string"
-        ? PLUGIN_ERROR
-        : (error.code ?? PLUGIN_ERROR);
+      typeof error === "string" ? PLUGIN_ERROR : (error.code ?? PLUGIN_ERROR);
     throw err;
   }
 

@@ -603,7 +603,19 @@ describe("buildModuleGraph", () => {
         loadModule: createLoader(new Map()),
         onWarning: vi.fn(),
       }),
-    ).rejects.toThrow(UNRESOLVED_ENTRY);
+    ).rejects.toThrow("Could not resolve entry module");
+
+    // Verify the error has the proper Rollup error code
+    try {
+      await buildModuleGraph({
+        input: "./missing.ts",
+        resolveId: createResolver(moduleMap),
+        loadModule: createLoader(new Map()),
+        onWarning: vi.fn(),
+      });
+    } catch (err: unknown) {
+      expect((err as Record<string, unknown>).code).toBe(UNRESOLVED_ENTRY);
+    }
   });
 
   it("warns on unresolved import (non-entry)", async () => {

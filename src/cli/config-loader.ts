@@ -9,6 +9,7 @@ import { stat } from "node:fs/promises";
 import { resolve, extname } from "node:path";
 import type { RollupOptions } from "../types.js";
 import type { ParsedCommand } from "./parse-cli.js";
+import { INVALID_OPTION, MISSING_CONFIG } from "../utils/error-codes.js";
 
 /** Supported config file extensions in search priority order. */
 const CONFIG_EXTENSIONS: ReadonlyArray<string> = [".mjs", ".js", ".cjs", ".ts"];
@@ -116,15 +117,20 @@ export const loadConfigFile = async (
   const supportedExts = new Set([".js", ".mjs", ".cjs", ".ts"]);
 
   if (!supportedExts.has(ext)) {
-    throw new Error(
-      `Unsupported config file extension "${ext}". ` +
-        `Supported: ${CONFIG_EXTENSIONS.join(", ")}`,
+    throw Object.assign(
+      new Error(
+        `Unsupported config file extension "${ext}". ` +
+          `Supported: ${CONFIG_EXTENSIONS.join(", ")}`,
+      ),
+      { code: INVALID_OPTION },
     );
   }
 
   const exists = await fileExists(configPath);
   if (!exists) {
-    throw new Error(`Config file not found: ${configPath}`);
+    throw Object.assign(new Error(`Config file not found: ${configPath}`), {
+      code: MISSING_CONFIG,
+    });
   }
 
   /* Use file:// URL for cross-platform dynamic import compatibility */

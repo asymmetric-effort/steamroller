@@ -9,6 +9,7 @@
  */
 
 import { TokenType } from "./token-types.js";
+import { PARSE_ERROR } from "../utils/error-codes.js";
 
 /**
  * Check if a character code is whitespace (Unicode-aware).
@@ -205,7 +206,10 @@ export const scanBlockComment = (
     }
   }
 
-  throw new Error(`Unterminated block comment at position ${start}`);
+  throw Object.assign(
+    new Error(`Unterminated block comment at position ${start}`),
+    { code: PARSE_ERROR },
+  );
 };
 
 /**

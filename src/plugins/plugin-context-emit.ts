@@ -14,6 +14,12 @@ import type {
   RollupLog,
   LogLevel,
 } from "../types.js";
+import {
+  ANONYMOUS_PLUGIN_CACHE,
+  ASSET_NOT_FOUND,
+  INVALID_SETASSETSOURCE,
+  PLUGIN_ERROR,
+} from "../utils/error-codes.js";
 
 /** Internal representation of an emitted file with its reference ID. */
 export interface EmittedFileEntry {
@@ -111,9 +117,12 @@ export class FileEmitter {
   getFileName(referenceId: string): string {
     const entry = this._files.get(referenceId);
     if (!entry) {
-      throw new Error(
-        `File reference "${referenceId}" not found. ` +
-          `Make sure the file was emitted first.`,
+      throw Object.assign(
+        new Error(
+          `File reference "${referenceId}" not found. ` +
+            `Make sure the file was emitted first.`,
+        ),
+        { code: ASSET_NOT_FOUND },
       );
     }
     if (entry.fileName) {
@@ -135,14 +144,20 @@ export class FileEmitter {
   setAssetSource(referenceId: string, source: string | Uint8Array): void {
     const entry = this._files.get(referenceId);
     if (!entry) {
-      throw new Error(
-        `File reference "${referenceId}" not found. ` +
-          `Make sure the file was emitted first.`,
+      throw Object.assign(
+        new Error(
+          `File reference "${referenceId}" not found. ` +
+            `Make sure the file was emitted first.`,
+        ),
+        { code: ASSET_NOT_FOUND },
       );
     }
     if (entry.type !== "asset") {
-      throw new Error(
-        `Cannot set source for "${referenceId}": only assets support setAssetSource.`,
+      throw Object.assign(
+        new Error(
+          `Cannot set source for "${referenceId}": only assets support setAssetSource.`,
+        ),
+        { code: INVALID_SETASSETSOURCE },
       );
     }
     (entry as { source: string | Uint8Array }).source = source;
@@ -226,8 +241,11 @@ export const createPluginCache = (): PluginCache => {
   return {
     get: <T = unknown>(id: string): T => {
       if (!store.has(id)) {
-        throw new Error(
-          `No cache entry found for "${id}". Use has() to check first.`,
+        throw Object.assign(
+          new Error(
+            `No cache entry found for "${id}". Use has() to check first.`,
+          ),
+          { code: ANONYMOUS_PLUGIN_CACHE },
         );
       }
       return store.get(id) as T;

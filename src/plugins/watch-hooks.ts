@@ -7,6 +7,7 @@
 
 import type { Plugin, ChangeEvent } from "../types.js";
 import { PluginDriver } from "./driver.js";
+import { ALREADY_CLOSED } from "../utils/error-codes.js";
 
 /** Event payload for the watchChange hook. */
 export interface WatchChangeEvent {
@@ -70,7 +71,10 @@ export class WatchHookExecutor {
     change: WatchChangeEvent,
   ): Promise<WatchHookResult> {
     if (this._closed) {
-      throw new Error("Cannot fire watchChange: watcher is already closed");
+      throw Object.assign(
+        new Error("Cannot fire watchChange: watcher is already closed"),
+        { code: ALREADY_CLOSED },
+      );
     }
 
     const plugins = this._driver.getPlugins();
@@ -105,7 +109,10 @@ export class WatchHookExecutor {
    */
   async closeWatcher(): Promise<WatchHookResult> {
     if (this._closed) {
-      throw new Error("Cannot fire closeWatcher: watcher is already closed");
+      throw Object.assign(
+        new Error("Cannot fire closeWatcher: watcher is already closed"),
+        { code: ALREADY_CLOSED },
+      );
     }
 
     const plugins = this._driver.getPlugins();
