@@ -47,6 +47,7 @@ import {
 import type { SplittableModule } from "../splitting/index.js";
 import type { FileEmitter } from "../plugins/plugin-context-emit.js";
 import { ALREADY_CLOSED } from "../utils/error-codes.js";
+import { validateBundle } from "../validation/bundle-validator.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -1138,7 +1139,11 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
           { code: ALREADY_CLOSED },
         );
       }
-      return generateOutput(state, outputOptions, false);
+      const result = await generateOutput(state, outputOptions, false);
+      if (outputOptions.validate === true) {
+        runBundleValidation(result, state);
+      }
+      return result;
     },
 
     async write(outputOptions: OutputOptions): Promise<RollupOutput> {
@@ -1151,6 +1156,9 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
         );
       }
       const output = await generateOutput(state, outputOptions, true);
+      if (outputOptions.validate === true) {
+        runBundleValidation(output, state);
+      }
       await writeOutput(output, outputOptions, state);
       return output;
     },

@@ -14,6 +14,7 @@ import type {
   SourceMapInput,
 } from "../types.js";
 import { PluginDriver, sortPluginsByOrder, getHookHandler } from "./driver.js";
+import type { FileEmitter } from "./plugin-context-emit.js";
 
 // ============================================================
 // Hook Strategy Types
@@ -123,9 +124,19 @@ type HookHandlerFn = (...args: Array<unknown>) => unknown;
  */
 export class OutputHookExecutor {
   private readonly driver: PluginDriver;
+  private readonly fileEmitter?: FileEmitter;
+  private readonly hookContext?: Record<string, unknown>;
 
-  constructor(driver: PluginDriver) {
+  constructor(driver: PluginDriver, fileEmitter?: FileEmitter) {
     this.driver = driver;
+    this.fileEmitter = fileEmitter;
+    if (fileEmitter !== undefined) {
+      this.hookContext = {
+        emitFile: fileEmitter.emitFile.bind(fileEmitter),
+        getFileName: fileEmitter.getFileName.bind(fileEmitter),
+        setAssetSource: fileEmitter.setAssetSource.bind(fileEmitter),
+      };
+    }
   }
 
   /** Get the underlying plugin driver (for testing). */
@@ -255,7 +266,12 @@ export class OutputHookExecutor {
       if (typeof handler !== "function") {
         continue;
       }
-      const result = await handler.call(undefined, acc.code, chunk, options);
+      const result = await handler.call(
+        this.hookContext,
+        acc.code,
+        chunk,
+        options,
+      );
       if (result === null || result === undefined) {
         continue;
       }
@@ -283,11 +299,11 @@ export class OutputHookExecutor {
     bundle: OutputBundle,
     isWrite: boolean,
   ): Promise<void> {
-    await this.driver.hookSequential("generateBundle", [
-      options,
-      bundle,
-      isWrite,
-    ]);
+    await this.driver.hookSequential(
+      "generateBundle",
+      [options, bundle, isWrite],
+      this.hookContext,
+    );
   }
 
   /**

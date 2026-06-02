@@ -42,6 +42,7 @@ import type {
 } from "./tree-shaking/engine.js";
 import { Module } from "./module/Module.js";
 import type * as AST from "./ast/types.js";
+import { FileEmitter } from "./plugins/plugin-context-emit.js";
 
 /**
  * Collect all references from a scope tree using iterative traversal.
@@ -573,8 +574,11 @@ export const rollup = async (
     watchFiles.push(graph.externalModules[i].id);
   }
 
+  // Create file emitter for plugin asset emission
+  const fileEmitter = new FileEmitter({ pluginName: "steamroller" });
+
   // Create output hook executor for output phase
-  const outputHookExecutor = new OutputHookExecutor(pluginDriver);
+  const outputHookExecutor = new OutputHookExecutor(pluginDriver, fileEmitter);
 
   const buildState: BuildState = {
     modules: graph.modules,
@@ -585,6 +589,7 @@ export const rollup = async (
     includedStatementsByModule,
     outputHookExecutor,
     inputOptions: finalOptions,
+    fileEmitter,
   };
 
   return createRollupBuild(buildState);
