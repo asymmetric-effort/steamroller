@@ -1,6 +1,6 @@
 {
   "name": "steamroller",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A zero-dependency JavaScript bundler",
   "license": "MIT",
   "author": "Asymmetric Effort <info@asymmetric-effort.com>",
@@ -9,29 +9,24 @@
     "url": "https://github.com/asymmetric-effort/steamroller.git"
   },
   "type": "module",
-  "main": "dist/steamroller.cjs",
-  "module": "dist/steamroller.mjs",
-  "types": "dist/steamroller.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/steamroller.mjs",
-      "require": "./dist/steamroller.cjs",
-      "types": "./dist/steamroller.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./parseAst": {
-      "import": "./dist/parse-ast.mjs",
-      "require": "./dist/parse-ast.cjs",
-      "types": "./dist/parse-ast.d.ts"
+      "types": "./dist/parse-ast.d.ts",
+      "import": "./dist/parse-ast.js"
     },
     "./parse-ast": {
-      "import": "./dist/parse-ast.mjs",
-      "require": "./dist/parse-ast.cjs",
-      "types": "./dist/parse-ast.d.ts"
+      "types": "./dist/parse-ast.d.ts",
+      "import": "./dist/parse-ast.js"
     },
     "./sourcemap": {
-      "import": "./dist/sourcemap.mjs",
-      "require": "./dist/sourcemap.cjs",
-      "types": "./dist/sourcemap.d.ts"
+      "types": "./dist/sourcemap.d.ts",
+      "import": "./dist/sourcemap.js"
     }
   },
   "bin": {
