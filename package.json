@@ -48,6 +48,7 @@
     "lint": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
+    "benchmark": "vitest bench benchmarks/",
     "clean": "rm -rf dist coverage",
     "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run test && npm run build"
   },

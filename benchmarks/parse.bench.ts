@@ -1,119 +1,113 @@
 /**
  * @module benchmarks/parse.bench
- * @description Parser benchmarks measuring parse performance across various
- * source sizes and complexity levels.
+ * @description Parser benchmarks measuring parseAst() performance across
+ * various source sizes and complexity levels.
  */
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { parse } from "../src/parser/parser.js";
-import { runBenchmarkSuite, formatResult } from "./run.js";
-import type { BenchmarkConfig, BenchmarkSuite } from "./run.js";
-
-const FIXTURES_DIR = join(import.meta.dirname ?? ".", "fixtures");
+import { bench, describe } from "vitest";
+import { parseAst } from "../src/parse-ast.js";
 
 /**
- * Generates a synthetic JavaScript source of approximately the given size.
+ * Generates synthetic JavaScript source with approximately the given
+ * number of variable declarations.
  */
-export const generateSource = (approxBytes: number): string => {
-  const line = "const x_NNNN = { a: 1, b: 'hello', c: [1, 2, 3] };\n";
-  const linesNeeded = Math.ceil(approxBytes / line.length);
+const generateSource = (declCount: number): string => {
   const parts: Array<string> = [];
+  for (let i = 0; i < declCount; i++) {
+    parts.push(
+      `export const var${i} = { a: ${i}, b: 'str${i}', c: [${i}, ${i + 1}, ${i + 2}] };`,
+    );
+  }
+  return parts.join("\n");
+};
 
-  for (let i = 0; i < linesNeeded; i++) {
-    parts.push(line.replace("NNNN", String(i)));
+/**
+ * Generates source code with complex nested structures (classes, functions,
+ * control flow) to stress-test the parser.
+ */
+const generateComplexSource = (classCount: number): string => {
+  const parts: Array<string> = [];
+  for (let i = 0; i < classCount; i++) {
+    parts.push(`
+export class Handler${i} {
+  constructor(config) {
+    this.state = ${i};
+    this.config = config || {};
+    this.items = [];
   }
 
-  return parts.join("");
-};
-
-/**
- * Creates benchmark configurations for parsing various source sizes.
- */
-export const createParseBenchmarks = (
-  iterations: number,
-): ReadonlyArray<BenchmarkConfig> => {
-  const small = generateSource(500);
-  const medium = generateSource(5000);
-  const large = generateSource(50000);
-
-  return [
-    {
-      name: "parse-500b",
-      iterations,
-      fn: () => {
-        parse(small);
-      },
-    },
-    {
-      name: "parse-5kb",
-      iterations,
-      fn: () => {
-        parse(medium);
-      },
-    },
-    {
-      name: "parse-50kb",
-      iterations,
-      fn: () => {
-        parse(large);
-      },
-    },
-  ];
-};
-
-/**
- * Creates benchmark configs from fixture files if they exist.
- */
-export const createFixtureBenchmarks = (
-  iterations: number,
-): ReadonlyArray<BenchmarkConfig> => {
-  const configs: Array<BenchmarkConfig> = [];
-  const fixtureFiles = [
-    "small-module.js",
-    "medium-module.js",
-    "large-module.js",
-  ];
-
-  for (let i = 0; i < fixtureFiles.length; i++) {
-    const fileName = fixtureFiles[i];
-    const filePath = join(FIXTURES_DIR, fileName);
-
-    try {
-      const source = readFileSync(filePath, "utf-8");
-      configs.push({
-        name: `parse-fixture-${fileName}`,
-        iterations,
-        fn: () => {
-          parse(source);
-        },
-      });
-    } catch {
-      // Fixture not available, skip
+  process(input) {
+    var results = [];
+    for (let j = 0; j < input.length; j++) {
+      const item = input[j];
+      if (item.type === 'a') {
+        results.push(this.transform(item));
+      } else if (item.type === 'b') {
+        const vals = item.values || [];
+        const mapped = [];
+        for (let k = 0; k < vals.length; k++) {
+          mapped.push(vals[k] * this.state);
+        }
+        results.push(mapped);
+      } else {
+        try {
+          results.push(this.fallback(item));
+        } catch (e) {
+          results.push(null);
+        }
+      }
     }
+    return results;
   }
 
-  return configs;
-};
-
-/**
- * Runs the full parse benchmark suite.
- */
-export const runParseBenchmarks = (iterations = 100): BenchmarkSuite => {
-  const configs = [
-    ...createParseBenchmarks(iterations),
-    ...createFixtureBenchmarks(iterations),
-  ];
-
-  return runBenchmarkSuite("parser", configs);
-};
-
-/** Entry point for standalone execution. */
-export const main = (): void => {
-  const suite = runParseBenchmarks(50);
-  for (let i = 0; i < suite.results.length; i++) {
-    const formatted = formatResult(suite.results[i]);
-    process.stdout.write(formatted + "\n");
+  transform(item) {
+    return { value: item.value, state: this.state, processed: true };
   }
-  process.stdout.write(`\nTotal: ${suite.totalDuration.toFixed(1)}ms\n`);
+
+  fallback(item) {
+    return { value: item.value, fallback: true };
+  }
+}
+`);
+  }
+  return parts.join("\n");
 };
+
+const smallSource = generateSource(20);
+const mediumSource = generateSource(200);
+const largeSource = generateSource(2000);
+const complexSource = generateComplexSource(50);
+
+describe("parseAst", () => {
+  bench(
+    "parse-small (~20 declarations)",
+    () => {
+      parseAst(smallSource);
+    },
+    { iterations: 200, warmupIterations: 10 },
+  );
+
+  bench(
+    "parse-medium (~200 declarations)",
+    () => {
+      parseAst(mediumSource);
+    },
+    { iterations: 100, warmupIterations: 5 },
+  );
+
+  bench(
+    "parse-large (~2000 declarations)",
+    () => {
+      parseAst(largeSource);
+    },
+    { iterations: 20, warmupIterations: 2 },
+  );
+
+  bench(
+    "parse-complex (classes + async + control flow)",
+    () => {
+      parseAst(complexSource);
+    },
+    { iterations: 50, warmupIterations: 3 },
+  );
+});

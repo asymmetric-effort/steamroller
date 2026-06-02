@@ -24,10 +24,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run benchmarks
+        run: npx vitest bench benchmarks/ --reporter=verbose --reporter=json --outputFile=benchmark-results.json
+      - name: Display results summary
+        if: always()
         run: |
-          echo "Benchmarks not yet implemented — placeholder"
-          # TODO: npm run bench -- --json > benchmark-results.json
-          echo '{"parse":0,"bundle":0,"render":0}' > benchmark-results.json
+          if [ -f benchmark-results.json ]; then
+            echo "### Benchmark Results" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat benchmark-results.json | jq '.testResults[] | .benchmarks[]? | {name: .name, hz: .hz, mean: .mean, min: .min, max: .max}' >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || cat benchmark-results.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Upload benchmark results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
