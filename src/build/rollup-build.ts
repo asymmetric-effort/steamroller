@@ -47,8 +47,10 @@ import {
 import type { SplittableModule } from "../splitting/index.js";
 import type { FileEmitter } from "../plugins/plugin-context-emit.js";
 import { ALREADY_CLOSED } from "../utils/error-codes.js";
+import { downlevelCode } from "../transforms/downlevel.js";
 import { validateBundle } from "../validation/bundle-validator.js";
 import { verifyBuild } from "../validation/verify-imports.js";
+import { minify } from "../minify/minifier.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -634,6 +636,13 @@ const generateSplitOutput = async (
     // Apply addons
     code = applyAddons(code, resolvedAddons);
 
+    // Apply minification when compact or minify option is enabled
+    const shouldMinifySplit =
+      options.compact === true || options.minify === true;
+    if (shouldMinifySplit) {
+      code = minify(code);
+    }
+
     const chunkFileName = chunkFileNameByModuleId.get(rc.facadeModuleId)!;
 
     // Collect dynamicImports array for the entry chunk
@@ -702,6 +711,11 @@ const generateSplitOutput = async (
         normalizedOutput,
       );
       chunkCode = renderChunkResult.code;
+    }
+
+    // Apply downlevel transforms if a target is specified
+    if (options.target !== undefined) {
+      chunkCode = downlevelCode(chunkCode, options.target);
     }
 
     const chunk: OutputChunk = {
@@ -1031,7 +1045,11 @@ const generatePreserveModulesOutput = async (
         : renderedCode;
 
     // Apply addons
-    const finalCode = applyAddons(wrappedCode, resolvedAddons);
+    const addonCodePM = applyAddons(wrappedCode, resolvedAddons);
+
+    // Apply minification when compact or minify option is enabled
+    const shouldMinifyPM = options.compact === true || options.minify === true;
+    const finalCode = shouldMinifyPM ? minify(addonCodePM) : addonCodePM;
 
     // Collect import sources (internal modules this module imports)
     const internalImportSources: Array<string> = [];
@@ -1096,6 +1114,11 @@ const generatePreserveModulesOutput = async (
         normalizedOutput,
       );
       chunkCode = renderChunkResult.code;
+    }
+
+    // Apply downlevel transforms if a target is specified
+    if (options.target !== undefined) {
+      chunkCode = downlevelCode(chunkCode, options.target);
     }
 
     const chunk: OutputChunk = {
@@ -1345,7 +1368,11 @@ const generateOutput = async (
       intro: options.intro as AddonValue,
       outro: options.outro as AddonValue,
     });
-    const finalCode = applyAddons(wrappedCode, resolvedAddons);
+    const addonCode = applyAddons(wrappedCode, resolvedAddons);
+
+    // Apply minification when compact or minify option is enabled
+    const shouldMinify = options.compact === true || options.minify === true;
+    const finalCode = shouldMinify ? minify(addonCode) : addonCode;
 
     // Build module info record
     const modulesRecord: Record<string, OutputRenderedModule> = {};
@@ -1406,6 +1433,11 @@ const generateOutput = async (
         normalizedOutput,
       );
       chunkCode = renderChunkResult.code;
+    }
+
+    // Apply downlevel transforms if a target is specified
+    if (options.target !== undefined) {
+      chunkCode = downlevelCode(chunkCode, options.target);
     }
 
     const chunk: OutputChunk = {
