@@ -828,4 +828,122 @@ describe("buildModuleGraph", () => {
     const ids = result.modules.map((m) => m.id);
     expect(ids).toContain("./obj-resolved.ts");
   });
+
+  it("detects circular dependencies in the module graph", async () => {
+    const moduleMap = new Map([
+      ["./a.ts", {}],
+      ["./b.ts", {}],
+    ]);
+    const astMap = new Map([
+      ["./a.ts", createAst([{ source: "./b.ts" }])],
+      ["./b.ts", createAst([{ source: "./a.ts" }])],
+    ]);
+
+    const onWarning = vi.fn();
+    await buildModuleGraph({
+      input: "./a.ts",
+      resolveId: createResolver(moduleMap),
+      loadModule: createLoader(astMap),
+      onWarning,
+    });
+
+    // Should warn about circular dependency
+    const circularWarnings = onWarning.mock.calls.filter(
+      (c) => c[0].code === CIRCULAR_DEPENDENCY,
+    );
+    expect(circularWarnings.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("links external module to importer in dependency graph", async () => {
+    const moduleMap = new Map([
+      ["./entry.ts", {}],
+      ["lodash", { external: true }],
+    ]);
+    const astMap = new Map([
+      [
+        "./entry.ts",
+        createAst([
+          {
+            source: "lodash",
+            specifiers: [{ type: "named", imported: "map", local: "map" }],
+          },
+        ]),
+      ],
+    ]);
+
+    const result = await buildModuleGraph({
+      input: "./entry.ts",
+      resolveId: createResolver(moduleMap),
+      loadModule: createLoader(astMap),
+      onWarning: vi.fn(),
+    });
+
+    expect(result.externalModules.length).toBe(1);
+    expect(result.externalModules[0].id).toBe("lodash");
+    // The entry module should have lodash as a dependency
+    const entryMod = result.modules.find((m) => m.id === "./entry.ts");
+    expect(entryMod).toBeDefined();
+    const hasDep = Array.from((entryMod as Module).dependencies).some(
+      (d) => d.id === "lodash",
+    );
+    expect(hasDep).toBe(true);
+  });
+
+  it("links already-processed module as dependency when re-imported", async () => {
+    const moduleMap = new Map([
+      ["./entry.ts", {}],
+      ["./shared.ts", {}],
+      ["./other.ts", {}],
+    ]);
+    const astMap = new Map([
+      [
+        "./entry.ts",
+        createAst([{ source: "./shared.ts" }, { source: "./other.ts" }]),
+      ],
+      ["./shared.ts", createAst()],
+      ["./other.ts", createAst([{ source: "./shared.ts" }])],
+    ]);
+
+    const result = await buildModuleGraph({
+      input: "./entry.ts",
+      resolveId: createResolver(moduleMap),
+      loadModule: createLoader(astMap),
+      onWarning: vi.fn(),
+    });
+
+    // shared.ts should be in the graph
+    const ids = result.modules.map((m) => m.id);
+    expect(ids).toContain("./shared.ts");
+    // other.ts should have shared.ts as a dependency
+    const otherMod = result.modules.find((m) => m.id === "./other.ts") as
+      | Module
+      | undefined;
+    if (otherMod) {
+      const hasShared = Array.from(otherMod.dependencies).some(
+        (d) => d.id === "./shared.ts",
+      );
+      expect(hasShared).toBe(true);
+    }
+  });
+
+  it("topological sort handles entry modules correctly", () => {
+    // Test that topologicalSort processes entries and non-entries
+    const modA = new Module("a.ts", "// a", true);
+    const modB = new Module("b.ts", "// b", false);
+    modA.ast = createAst() as unknown as Module["ast"];
+    modB.ast = createAst() as unknown as Module["ast"];
+    modA.extractImportsExports();
+    modB.extractImportsExports();
+    modA.dependencies.add(modB);
+
+    const modules = new Map<string, Module>();
+    modules.set("a.ts", modA);
+    modules.set("b.ts", modB);
+
+    const sorted = topologicalSort(modules);
+    // b.ts should come before a.ts (dependency before dependent)
+    const bIdx = sorted.findIndex((m) => m.id === "b.ts");
+    const aIdx = sorted.findIndex((m) => m.id === "a.ts");
+    expect(bIdx).toBeLessThan(aIdx);
+  });
 });

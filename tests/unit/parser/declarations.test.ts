@@ -931,4 +931,133 @@ describe("Declaration Parsing", () => {
       expect(program.body[1].type).toBe("ClassDeclaration");
     });
   });
+
+  describe("Class Declarations edge cases", () => {
+    it("should parse class declaration without name (export default)", () => {
+      const program = parse("export default class {}");
+      const exportDecl = program.body[0] as {
+        type: string;
+        declaration: { type: string; id: null };
+      };
+      expect(exportDecl.type).toBe("ExportDefaultDeclaration");
+      expect(exportDecl.declaration.type).toBe("ClassDeclaration");
+      expect(exportDecl.declaration.id).toBeNull();
+    });
+
+    it("should parse class with semicolons in body (empty statements)", () => {
+      const program = parse("class Foo { ; ; method() {} ; }");
+      const decl = program.body[0] as {
+        type: string;
+        body: { body: Array<{ type: string }> };
+      };
+      expect(decl.type).toBe("ClassDeclaration");
+      // Semicolons should be skipped
+      expect(decl.body.body.length).toBe(1);
+    });
+
+    it("should parse spread element in function call arguments", () => {
+      const program = parse("foo(...args);");
+      const stmt = program.body[0] as {
+        expression: { arguments: Array<{ type: string }> };
+      };
+      expect(stmt.expression.arguments[0].type).toBe("SpreadElement");
+    });
+  });
+
+  describe("Import edge cases", () => {
+    it("should parse import with default and namespace combined", () => {
+      const program = parse('import def, * as ns from "mod";');
+      const decl = program.body[0] as {
+        type: string;
+        specifiers: Array<{ type: string }>;
+      };
+      expect(decl.type).toBe("ImportDeclaration");
+      expect(decl.specifiers.length).toBe(2);
+      expect(decl.specifiers[0].type).toBe("ImportDefaultSpecifier");
+      expect(decl.specifiers[1].type).toBe("ImportNamespaceSpecifier");
+    });
+
+    it("should parse import with keyword as imported name", () => {
+      const program = parse('import { default as myDefault } from "mod";');
+      const decl = program.body[0] as {
+        type: string;
+        specifiers: Array<{
+          type: string;
+          imported: { name: string };
+          local: { name: string };
+        }>;
+      };
+      expect(decl.specifiers[0].imported.name).toBe("default");
+      expect(decl.specifiers[0].local.name).toBe("myDefault");
+    });
+  });
+
+  describe("Decorator with arguments in class declaration", () => {
+    it("should parse decorator with multiple arguments", () => {
+      const program = parse("@dec(a, b) class Foo {}");
+      const decl = program.body[0] as {
+        type: string;
+        decorators: Array<{ type: string }>;
+      };
+      expect(decl.type).toBe("ClassDeclaration");
+      expect(decl.decorators.length).toBe(1);
+    });
+
+    it("should parse decorator with spread argument", () => {
+      const program = parse("@dec(...args) class Bar {}");
+      const decl = program.body[0] as {
+        type: string;
+        decorators: Array<{ type: string }>;
+      };
+      expect(decl.decorators.length).toBe(1);
+    });
+
+    it("should parse decorator with single argument", () => {
+      const program = parse("@dec(x) class Baz {}");
+      const decl = program.body[0] as {
+        type: string;
+        decorators: Array<{ type: string }>;
+      };
+      expect(decl.decorators.length).toBe(1);
+    });
+  });
+
+  describe("Import default with namespace combined", () => {
+    it("should parse import default + namespace import", () => {
+      const program = parse('import def, * as ns from "mod";');
+      const decl = program.body[0] as {
+        type: string;
+        specifiers: Array<{ type: string }>;
+      };
+      expect(decl.specifiers.length).toBe(2);
+      expect(decl.specifiers[0].type).toBe("ImportDefaultSpecifier");
+      expect(decl.specifiers[1].type).toBe("ImportNamespaceSpecifier");
+    });
+
+    it("should parse import default + named imports combined", () => {
+      const program = parse('import def, { a, b } from "mod";');
+      const decl = program.body[0] as {
+        type: string;
+        specifiers: Array<{ type: string }>;
+      };
+      expect(decl.specifiers.length).toBe(3);
+      expect(decl.specifiers[0].type).toBe("ImportDefaultSpecifier");
+      expect(decl.specifiers[1].type).toBe("ImportSpecifier");
+    });
+  });
+
+  describe("Export edge cases", () => {
+    it("should parse export specifier with keyword as local name", () => {
+      const program = parse("const x = 1; export { x as default };");
+      const exportDecl = program.body[1] as {
+        type: string;
+        specifiers: Array<{
+          type: string;
+          local: { name: string };
+          exported: { name: string };
+        }>;
+      };
+      expect(exportDecl.specifiers[0].exported.name).toBe("default");
+    });
+  });
 });

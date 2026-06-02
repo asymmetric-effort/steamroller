@@ -643,3 +643,40 @@ describe("type exports", () => {
     expect(Array.isArray(p)).toBe(true);
   });
 });
+
+describe("createFilter with RegExp patterns", () => {
+  it("should handle RegExp in include array", () => {
+    const filter = createFilter([/\.ts$/]);
+    expect(filter("test.ts")).toBe(true);
+    expect(filter("test.js")).toBe(false);
+  });
+
+  it("should handle single RegExp as pattern", () => {
+    const filter = createFilter(/\.ts$/);
+    expect(filter("test.ts")).toBe(true);
+    expect(filter("test.js")).toBe(false);
+  });
+
+  it("should handle RegExp in exclude array", () => {
+    const filter = createFilter(null, [/node_modules/]);
+    expect(filter("src/index.ts")).toBe(true);
+    expect(filter("node_modules/pkg/index.js")).toBe(false);
+  });
+});
+
+describe("dataToEsm with RestElement in patterns", () => {
+  it("should handle object with various value types", () => {
+    const result = dataToEsm({
+      str: "hello",
+      num: 42,
+      bool: true,
+      nil: null,
+      undef: undefined,
+      arr: [1, 2, 3],
+      nested: { a: 1 },
+    });
+    expect(result).toContain("hello");
+    expect(result).toContain("42");
+    expect(result).toContain("null");
+  });
+});

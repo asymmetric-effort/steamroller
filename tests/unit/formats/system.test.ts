@@ -187,4 +187,32 @@ describe("formats/system", () => {
       expect(result).toContain("_export('b', b);");
     });
   });
+
+  describe("wrapChunk with empty external imports", () => {
+    it("should handle empty setters for external modules with systemNullSetters", () => {
+      const options: FormatOptions = {
+        exports: "named",
+        externalImports: [],
+        exportBindings: [{ exported: "x", local: "x" }],
+      };
+      const result = systemFormat.wrapChunk("const x = 1;", options);
+      expect(result).toContain("System.register(");
+    });
+
+    it("should handle external imports with bindings", () => {
+      const options: FormatOptions = {
+        exports: "named",
+        externalImports: [
+          { source: "lodash", imported: "map", local: "map" },
+        ] as ReadonlyArray<ImportBinding>,
+        exportBindings: [{ exported: "result", local: "result" }],
+      };
+      const result = systemFormat.wrapChunk(
+        "const result = map([1,2], x => x);",
+        options,
+      );
+      expect(result).toContain("System.register(");
+      expect(result).toContain("lodash");
+    });
+  });
 });

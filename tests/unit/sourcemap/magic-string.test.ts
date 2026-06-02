@@ -1053,4 +1053,62 @@ describe("MagicString", () => {
       expect(() => s.move(0, 3, 10)).toThrow(RangeError);
     });
   });
+
+  describe("splitChunk on edited chunk", () => {
+    it("handles splitting when chunk is already edited", () => {
+      const s = new MagicString("abcdef");
+      // First overwrite creates one edited chunk covering [0,6)
+      s.overwrite(0, 3, "XYZ");
+      // The chunk for [0,3) is now edited. Now overwrite [3,6) separately.
+      s.overwrite(3, 6, "QRS");
+      expect(s.toString()).toBe("XYZQRS");
+    });
+  });
+
+  describe("overwrite spanning multiple chunks", () => {
+    it("handles overwrite across multiple chunks", () => {
+      const s = new MagicString("abcdefghij");
+      // Split into chunks by doing two separate edits
+      s.overwrite(0, 3, "X");
+      s.overwrite(3, 6, "Y");
+      s.overwrite(6, 10, "Z");
+      expect(s.toString()).toBe("XYZ");
+    });
+  });
+
+  describe("move to end of string", () => {
+    it("handles move where insertAfter is the last chunk", () => {
+      const s = new MagicString("abcdef");
+      // Move first part to the end (after the last chunk)
+      s.move(0, 3, 6);
+      expect(s.toString()).toBe("defabc");
+    });
+  });
+
+  describe("generateMap with multi-line edited content", () => {
+    it("generates source map with newlines in edited content", () => {
+      const s = new MagicString("hello world");
+      s.overwrite(0, 5, "line1\nline2");
+      const map = s.generateMap({ source: "test.js", hires: false });
+      expect(map).toBeDefined();
+      expect(map.mappings).toBeDefined();
+      expect(typeof map.mappings).toBe("string");
+    });
+
+    it("generates source map with hires mode", () => {
+      const s = new MagicString("hello world");
+      s.overwrite(5, 11, " earth");
+      const map = s.generateMap({ source: "test.js", hires: true });
+      expect(map).toBeDefined();
+      expect(map.mappings).toBeDefined();
+    });
+  });
+
+  describe("encodeVlq edge cases", () => {
+    it("generates valid mappings for zero-length segments", () => {
+      const s = new MagicString("a");
+      const map = s.generateMap({ source: "test.js", hires: false });
+      expect(map.mappings).toBeDefined();
+    });
+  });
 });
