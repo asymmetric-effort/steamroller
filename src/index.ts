@@ -35,3 +35,5 @@ export { composeSourceMaps, composeMultipleMaps } from "./sourcemap/compose.js";
 export type { DecodedSourceMap, RawSourceMap } from "./sourcemap/compose.js";
 export { encodeVlq, decodeVlq } from "./sourcemap/vlq.js";
 export { MagicString } from "./sourcemap/magic-string.js";
+export { minify } from "./minify/minifier.js";
+export type { MinifyOptions } from "./minify/minifier.js";
