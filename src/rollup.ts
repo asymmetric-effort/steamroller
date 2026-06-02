@@ -43,6 +43,7 @@ import type {
 import { Module } from "./module/Module.js";
 import type * as AST from "./ast/types.js";
 import { FileEmitter } from "./plugins/plugin-context-emit.js";
+import { maybeCreateTypescriptPlugin } from "./plugins/typescript-plugin.js";
 
 /**
  * Collect all references from a scope tree using iterative traversal.
@@ -129,6 +130,17 @@ export const rollup = async (
   const inputWarnings = validateInputOptions(rawOptions);
   const normalized = normalizeInputOptions(rawOptions);
 
+  // Step 1b: Auto-register TypeScript plugin if needed
+  const inputFiles = Array.isArray(normalized.input)
+    ? [...normalized.input]
+    : Object.values(normalized.input);
+  const tsPlugin = maybeCreateTypescriptPlugin(inputFiles, [
+    ...normalized.plugins,
+  ]);
+  const allPlugins: ReadonlyArray<Plugin> = tsPlugin
+    ? [tsPlugin, ...normalized.plugins]
+    : normalized.plugins;
+
   // Step 2: Create plugin driver
   const warnings: Array<{ code: string; message: string }> = [];
   for (let i = 0; i < inputWarnings.length; i++) {
@@ -137,7 +149,7 @@ export const rollup = async (
       warnings.push({ code: w.code, message: w.message });
     }
   }
-  const pluginDriver = new PluginDriver(normalized.plugins, (warning) => {
+  const pluginDriver = new PluginDriver(allPlugins, (warning) => {
     warnings.push(warning);
   });
 
