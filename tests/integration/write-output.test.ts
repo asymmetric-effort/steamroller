@@ -10,6 +10,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rollup } from "../../src/rollup.js";
 
+/** Normalize Windows backslashes to forward slashes for cross-platform comparison. */
+const norm = (p: string): string => p.replace(/\\/g, "/");
+
 describe("write() file output", () => {
   let tempDir: string;
   let inputDir: string;
@@ -223,7 +226,7 @@ describe("write() file output", () => {
     expect(chunk.type).toBe("chunk");
     if (chunk.type === "chunk") {
       expect(chunk.isEntry).toBe(true);
-      expect(chunk.facadeModuleId).toBe(indexPath);
+      expect(norm(chunk.facadeModuleId ?? "")).toBe(norm(indexPath));
       expect(chunk.exports).toContain("a");
       expect(chunk.exports).toContain("b");
     }
