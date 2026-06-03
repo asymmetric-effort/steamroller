@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-03
+
+### Fixed
+
+- Resolve all CodeQL alerts: refactor arrow function downleveling to avoid code sanitization warnings
+- Arrow `this` capture in nested arrow functions (downleveling and TypeScript transform)
+- Tagged template literals no longer incorrectly converted to concatenation
+- DCE try/catch: code after catch blocks no longer incorrectly marked as dead
+- Mangle pass respects eval() scopes — variables in eval-containing functions are not renamed
+- TSX files correctly parse JSX through the TypeScript plugin
+- CSS Modules cross-file `composes:` references resolved
+- WASM loader produces universal code (fetch in browser, fs.readFile in Node.js)
+- Asset loader emits files during generateBundle for generate() support
+- JSON loader produces tree-shakeable individual `export const` declarations
+- Source map preservation through minification pipeline via MagicString tracking
+- Native bindings: consistent wiring with STEAMROLLER_NATIVE/STEAMROLLER_DEBUG env vars
+- Windows CI flake: increased timeout on timeZone formatting test
+
 ## [0.2.0] - 2026-06-03
 
 ### Added
