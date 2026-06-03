@@ -565,10 +565,12 @@ export const transformTypescriptAST = (
   id: string,
 ): string | null => {
   try {
+    const isTsx = /\.tsx$/.test(id);
     const ast = parse(code, {
       sourceType: "module",
       allowHashBang: true,
       typescript: true,
+      jsx: isTsx,
     });
     let result = transformTypeScript(code, ast);
     // Apply regex-based stripping for inline type annotations

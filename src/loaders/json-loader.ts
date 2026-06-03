@@ -113,16 +113,30 @@ export const generateJSONModule = (
   ) {
     const obj = data as Record<string, unknown>;
     const keys = Object.keys(obj);
+    const validKeys: Array<string> = [];
 
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
       if (isValidIdentifier(key)) {
         lines.push(`export const ${key} = ${serializeValue(obj[key])};`);
+        validKeys.push(key);
       }
     }
-  }
 
-  lines.push(`export default ${serializeValue(data)};`);
+    // Build the default export referencing named exports by identifier
+    // so tree-shaking can remove unused named exports independently.
+    const entries = Object.keys(obj);
+    const props = entries.map((key) => {
+      if (isValidIdentifier(key) && validKeys.includes(key)) {
+        return key;
+      }
+      const safeKey = isValidIdentifier(key) ? key : `"${key}"`;
+      return `${safeKey}: ${serializeValue(obj[key])}`;
+    });
+    lines.push(`export default {${props.join(", ")}};`);
+  } else {
+    lines.push(`export default ${serializeValue(data)};`);
+  }
 
   return lines.join("\n");
 };

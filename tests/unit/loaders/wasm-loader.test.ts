@@ -34,12 +34,11 @@ describe("isWASMFile", () => {
 });
 
 describe("generateWASMModule", () => {
-  it("generates an init function that fetches the wasm file", () => {
+  it("generates an init function that works in both browser and Node.js", () => {
     const code = generateWASMModule("assets/module-abc12345.wasm");
     expect(code).toContain("assets/module-abc12345.wasm");
-    expect(code).toContain("export async function init");
+    expect(code).toContain("export default async function init");
     expect(code).toContain("WebAssembly.instantiate");
-    expect(code).toContain("export default init");
   });
 
   it("accepts importObject parameter", () => {
@@ -47,9 +46,31 @@ describe("generateWASMModule", () => {
     expect(code).toContain("importObject");
   });
 
-  it("returns instance and module from init", () => {
+  it("returns instance.exports from init", () => {
     const code = generateWASMModule("assets/test.wasm");
-    expect(code).toContain("return { instance, module }");
+    expect(code).toContain("return instance.exports");
+  });
+
+  it("includes fetch path for browser environments", () => {
+    const code = generateWASMModule("assets/test.wasm");
+    expect(code).toContain("typeof globalThis.fetch === 'function'");
+    expect(code).toContain("await fetch(");
+    expect(code).toContain("import.meta.url");
+  });
+
+  it("includes Node.js fs/promises fallback", () => {
+    const code = generateWASMModule("assets/test.wasm");
+    expect(code).toContain("node:fs/promises");
+    expect(code).toContain("node:url");
+    expect(code).toContain("fileURLToPath");
+    expect(code).toContain("readFile");
+  });
+
+  it("includes error handling for failed loads", () => {
+    const code = generateWASMModule("assets/test.wasm");
+    expect(code).toContain("Failed to fetch WASM module");
+    expect(code).toContain("Failed to load WASM module from disk");
+    expect(code).toContain("response.ok");
   });
 });
 
@@ -81,7 +102,7 @@ describe("wasmLoader plugin", () => {
     ) as { code: string; meta: Record<string, unknown> };
 
     expect(result).not.toBeNull();
-    expect(result.code).toContain("export async function init");
+    expect(result.code).toContain("export default async function init");
     expect(result.code).toContain("assets/module-");
     expect(result.meta).toBeDefined();
     expect(result.meta.asset).toBeDefined();

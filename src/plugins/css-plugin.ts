@@ -7,6 +7,7 @@
  */
 
 import type { Plugin, TransformResult, LoadResult } from "../types.js";
+import type { CSSModuleMapping } from "../css/css-modules.js";
 import { parseCSS } from "../css/css-parser.js";
 import { printCSS } from "../css/css-printer.js";
 import { processCSSModule, generateJSMapping } from "../css/css-modules.js";
@@ -50,6 +51,8 @@ export const cssPlugin = (options?: CSSPluginOptions): Plugin => {
   const minify = options?.minify ?? false;
   const enableModules = options?.modules ?? true;
   const collectedCSS = new Map<string, string>();
+  /** Cache of CSS Module mappings by file path, for cross-file composes resolution. */
+  const moduleMappings = new Map<string, CSSModuleMapping>();
 
   return {
     name: "steamroller:css",

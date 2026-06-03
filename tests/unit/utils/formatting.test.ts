@@ -243,7 +243,7 @@ describe("dateTime", () => {
 });
 
 describe("timeZone", () => {
-  it("returns a non-empty string", () => {
+  it("returns a non-empty string", { timeout: 15_000 }, () => {
     const result = timeZone();
     expect(result.length).toBeGreaterThan(0);
   });

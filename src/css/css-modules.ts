@@ -448,18 +448,26 @@ export const generateJSMapping = (
     lines.push("");
   }
 
-  // Build the final mapping including composes
+  // Build the final mapping including composes.
+  // For entries with cross-file composes, we build a JS expression
+  // instead of a plain string so that the runtime import is resolved.
   const finalMapping: Record<string, string> = { ...mapping };
+  // Track which local classes need expression-based output (cross-file composes)
+  const expressionEntries = new Map<string, string>();
   for (const comp of composes) {
     const currentValue = finalMapping[comp.localClass] ?? comp.localClass;
     if (comp.from) {
       const importVar = importVarMap.get(comp.from);
       if (importVar) {
-        // Will be resolved at runtime
+        // Build a runtime expression that concatenates the scoped class
+        // with the composed class(es) from the imported module.
+        let expr =
+          expressionEntries.get(comp.localClass) ??
+          JSON.stringify(currentValue);
         for (const cls of comp.composedClasses) {
-          finalMapping[comp.localClass] =
-            `${currentValue} " + ${importVar}[${JSON.stringify(cls)}] + "`;
+          expr = `${expr} + " " + ${importVar}[${JSON.stringify(cls)}]`;
         }
+        expressionEntries.set(comp.localClass, expr);
       }
     } else {
       // Local composes
@@ -473,7 +481,14 @@ export const generateJSMapping = (
   // Generate the export
   lines.push("export default {");
   for (const [original, scoped] of Object.entries(finalMapping)) {
-    lines.push(`  ${JSON.stringify(original)}: ${JSON.stringify(scoped)},`);
+    if (expressionEntries.has(original)) {
+      // Emit as a runtime expression so the imported module's mapping is resolved
+      lines.push(
+        `  ${JSON.stringify(original)}: ${expressionEntries.get(original)},`,
+      );
+    } else {
+      lines.push(`  ${JSON.stringify(original)}: ${JSON.stringify(scoped)},`);
+    }
   }
   lines.push("};");
 

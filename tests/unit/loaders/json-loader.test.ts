@@ -45,7 +45,7 @@ describe("generateJSONModule", () => {
     const code = generateJSONModule(data, true);
     expect(code).toContain('export const name = "test";');
     expect(code).toContain('export const version = "1.0.0";');
-    expect(code).toContain("export default");
+    expect(code).toContain("export default {name, version};");
   });
 
   it("generates named exports for number values", () => {
@@ -86,6 +86,9 @@ describe("generateJSONModule", () => {
     expect(code).not.toContain("export const valid-key");
     expect(code).not.toContain("export const 123");
     expect(code).toContain('export const validKey = "ok";');
+    // Default export should inline invalid keys and reference valid ones
+    expect(code).toContain('"valid-key"');
+    expect(code).toContain('"123"');
   });
 
   it("only generates default export when namedExports is false", () => {
@@ -118,6 +121,27 @@ describe("generateJSONModule", () => {
     expect(code).toContain("\\n");
     expect(code).toContain("\\t");
     expect(code).toContain('\\"');
+  });
+
+  it("generates tree-shakeable named exports with default referencing identifiers", () => {
+    const data = { name: "foo", version: "1.0" };
+    const code = generateJSONModule(data, true);
+    // Each named export should be a separate export const declaration
+    expect(code).toContain('export const name = "foo";');
+    expect(code).toContain('export const version = "1.0";');
+    // Default export should reference identifiers, not inline values
+    expect(code).toContain("export default {name, version};");
+    // Should NOT have the full object literal in the default export
+    expect(code).not.toContain('export default {name: "foo"');
+  });
+
+  it("default export references valid identifiers and inlines invalid keys", () => {
+    const data = { ok: 1, "not-valid": 2 };
+    const code = generateJSONModule(data, true);
+    expect(code).toContain("export const ok = 1;");
+    expect(code).not.toContain("export const not-valid");
+    // Default should reference ok by identifier, but inline "not-valid"
+    expect(code).toContain('export default {ok, "not-valid": 2};');
   });
 });
 

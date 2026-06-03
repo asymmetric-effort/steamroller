@@ -251,6 +251,24 @@ const collectBindingNames = (pattern: Pattern, names: string[]): void => {
 };
 
 /**
+ * Propagate eval-tainted flag from child scopes up to all ancestors.
+ * If any descendant scope contains eval(), all ancestor scopes must
+ * also be marked as eval-tainted because eval can reference their bindings.
+ */
+const propagateEvalFlag = (scope: Scope): boolean => {
+  let childHasEval = false;
+  for (const child of scope.children) {
+    if (propagateEvalFlag(child)) {
+      childHasEval = true;
+    }
+  }
+  if (childHasEval) {
+    scope.hasEval = true;
+  }
+  return scope.hasEval;
+};
+
+/**
  * Check if a scope or its ancestors contain eval.
  */
 const scopeHasEval = (scope: Scope): boolean => {
@@ -1181,6 +1199,11 @@ export const mangleNames = (ast: Program, options?: MangleOptions): Program => {
   const reserved = new Set([...(options?.reserved ?? [])]);
 
   const globalScope = buildScopes(ast);
+
+  // Propagate eval-tainted flag from child scopes to parents so that
+  // bindings in outer scopes are not mangled when eval() appears in any
+  // descendant scope (eval can reference outer variables by name).
+  propagateEvalFlag(globalScope);
 
   // We only mangle non-global scopes (function/block scopes)
   // The global scope bindings in a module are also local, but we treat

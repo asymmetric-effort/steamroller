@@ -230,4 +230,56 @@ describe("assetLoader plugin", () => {
     expect(resolve("logo.png")).toBeNull();
     expect(resolve("script.js")).toBeNull();
   });
+
+  it("generateBundle emits collected assets into the bundle", () => {
+    const content = Buffer.from("PNG file content");
+    vi.mocked(fs.readFileSync).mockReturnValue(content as unknown as string);
+
+    const plugin = assetLoader();
+    // Load an asset to collect it
+    (plugin.load as (id: string) => unknown)("/path/to/logo.png");
+
+    // Call generateBundle with a mutable bundle object
+    const bundle: Record<string, unknown> = {};
+    const generateBundle = plugin.generateBundle as (
+      options: unknown,
+      bundle: Record<string, unknown>,
+      isWrite: boolean,
+    ) => void;
+    generateBundle({}, bundle, false);
+
+    // The asset should appear in the bundle
+    const keys = Object.keys(bundle);
+    expect(keys.length).toBe(1);
+    expect(keys[0]).toMatch(/^assets\/logo-[0-9a-f]+\.png$/);
+
+    const asset = bundle[keys[0]] as {
+      type: string;
+      source: Buffer;
+      fileName: string;
+    };
+    expect(asset.type).toBe("asset");
+    expect(asset.source).toEqual(content);
+    expect(asset.fileName).toMatch(/^assets\/logo-[0-9a-f]+\.png$/);
+  });
+
+  it("generateBundle does not emit inline or raw assets", () => {
+    const content = Buffer.from("PNG file content");
+    vi.mocked(fs.readFileSync).mockReturnValue(content as unknown as string);
+
+    const plugin = assetLoader();
+    // Load inline and raw assets (these should NOT be collected)
+    (plugin.load as (id: string) => unknown)("/path/to/icon.png?inline");
+    (plugin.load as (id: string) => unknown)("/path/to/icon.svg?raw");
+
+    const bundle: Record<string, unknown> = {};
+    const generateBundle = plugin.generateBundle as (
+      options: unknown,
+      bundle: Record<string, unknown>,
+      isWrite: boolean,
+    ) => void;
+    generateBundle({}, bundle, false);
+
+    expect(Object.keys(bundle).length).toBe(0);
+  });
 });

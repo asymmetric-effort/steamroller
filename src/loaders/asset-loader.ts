@@ -5,7 +5,12 @@
  * Supports ?inline for base64 data URLs and ?raw for raw string content.
  */
 
-import type { Plugin, LoadResult } from "../types.js";
+import type {
+  Plugin,
+  LoadResult,
+  NormalizedOutputOptions,
+  OutputBundle,
+} from "../types.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
@@ -134,6 +139,12 @@ export const assetLoader = (options?: AssetLoaderOptions): Plugin => {
   const extensions = options?.extensions ?? DEFAULT_ASSET_EXTENSIONS;
   const outputDir = options?.outputDir ?? "assets";
 
+  /** Assets collected during load, keyed by outputPath. */
+  const collectedAssets = new Map<
+    string,
+    { fileName: string; source: Buffer; outputPath: string }
+  >();
+
   return {
     name: "steamroller:asset",
 
@@ -189,6 +200,13 @@ export const assetLoader = (options?: AssetLoaderOptions): Plugin => {
       const assetFileName = buildAssetFileName(filePath, hash);
       const assetPath = `${outputDir}/${assetFileName}`;
 
+      // Collect the asset so generateBundle can emit it
+      collectedAssets.set(assetPath, {
+        fileName: assetFileName,
+        source: content,
+        outputPath: assetPath,
+      });
+
       return {
         code: `export default "${assetPath}";\n`,
         map: { mappings: "" },
@@ -200,6 +218,25 @@ export const assetLoader = (options?: AssetLoaderOptions): Plugin => {
           },
         },
       };
+    },
+
+    generateBundle(
+      _options: NormalizedOutputOptions,
+      bundle: OutputBundle,
+    ): void {
+      for (const [, asset] of collectedAssets) {
+        const assetEntry = {
+          fileName: asset.outputPath,
+          name: asset.fileName,
+          names: [asset.fileName],
+          needsCodeReference: false,
+          originalFileName: null,
+          originalFileNames: [],
+          source: asset.source as unknown as string | Uint8Array,
+          type: "asset" as const,
+        };
+        (bundle as Record<string, unknown>)[asset.outputPath] = assetEntry;
+      }
     },
   };
 };
