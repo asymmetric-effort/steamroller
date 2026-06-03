@@ -2,8 +2,12 @@
   "name": "@steamroller/native-darwin-arm64",
   "version": "0.1.0",
   "description": "Steamroller native bindings for macOS ARM64",
-  "os": ["darwin"],
-  "cpu": ["arm64"],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
   "main": "index.js",
   "license": "MIT",
   "repository": {

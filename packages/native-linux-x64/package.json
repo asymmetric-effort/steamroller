@@ -2,8 +2,12 @@
   "name": "@steamroller/native-linux-x64",
   "version": "0.1.0",
   "description": "Steamroller native bindings for Linux x64",
-  "os": ["linux"],
-  "cpu": ["x64"],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
   "main": "index.js",
   "license": "MIT",
   "repository": {

@@ -16,11 +16,11 @@ The native bindings system uses a **try-native, fallback-to-TypeScript** strateg
 
 ### Components
 
-| Component | Rust Crate | Bridge | Fallback |
-|-----------|-----------|--------|----------|
-| Parser | `native/parser/` | `src/native/parser-bridge.ts` | `src/parser/parser.ts` |
-| Minifier | `native/minifier/` | `src/native/minifier-bridge.ts` | `src/minify/minifier.ts` |
-| Resolver | `native/resolver/` | `src/native/resolver-bridge.ts` | `src/module/resolve.ts` |
+| Component | Rust Crate         | Bridge                          | Fallback                 |
+| --------- | ------------------ | ------------------------------- | ------------------------ |
+| Parser    | `native/parser/`   | `src/native/parser-bridge.ts`   | `src/parser/parser.ts`   |
+| Minifier  | `native/minifier/` | `src/native/minifier-bridge.ts` | `src/minify/minifier.ts` |
+| Resolver  | `native/resolver/` | `src/native/resolver-bridge.ts` | `src/module/resolve.ts`  |
 
 ### Platform Packages
 
