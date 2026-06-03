@@ -604,6 +604,7 @@ export interface ImportDeclaration extends BaseNode {
     ImportSpecifier | ImportDefaultSpecifier | ImportNamespaceSpecifier
   >;
   readonly source: Literal;
+  readonly importKind?: "type" | "value";
 }
 
 /** A named import specifier (import { x } from ...). */
@@ -631,6 +632,7 @@ export interface ExportNamedDeclaration extends BaseNode {
   readonly declaration: Declaration | null;
   readonly specifiers: ReadonlyArray<ExportSpecifier>;
   readonly source: Literal | null;
+  readonly exportKind?: "type" | "value";
 }
 
 /** A default export declaration. */
@@ -758,6 +760,327 @@ export interface JSXNamespacedName extends BaseNode {
 }
 
 // ============================================================
+// TypeScript Node Types
+// ============================================================
+
+/** A TypeScript type annotation wrapper. */
+export interface TSTypeAnnotation extends BaseNode {
+  readonly type: "TSTypeAnnotation";
+  readonly typeAnnotation: TSType;
+}
+
+/** A TypeScript type reference (e.g., `string`, `Foo`, `Array<T>`). */
+export interface TSTypeReference extends BaseNode {
+  readonly type: "TSTypeReference";
+  readonly typeName: Identifier | TSQualifiedName;
+  readonly typeParameters: TSTypeParameterInstantiation | null;
+}
+
+/** A qualified name in a type reference (e.g., `Foo.Bar`). */
+export interface TSQualifiedName extends BaseNode {
+  readonly type: "TSQualifiedName";
+  readonly left: Identifier | TSQualifiedName;
+  readonly right: Identifier;
+}
+
+/** A TypeScript type parameter instantiation (e.g., `<T, U>`). */
+export interface TSTypeParameterInstantiation extends BaseNode {
+  readonly type: "TSTypeParameterInstantiation";
+  readonly params: ReadonlyArray<TSType>;
+}
+
+/** A TypeScript type parameter declaration (e.g., `<T extends U>`). */
+export interface TSTypeParameterDeclaration extends BaseNode {
+  readonly type: "TSTypeParameterDeclaration";
+  readonly params: ReadonlyArray<TSTypeParameter>;
+}
+
+/** A single type parameter (e.g., `T extends U = V`). */
+export interface TSTypeParameter extends BaseNode {
+  readonly type: "TSTypeParameter";
+  readonly name: Identifier;
+  readonly constraint: TSType | null;
+  readonly default: TSType | null;
+}
+
+/** An interface declaration. */
+export interface TSInterfaceDeclaration extends BaseNode {
+  readonly type: "TSInterfaceDeclaration";
+  readonly id: Identifier;
+  readonly typeParameters: TSTypeParameterDeclaration | null;
+  readonly extends: ReadonlyArray<TSExpressionWithTypeArguments>;
+  readonly body: TSInterfaceBody;
+  readonly declare: boolean;
+}
+
+/** A type expression with type arguments for extends clause. */
+export interface TSExpressionWithTypeArguments extends BaseNode {
+  readonly type: "TSExpressionWithTypeArguments";
+  readonly expression: Identifier | TSQualifiedName;
+  readonly typeParameters: TSTypeParameterInstantiation | null;
+}
+
+/** The body of an interface declaration. */
+export interface TSInterfaceBody extends BaseNode {
+  readonly type: "TSInterfaceBody";
+  readonly body: ReadonlyArray<TSTypeElement>;
+}
+
+/** A type alias declaration (`type Foo = ...`). */
+export interface TSTypeAliasDeclaration extends BaseNode {
+  readonly type: "TSTypeAliasDeclaration";
+  readonly id: Identifier;
+  readonly typeParameters: TSTypeParameterDeclaration | null;
+  readonly typeAnnotation: TSType;
+  readonly declare: boolean;
+}
+
+/** An enum declaration. */
+export interface TSEnumDeclaration extends BaseNode {
+  readonly type: "TSEnumDeclaration";
+  readonly id: Identifier;
+  readonly members: ReadonlyArray<TSEnumMember>;
+  readonly const: boolean;
+  readonly declare: boolean;
+}
+
+/** An enum member. */
+export interface TSEnumMember extends BaseNode {
+  readonly type: "TSEnumMember";
+  readonly id: Identifier | Literal;
+  readonly initializer: Expression | null;
+}
+
+/** A namespace/module declaration. */
+export interface TSModuleDeclaration extends BaseNode {
+  readonly type: "TSModuleDeclaration";
+  readonly id: Identifier | Literal;
+  readonly body: TSModuleBlock | TSModuleDeclaration;
+  readonly declare: boolean;
+  readonly global: boolean;
+}
+
+/** A namespace/module body block. */
+export interface TSModuleBlock extends BaseNode {
+  readonly type: "TSModuleBlock";
+  readonly body: ReadonlyArray<Statement | ModuleDeclaration>;
+}
+
+/** A parameter property in a constructor (e.g., `constructor(private x: number)`). */
+export interface TSParameterProperty extends BaseNode {
+  readonly type: "TSParameterProperty";
+  readonly parameter: Identifier | AssignmentPattern;
+  readonly accessibility: "public" | "protected" | "private" | null;
+  readonly readonly: boolean;
+}
+
+/** A `value as Type` expression. */
+export interface TSAsExpression extends BaseNode {
+  readonly type: "TSAsExpression";
+  readonly expression: Expression;
+  readonly typeAnnotation: TSType;
+}
+
+/** A `value satisfies Type` expression. */
+export interface TSSatisfiesExpression extends BaseNode {
+  readonly type: "TSSatisfiesExpression";
+  readonly expression: Expression;
+  readonly typeAnnotation: TSType;
+}
+
+/** A non-null assertion (`x!`). */
+export interface TSNonNullExpression extends BaseNode {
+  readonly type: "TSNonNullExpression";
+  readonly expression: Expression;
+}
+
+/** A union type (`A | B`). */
+export interface TSUnionType extends BaseNode {
+  readonly type: "TSUnionType";
+  readonly types: ReadonlyArray<TSType>;
+}
+
+/** An intersection type (`A & B`). */
+export interface TSIntersectionType extends BaseNode {
+  readonly type: "TSIntersectionType";
+  readonly types: ReadonlyArray<TSType>;
+}
+
+/** A conditional type (`T extends U ? X : Y`). */
+export interface TSConditionalType extends BaseNode {
+  readonly type: "TSConditionalType";
+  readonly checkType: TSType;
+  readonly extendsType: TSType;
+  readonly trueType: TSType;
+  readonly falseType: TSType;
+}
+
+/** A mapped type (`{ [K in T]: V }`). */
+export interface TSMappedType extends BaseNode {
+  readonly type: "TSMappedType";
+  readonly typeParameter: TSTypeParameter;
+  readonly typeAnnotation: TSType | null;
+  readonly nameType: TSType | null;
+  readonly optional: boolean | "+" | "-";
+  readonly readonly: boolean | "+" | "-";
+}
+
+/** A tuple type (`[A, B, C]`). */
+export interface TSTupleType extends BaseNode {
+  readonly type: "TSTupleType";
+  readonly elementTypes: ReadonlyArray<TSType>;
+}
+
+/** A keyword type like `string`, `number`, `boolean`, `any`, `void`, etc. */
+export interface TSKeywordType extends BaseNode {
+  readonly type: "TSKeywordType";
+  readonly keyword: string;
+}
+
+/** An array type (`T[]`). */
+export interface TSArrayType extends BaseNode {
+  readonly type: "TSArrayType";
+  readonly elementType: TSType;
+}
+
+/** A function type (`(x: number) => string`). */
+export interface TSFunctionType extends BaseNode {
+  readonly type: "TSFunctionType";
+  readonly params: ReadonlyArray<Pattern>;
+  readonly typeParameters: TSTypeParameterDeclaration | null;
+  readonly returnType: TSTypeAnnotation | null;
+}
+
+/** A type literal (`{ x: number; y: string }`). */
+export interface TSTypeLiteral extends BaseNode {
+  readonly type: "TSTypeLiteral";
+  readonly members: ReadonlyArray<TSTypeElement>;
+}
+
+/** A parenthesized type (`(T)`). */
+export interface TSParenthesizedType extends BaseNode {
+  readonly type: "TSParenthesizedType";
+  readonly typeAnnotation: TSType;
+}
+
+/** A literal type (`"hello"`, `42`, `true`). */
+export interface TSLiteralType extends BaseNode {
+  readonly type: "TSLiteralType";
+  readonly literal: Literal | UnaryExpression;
+}
+
+/** A typeof type query (`typeof x`). */
+export interface TSTypeofType extends BaseNode {
+  readonly type: "TSTypeQuery";
+  readonly exprName: Identifier | TSQualifiedName;
+}
+
+/** A keyof type (`keyof T`). */
+export interface TSKeyofType extends BaseNode {
+  readonly type: "TSKeyofType";
+  readonly type_: TSType;
+}
+
+/** An indexed access type (`T[K]`). */
+export interface TSIndexedAccessType extends BaseNode {
+  readonly type: "TSIndexedAccessType";
+  readonly objectType: TSType;
+  readonly indexType: TSType;
+}
+
+/** An infer type (`infer T`). */
+export interface TSInferType extends BaseNode {
+  readonly type: "TSInferType";
+  readonly typeParameter: TSTypeParameter;
+}
+
+/** A rest type in tuple (`...T`). */
+export interface TSRestType extends BaseNode {
+  readonly type: "TSRestType";
+  readonly typeAnnotation: TSType;
+}
+
+/** A property signature in an interface or type literal. */
+export interface TSPropertySignature extends BaseNode {
+  readonly type: "TSPropertySignature";
+  readonly key: Expression;
+  readonly typeAnnotation: TSTypeAnnotation | null;
+  readonly computed: boolean;
+  readonly optional: boolean;
+  readonly readonly: boolean;
+}
+
+/** A method signature in an interface or type literal. */
+export interface TSMethodSignature extends BaseNode {
+  readonly type: "TSMethodSignature";
+  readonly key: Expression;
+  readonly typeParameters: TSTypeParameterDeclaration | null;
+  readonly params: ReadonlyArray<Pattern>;
+  readonly returnType: TSTypeAnnotation | null;
+  readonly computed: boolean;
+  readonly optional: boolean;
+}
+
+/** An index signature (`[key: string]: value`). */
+export interface TSIndexSignature extends BaseNode {
+  readonly type: "TSIndexSignature";
+  readonly parameters: ReadonlyArray<Identifier>;
+  readonly typeAnnotation: TSTypeAnnotation | null;
+  readonly readonly: boolean;
+}
+
+/** A call signature in an interface. */
+export interface TSCallSignature extends BaseNode {
+  readonly type: "TSCallSignature";
+  readonly typeParameters: TSTypeParameterDeclaration | null;
+  readonly params: ReadonlyArray<Pattern>;
+  readonly returnType: TSTypeAnnotation | null;
+}
+
+/** A construct signature in an interface. */
+export interface TSConstructSignature extends BaseNode {
+  readonly type: "TSConstructSignature";
+  readonly typeParameters: TSTypeParameterDeclaration | null;
+  readonly params: ReadonlyArray<Pattern>;
+  readonly returnType: TSTypeAnnotation | null;
+}
+
+/** Union of all type element nodes (interface/type literal members). */
+export type TSTypeElement =
+  | TSPropertySignature
+  | TSMethodSignature
+  | TSIndexSignature
+  | TSCallSignature
+  | TSConstructSignature;
+
+/** Union of all TypeScript type nodes. */
+export type TSType =
+  | TSTypeReference
+  | TSKeywordType
+  | TSArrayType
+  | TSUnionType
+  | TSIntersectionType
+  | TSConditionalType
+  | TSMappedType
+  | TSTupleType
+  | TSFunctionType
+  | TSTypeLiteral
+  | TSParenthesizedType
+  | TSLiteralType
+  | TSTypeofType
+  | TSKeyofType
+  | TSIndexedAccessType
+  | TSInferType
+  | TSRestType;
+
+/** Union of all TypeScript declaration nodes. */
+export type TSDeclaration =
+  | TSInterfaceDeclaration
+  | TSTypeAliasDeclaration
+  | TSEnumDeclaration
+  | TSModuleDeclaration;
+
+// ============================================================
 // Rollup Wrapper Types
 // ============================================================
 
@@ -802,6 +1125,9 @@ export type Declaration =
   | VariableDeclaration
   | FunctionDeclaration
   | ClassDeclaration;
+
+/** All TypeScript statement node types (extends Statement for TS-aware parsing). */
+export type TSStatement = Statement | TSDeclaration;
 
 /** All expression node types. */
 export type Expression =

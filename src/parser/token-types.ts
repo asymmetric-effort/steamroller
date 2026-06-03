@@ -173,6 +173,23 @@ export const TokenType = {
   // JSX
   JSXText: 150,
   JSXIdentifier: 151,
+
+  // TypeScript keywords
+  TSType: 160,
+  TSInterface: 161,
+  TSEnum: 162,
+  TSNamespace: 163,
+  TSDeclare: 164,
+  TSReadonly: 165,
+  TSAbstract: 166,
+  TSOverride: 167,
+  TSSatisfies: 168,
+  TSKeyof: 169,
+  TSInfer: 170,
+  TSIs: 171,
+  TSAsserts: 172,
+  TSOut: 173,
+  TSModule: 174,
 } as const;
 
 /** Union type of all valid token type numeric values. */

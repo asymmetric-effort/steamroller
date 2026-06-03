@@ -55,6 +55,16 @@ import {
   ErrorCollector,
 } from "./diagnostics.js";
 import type { ParseError } from "./diagnostics.js";
+import {
+  parseInterfaceDeclaration,
+  parseTypeAliasDeclaration,
+  parseEnumDeclaration,
+  parseNamespaceDeclaration,
+  parseDeclareStatement,
+  isTypeAliasStart,
+  isInterfaceStart,
+} from "./typescript.js";
+import type { TSParserContext } from "./typescript.js";
 
 /**
  * Options for the parser.
@@ -68,6 +78,8 @@ export interface ParseOptions {
   readonly ecmaVersion?: number;
   /** Whether to enable JSX syntax parsing. Defaults to false. */
   readonly jsx?: boolean;
+  /** Whether to enable TypeScript syntax parsing. Defaults to false. */
+  readonly typescript?: boolean;
   /** Whether to collect errors instead of throwing. Defaults to false. */
   readonly recoverable?: boolean;
 }
@@ -95,6 +107,8 @@ export class Parser implements DeclarationsContext, StatementsContext {
   allowIn: boolean;
   /** Whether JSX parsing is enabled. */
   readonly jsxEnabled: boolean;
+  /** Whether TypeScript parsing is enabled. */
+  readonly typescriptEnabled: boolean;
   /** Whether recoverable mode is active. */
   readonly recoverable: boolean;
   /** The original source text for error diagnostics. */
@@ -118,6 +132,7 @@ export class Parser implements DeclarationsContext, StatementsContext {
     this.lexer = new Lexer(source, isStrict, allowHashBang);
     this.allowIn = true;
     this.jsxEnabled = options?.jsx ?? false;
+    this.typescriptEnabled = options?.typescript ?? false;
     this.recoverable = options?.recoverable ?? false;
     this.errorCollector = new ErrorCollector();
 
@@ -357,10 +372,32 @@ export class Parser implements DeclarationsContext, StatementsContext {
       case TokenType.Var:
       case TokenType.Let:
       case TokenType.Const:
+        if (this.typescriptEnabled && this.lexer.is(TokenType.Const)) {
+          // Check for 'const enum'
+          const constStart = this.lexer.token.start;
+          const constSaved = this.lexer.saveState();
+          this.lexer.next(); // consume 'const'
+          if (this.isIdentValue("enum")) {
+            return parseEnumDeclaration(
+              this.buildTSContext(),
+              true,
+              false,
+              constStart,
+            ) as unknown as AST.Statement;
+          }
+          this.lexer.restoreState(constSaved);
+        }
         return parseVariableDeclaration(this);
 
       // Labeled statement check (identifier followed by colon)
+      // Also handles TypeScript contextual keywords
       case TokenType.Identifier: {
+        if (this.typescriptEnabled) {
+          const tsResult = this.tryParseTypeScriptStatement();
+          if (tsResult !== null) {
+            return tsResult;
+          }
+        }
         const saved = this.lexer.saveState();
         const identToken = this.lexer.next();
         if (this.lexer.is(TokenType.Colon)) {
@@ -418,6 +455,86 @@ export class Parser implements DeclarationsContext, StatementsContext {
     return parseBindingPatternFromModule(this.lexer, () =>
       parseAssignmentExpressionModule(this.lexer, this.allowIn),
     );
+  }
+
+  /**
+   * Check if the current token is an Identifier with a specific value.
+   */
+  isIdentValue(value: string): boolean {
+    return (
+      this.lexer.is(TokenType.Identifier) && this.lexer.token.value === value
+    );
+  }
+
+  /**
+   * Try to parse a TypeScript-specific statement.
+   * Returns null if the current token is not a TypeScript statement keyword.
+   */
+  tryParseTypeScriptStatement(): AST.Statement | AST.ModuleDeclaration | null {
+    const val = this.lexer.token.value as string;
+
+    switch (val) {
+      case "type":
+        if (isTypeAliasStart(this.lexer)) {
+          return parseTypeAliasDeclaration(
+            this.buildTSContext(),
+          ) as unknown as AST.Statement;
+        }
+        return null;
+
+      case "interface":
+        if (isInterfaceStart(this.lexer)) {
+          return parseInterfaceDeclaration(
+            this.buildTSContext(),
+          ) as unknown as AST.Statement;
+        }
+        return null;
+
+      case "enum":
+        return parseEnumDeclaration(
+          this.buildTSContext(),
+        ) as unknown as AST.Statement;
+
+      case "namespace":
+      case "module":
+        return parseNamespaceDeclaration(
+          this.buildTSContext(),
+        ) as unknown as AST.Statement;
+
+      case "declare":
+        return parseDeclareStatement(
+          this.buildTSContext(),
+        ) as unknown as AST.Statement;
+
+      case "abstract": {
+        const saved = this.lexer.saveState();
+        this.lexer.next(); // consume 'abstract'
+        if (this.lexer.is(TokenType.Class)) {
+          return parseClassDeclaration(this);
+        }
+        this.lexer.restoreState(saved);
+        return null;
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Build a TypeScript parser context from this Parser instance.
+   *
+   * @returns A TSParserContext for TypeScript-specific parsing.
+   */
+  buildTSContext(): TSParserContext {
+    return {
+      lexer: this.lexer,
+      parseExpression: () => this.parseExpression(),
+      parseAssignmentExpression: () => this.parseAssignmentExpression(),
+      parseStatement: () => this.parseStatement(),
+      parseBlockStatement: () => this.parseBlockStatement(),
+      parseBindingPattern: () => this.parseBindingPattern(),
+    };
   }
 
   /**

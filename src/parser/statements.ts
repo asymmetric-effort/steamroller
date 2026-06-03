@@ -24,6 +24,8 @@ export interface ParserContext {
   readonly hadLineTerminatorBefore: boolean;
   /** Whether `in` operator is allowed in expressions (false in for-loop headers). */
   allowIn: boolean;
+  /** Whether TypeScript mode is enabled. */
+  readonly typescriptEnabled?: boolean;
   /** Advance to the next token and return the previous one. */
   next(): Token;
   /** Expect and consume a specific token type. */
@@ -738,6 +740,18 @@ const parseVariableDeclarator = (
   const id = ctx.parseBindingPattern();
   let init: AST.Expression | null = null;
 
+  // In TypeScript mode, skip optional `!` (definite assignment) and type annotation
+  if (ctx.typescriptEnabled) {
+    // Skip `!` definite assignment assertion
+    if (ctx.is(TokenType.Exclamation)) {
+      ctx.next();
+    }
+    // Skip type annotation: `: Type`
+    if (ctx.is(TokenType.Colon)) {
+      skipTypeAnnotation(ctx);
+    }
+  }
+
   if (ctx.is(TokenType.Equals)) {
     ctx.next(); // consume '='
     init = ctx.parseAssignmentExpression();
@@ -752,6 +766,74 @@ const parseVariableDeclarator = (
     id,
     init,
   });
+};
+
+/**
+ * Skip a TypeScript type annotation by consuming tokens until we reach
+ * a delimiter that ends the type context (=, ;, ,, ), ], }, EOF).
+ *
+ * This is a simple bracket-balanced skipper that handles nested generics,
+ * braces, brackets, and parens.
+ */
+const skipTypeAnnotation = (ctx: ParserContext): void => {
+  ctx.next(); // consume ':'
+  let depth = 0;
+
+  while (!ctx.is(TokenType.EOF)) {
+    if (
+      depth === 0 &&
+      (ctx.is(TokenType.Equals) ||
+        ctx.is(TokenType.Semicolon) ||
+        ctx.is(TokenType.Comma) ||
+        ctx.is(TokenType.RightParen) ||
+        ctx.is(TokenType.RightBracket) ||
+        ctx.is(TokenType.RightBrace))
+    ) {
+      return;
+    }
+
+    // Handle ASI
+    if (depth === 0 && ctx.hadLineTerminatorBefore) {
+      // Check if the current token could start a new statement
+      const t = ctx.token.type;
+      if (
+        t === TokenType.Var ||
+        t === TokenType.Let ||
+        t === TokenType.Const ||
+        t === TokenType.Function ||
+        t === TokenType.Class ||
+        t === TokenType.Return ||
+        t === TokenType.If ||
+        t === TokenType.For ||
+        t === TokenType.While ||
+        t === TokenType.Import ||
+        t === TokenType.Export
+      ) {
+        return;
+      }
+    }
+
+    if (
+      ctx.is(TokenType.LessThan) ||
+      ctx.is(TokenType.LeftParen) ||
+      ctx.is(TokenType.LeftBracket) ||
+      ctx.is(TokenType.LeftBrace)
+    ) {
+      depth++;
+    } else if (
+      ctx.is(TokenType.GreaterThan) ||
+      ctx.is(TokenType.RightParen) ||
+      ctx.is(TokenType.RightBracket) ||
+      ctx.is(TokenType.RightBrace)
+    ) {
+      depth--;
+      if (depth < 0) {
+        return;
+      }
+    }
+
+    ctx.next();
+  }
 };
 
 /**

@@ -13,6 +13,15 @@ import type { Lexer } from "./lexer.js";
 import { TokenType } from "./token-types.js";
 import { parseBindingPattern as parseBindingPatternFromModule } from "./patterns.js";
 import { parseDecorators } from "./decorators.js";
+import {
+  parseInterfaceDeclaration,
+  parseTypeAliasDeclaration,
+  parseEnumDeclaration,
+  parseNamespaceDeclaration,
+  parseDeclareStatement,
+  isTypeAliasStart,
+  isInterfaceStart,
+} from "./typescript.js";
 
 /**
  * Extended ImportDeclaration that supports import attributes.
@@ -31,6 +40,7 @@ export interface ImportAttribute {
  */
 export interface ImportDeclarationWithAttributes extends AST.ImportDeclaration {
   readonly attributes: ReadonlyArray<ImportAttribute>;
+  readonly importKind?: "type" | "value";
 }
 
 /**
@@ -42,10 +52,20 @@ export interface ImportDeclarationWithAttributes extends AST.ImportDeclaration {
 export interface ParserContext {
   readonly lexer: Lexer;
   readonly sourceType: "module" | "script";
+  readonly typescriptEnabled?: boolean;
   parseExpression(): AST.Expression;
   parseAssignmentExpression(): AST.Expression;
   parseStatement(): AST.Statement | AST.ModuleDeclaration;
   parseBlockStatement(): AST.BlockStatement;
+  parseBindingPattern(): AST.Pattern;
+  buildTSContext?(): {
+    readonly lexer: Lexer;
+    parseExpression(): AST.Expression;
+    parseAssignmentExpression(): AST.Expression;
+    parseStatement(): AST.Statement | AST.ModuleDeclaration;
+    parseBlockStatement(): AST.BlockStatement;
+    parseBindingPattern(): AST.Pattern;
+  };
 }
 
 /**
@@ -90,6 +110,11 @@ export const parseFunctionDeclaration = (
     });
   }
 
+  // In TypeScript mode, skip generic type parameters
+  if (ctx.typescriptEnabled && ctx.lexer.is(TokenType.LessThan)) {
+    skipGenericTypeParameters(ctx);
+  }
+
   // Parse parameters
   const params = parseParameters(ctx);
 
@@ -122,7 +147,8 @@ export const parseFunctionDeclaration = (
  * Parse function parameters.
  *
  * Handles simple identifiers, destructuring patterns (array/object),
- * rest elements (...args), and default values.
+ * rest elements (...args), and default values. In TypeScript mode,
+ * also handles parameter properties and type annotations.
  *
  * @param ctx - The parser context.
  * @returns Array of Pattern nodes.
@@ -146,6 +172,10 @@ const parseParameters = (ctx: ParserContext): Array<AST.Pattern> => {
         ctx.lexer,
         parseAssignExpr,
       );
+      // Skip type annotation on rest param
+      if (ctx.typescriptEnabled && ctx.lexer.is(TokenType.Colon)) {
+        skipParamTypeAnnotation(ctx);
+      }
       params.push(
         Object.freeze({
           type: "RestElement" as const,
@@ -158,8 +188,24 @@ const parseParameters = (ctx: ParserContext): Array<AST.Pattern> => {
       break;
     }
 
+    // In TypeScript mode, check for parameter properties
+    if (ctx.typescriptEnabled && isParameterPropertyKeyword(ctx.lexer)) {
+      // Skip the access modifier and/or readonly, just get the parameter name
+      skipParameterPropertyModifiers(ctx);
+    }
+
     // Parse binding pattern (identifier, array pattern, or object pattern)
     const param = parseBindingPatternFromModule(ctx.lexer, parseAssignExpr);
+
+    // In TypeScript mode, skip optional `?` and type annotation
+    if (ctx.typescriptEnabled) {
+      if (ctx.lexer.is(TokenType.QuestionMark)) {
+        ctx.lexer.next();
+      }
+      if (ctx.lexer.is(TokenType.Colon)) {
+        skipParamTypeAnnotation(ctx);
+      }
+    }
 
     // Check for default value (use assignment expression to avoid consuming comma)
     if (ctx.lexer.is(TokenType.Equals)) {
@@ -181,7 +227,80 @@ const parseParameters = (ctx: ParserContext): Array<AST.Pattern> => {
   }
 
   ctx.lexer.expect(TokenType.RightParen);
+
+  // In TypeScript mode, skip return type annotation
+  if (ctx.typescriptEnabled && ctx.lexer.is(TokenType.Colon)) {
+    skipParamTypeAnnotation(ctx);
+  }
+
   return params;
+};
+
+/**
+ * Check if the current token starts a parameter property (private/protected/public/readonly).
+ */
+const isParameterPropertyKeyword = (lexer: Lexer): boolean => {
+  const val = lexer.token.value;
+  return (
+    val === "private" ||
+    val === "protected" ||
+    val === "public" ||
+    val === "readonly"
+  );
+};
+
+/**
+ * Skip parameter property modifiers (access modifiers and readonly).
+ */
+const skipParameterPropertyModifiers = (ctx: ParserContext): void => {
+  const val = ctx.lexer.token.value;
+  if (val === "private" || val === "protected" || val === "public") {
+    ctx.lexer.next();
+  }
+  if (ctx.lexer.token.value === "readonly") {
+    ctx.lexer.next();
+  }
+};
+
+/**
+ * Skip a type annotation in parameter context.
+ * Consumes `:` and tokens until `,`, `)`, `=`, or end of input.
+ */
+const skipParamTypeAnnotation = (ctx: ParserContext): void => {
+  ctx.lexer.next(); // consume ':'
+  let depth = 0;
+
+  while (!ctx.lexer.is(TokenType.EOF)) {
+    if (
+      depth === 0 &&
+      (ctx.lexer.is(TokenType.Comma) ||
+        ctx.lexer.is(TokenType.RightParen) ||
+        ctx.lexer.is(TokenType.Equals) ||
+        ctx.lexer.is(TokenType.LeftBrace) ||
+        ctx.lexer.is(TokenType.Arrow))
+    ) {
+      return;
+    }
+
+    if (
+      ctx.lexer.is(TokenType.LessThan) ||
+      ctx.lexer.is(TokenType.LeftParen) ||
+      ctx.lexer.is(TokenType.LeftBracket)
+    ) {
+      depth++;
+    } else if (
+      ctx.lexer.is(TokenType.GreaterThan) ||
+      ctx.lexer.is(TokenType.RightParen) ||
+      ctx.lexer.is(TokenType.RightBracket)
+    ) {
+      depth--;
+      if (depth < 0) {
+        return;
+      }
+    }
+
+    ctx.lexer.next();
+  }
 };
 
 /**
@@ -217,6 +336,11 @@ export const parseClassDeclaration = (
     });
   }
 
+  // In TypeScript mode, skip generic type parameters
+  if (ctx.typescriptEnabled && ctx.lexer.is(TokenType.LessThan)) {
+    skipGenericTypeParameters(ctx);
+  }
+
   // Parse extends clause
   let superClass: AST.Expression | null = null;
   if (ctx.lexer.is(TokenType.Extends)) {
@@ -228,6 +352,27 @@ export const parseClassDeclaration = (
       start: superToken.start,
       end: superToken.end,
     });
+    // Skip type arguments on super class
+    if (ctx.typescriptEnabled && ctx.lexer.is(TokenType.LessThan)) {
+      skipGenericTypeParameters(ctx);
+    }
+  }
+
+  // In TypeScript mode, skip implements clause
+  if (
+    ctx.typescriptEnabled &&
+    ctx.lexer.is(TokenType.Identifier) &&
+    ctx.lexer.token.value === "implements"
+  ) {
+    ctx.lexer.next(); // consume 'implements'
+    // Skip comma-separated type references until we see '{'
+    while (!ctx.lexer.is(TokenType.LeftBrace) && !ctx.lexer.is(TokenType.EOF)) {
+      if (ctx.lexer.is(TokenType.LessThan)) {
+        skipGenericTypeParameters(ctx);
+      } else {
+        ctx.lexer.next();
+      }
+    }
   }
 
   // Parse class body
@@ -529,6 +674,27 @@ export const parseImportDeclaration = (
   const start = ctx.lexer.token.start;
   ctx.lexer.expect(TokenType.Import);
 
+  // Check for 'import type'
+  let importKind: "type" | "value" = "value";
+  if (
+    ctx.lexer.is(TokenType.Identifier) &&
+    ctx.lexer.token.value === "type" &&
+    ctx.typescriptEnabled
+  ) {
+    const saved = ctx.lexer.saveState();
+    ctx.lexer.next(); // consume 'type'
+    // If followed by identifier, '{', or '*', this is 'import type ...'
+    if (
+      ctx.lexer.is(TokenType.Identifier) ||
+      ctx.lexer.is(TokenType.LeftBrace) ||
+      ctx.lexer.is(TokenType.Star)
+    ) {
+      importKind = "type";
+    } else {
+      ctx.lexer.restoreState(saved);
+    }
+  }
+
   const specifiers: Array<
     | AST.ImportSpecifier
     | AST.ImportDefaultSpecifier
@@ -546,6 +712,7 @@ export const parseImportDeclaration = (
       specifiers: Object.freeze(specifiers),
       source,
       attributes: Object.freeze(attributes),
+      importKind,
       start,
       end: sourceToken.end,
     });
@@ -640,6 +807,7 @@ export const parseImportDeclaration = (
     specifiers: Object.freeze(specifiers),
     source,
     attributes: Object.freeze(attributes),
+    importKind,
     start,
     end: sourceToken.end,
   });
@@ -813,6 +981,176 @@ export const parseExportDeclaration = (
     decorators.length > 0 ? decorators[0].start : ctx.lexer.token.start;
   ctx.lexer.expect(TokenType.Export);
 
+  // export type { ... } or export type ...
+  let exportKind: "type" | "value" = "value";
+  if (
+    ctx.lexer.is(TokenType.Identifier) &&
+    ctx.lexer.token.value === "type" &&
+    ctx.typescriptEnabled
+  ) {
+    const saved = ctx.lexer.saveState();
+    ctx.lexer.next(); // consume 'type'
+    if (ctx.lexer.is(TokenType.LeftBrace) || ctx.lexer.is(TokenType.Star)) {
+      exportKind = "type";
+    } else if (ctx.lexer.is(TokenType.Identifier)) {
+      // Could be 'export type X = ...' (type alias) or 'export type X from ...'
+      const saved2 = ctx.lexer.saveState();
+      ctx.lexer.next(); // consume identifier
+      if (ctx.lexer.is(TokenType.Equals) || ctx.lexer.is(TokenType.LessThan)) {
+        // export type X = ... (type alias declaration)
+        // Restore to before 'type' was consumed, so parseTypeAliasDeclaration
+        // can consume 'type' itself
+        ctx.lexer.restoreState(saved);
+        if (ctx.buildTSContext) {
+          const decl = parseTypeAliasDeclaration(ctx.buildTSContext());
+          return Object.freeze({
+            type: "ExportNamedDeclaration" as const,
+            declaration: decl as unknown as AST.Declaration,
+            specifiers: Object.freeze([]),
+            source: null,
+            exportKind: "value",
+            start,
+            end: decl.end,
+          });
+        }
+      }
+      ctx.lexer.restoreState(saved2);
+      // It's 'export type Identifier' - possibly type-only default re-export
+      exportKind = "type";
+    } else {
+      ctx.lexer.restoreState(saved);
+    }
+  }
+
+  // TypeScript declarations after export
+  if (ctx.typescriptEnabled) {
+    // export interface
+    if (
+      ctx.lexer.is(TokenType.Identifier) &&
+      ctx.lexer.token.value === "interface" &&
+      isInterfaceStart(ctx.lexer)
+    ) {
+      if (ctx.buildTSContext) {
+        const decl = parseInterfaceDeclaration(ctx.buildTSContext());
+        return Object.freeze({
+          type: "ExportNamedDeclaration" as const,
+          declaration: decl as unknown as AST.Declaration,
+          specifiers: Object.freeze([]),
+          source: null,
+          exportKind: "value",
+          start,
+          end: decl.end,
+        });
+      }
+    }
+
+    // export enum
+    if (
+      ctx.lexer.is(TokenType.Identifier) &&
+      ctx.lexer.token.value === "enum"
+    ) {
+      if (ctx.buildTSContext) {
+        const decl = parseEnumDeclaration(ctx.buildTSContext());
+        return Object.freeze({
+          type: "ExportNamedDeclaration" as const,
+          declaration: decl as unknown as AST.Declaration,
+          specifiers: Object.freeze([]),
+          source: null,
+          exportKind: "value",
+          start,
+          end: decl.end,
+        });
+      }
+    }
+
+    // export const enum
+    if (ctx.lexer.is(TokenType.Const)) {
+      const constStart = ctx.lexer.token.start;
+      const saved = ctx.lexer.saveState();
+      ctx.lexer.next();
+      if (
+        ctx.lexer.is(TokenType.Identifier) &&
+        ctx.lexer.token.value === "enum" &&
+        ctx.buildTSContext
+      ) {
+        const decl = parseEnumDeclaration(
+          ctx.buildTSContext(),
+          true,
+          false,
+          constStart,
+        );
+        return Object.freeze({
+          type: "ExportNamedDeclaration" as const,
+          declaration: decl as unknown as AST.Declaration,
+          specifiers: Object.freeze([]),
+          source: null,
+          exportKind: "value",
+          start,
+          end: decl.end,
+        });
+      }
+      ctx.lexer.restoreState(saved);
+    }
+
+    // export namespace / export module
+    if (
+      ((ctx.lexer.is(TokenType.Identifier) &&
+        ctx.lexer.token.value === "namespace") ||
+        (ctx.lexer.is(TokenType.Identifier) &&
+          ctx.lexer.token.value === "module")) &&
+      ctx.buildTSContext
+    ) {
+      const decl = parseNamespaceDeclaration(ctx.buildTSContext());
+      return Object.freeze({
+        type: "ExportNamedDeclaration" as const,
+        declaration: decl as unknown as AST.Declaration,
+        specifiers: Object.freeze([]),
+        source: null,
+        exportKind: "value",
+        start,
+        end: decl.end,
+      });
+    }
+
+    // export declare
+    if (
+      ctx.lexer.is(TokenType.Identifier) &&
+      ctx.lexer.token.value === "declare" &&
+      ctx.buildTSContext
+    ) {
+      const decl = parseDeclareStatement(ctx.buildTSContext());
+      return Object.freeze({
+        type: "ExportNamedDeclaration" as const,
+        declaration: decl as unknown as AST.Declaration,
+        specifiers: Object.freeze([]),
+        source: null,
+        exportKind: "value",
+        start,
+        end: decl.end,
+      });
+    }
+
+    // export abstract class
+    if (
+      ctx.lexer.is(TokenType.Identifier) &&
+      ctx.lexer.token.value === "abstract"
+    ) {
+      ctx.lexer.next();
+      if (ctx.lexer.is(TokenType.Class)) {
+        const declaration = parseClassDeclaration(ctx, decorators);
+        return Object.freeze({
+          type: "ExportNamedDeclaration" as const,
+          declaration,
+          specifiers: Object.freeze([]),
+          source: null,
+          exportKind: "value",
+          start,
+          end: declaration.end,
+        });
+      }
+    }
+  }
+
   // export default ...
   if (ctx.lexer.is(TokenType.Default)) {
     ctx.lexer.next();
@@ -884,6 +1222,7 @@ export const parseExportDeclaration = (
       declaration: null,
       specifiers: Object.freeze(specifiers),
       source,
+      exportKind,
       start,
       end,
     });
@@ -1168,6 +1507,25 @@ const createLiteralFromToken = (token: {
  */
 const consumeSemicolon = (ctx: ParserContext): void => {
   if (ctx.lexer.is(TokenType.Semicolon)) {
+    ctx.lexer.next();
+  }
+};
+
+/**
+ * Skip generic type parameters `<T, U extends V>` by balancing angle brackets.
+ */
+const skipGenericTypeParameters = (ctx: ParserContext): void => {
+  let depth = 0;
+  while (!ctx.lexer.is(TokenType.EOF)) {
+    if (ctx.lexer.is(TokenType.LessThan)) {
+      depth++;
+    } else if (ctx.lexer.is(TokenType.GreaterThan)) {
+      depth--;
+      if (depth <= 0) {
+        ctx.lexer.next(); // consume '>'
+        return;
+      }
+    }
     ctx.lexer.next();
   }
 };

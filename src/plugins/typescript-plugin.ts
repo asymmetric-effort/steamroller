@@ -12,6 +12,8 @@
  */
 
 import type { Plugin, TransformResult } from "../types.js";
+import { parse } from "../parser/parser.js";
+import { transformTypeScript } from "../transforms/typescript-transform.js";
 
 /** Unsupported TypeScript features that require a full compiler. */
 const UNSUPPORTED_PATTERNS: ReadonlyArray<{
@@ -551,6 +553,35 @@ const stripTypeAnnotations = (code: string): string => {
 };
 
 /**
+ * Transform TypeScript source using AST-based parsing and transformation.
+ * Handles enums, namespaces, parameter properties, and all type stripping.
+ *
+ * @param code - The TypeScript source code.
+ * @param id - The module ID (for diagnostics).
+ * @returns The transformed JavaScript code, or null on parse failure.
+ */
+export const transformTypescriptAST = (
+  code: string,
+  id: string,
+): string | null => {
+  try {
+    const ast = parse(code, {
+      sourceType: "module",
+      allowHashBang: true,
+      typescript: true,
+    });
+    let result = transformTypeScript(code, ast);
+    // Apply regex-based stripping for inline type annotations
+    // that the parser skips without producing AST nodes
+    result = stripTypescript(result, id, () => {});
+    return result;
+  } catch {
+    // If AST-based transform fails, return null to fall back to regex
+    return null;
+  }
+};
+
+/**
  * Create the built-in TypeScript type-stripping plugin.
  *
  * @returns A Plugin that strips TypeScript type annotations from .ts/.tsx files.
@@ -566,6 +597,16 @@ export const typescriptPlugin = (): Plugin => {
         return null;
       }
 
+      // Try AST-based transform first (handles enums, namespaces, etc.)
+      const astResult = transformTypescriptAST(code, id);
+      if (astResult !== null) {
+        return {
+          code: astResult,
+          map: { mappings: "" },
+        };
+      }
+
+      // Fallback to regex-based stripping
       const warn = (message: string): void => {
         warnings.push(message);
         if (typeof this?.warn === "function") {
