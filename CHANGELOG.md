@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-03
+
+### Added
+
+- **Full TypeScript parsing**: Hand-written parser extended with 40+ TS AST node types — enums (regular/const/string), namespaces, parameter properties, interfaces, type aliases, generics, declare statements, type-only imports/exports. AST-based transforms: enums→IIFE, namespaces→IIFE objects, parameter properties→constructor assignments. 67 tests.
+- **Full CSS parser and bundling**: Hand-written CSS tokenizer + recursive-descent parser with 23 AST types. Supports all selector types, at-rules (@media/@keyframes/@import/@font-face/@layer/@container/@supports), CSS nesting, custom properties, var(), CSS Modules (:local/:global/composes). CSS minifier, @import resolver, concatenator, and printer. Built-in css-plugin auto-registered. 111 tests.
+- **Built-in CSS/JSON/asset import support**: JSON loader (tree-shakeable named exports), asset loader (.png/.svg/etc with ?inline and ?raw), text loader (.sql/.html/.md/.graphql), WASM loader (async init). Zero-config, plugin-free. 80 tests.
+- **Advanced minification pipeline**: 6-pass AST-based pipeline — dead code elimination, constant folding (arithmetic/string/boolean/typeof), expression simplification (!!x→x, true→!0, undefined→void 0), scope-aware name mangling with frequency analysis, code compression (arrow body, shorthand, sequence expressions), minimal-whitespace emitter. Opt-in property mangling. 110 tests.
+- **AST-based syntax downleveling**: Replaced regex transforms with AST-based MagicString edits. ES2015: nullish coalescing (temp vars), optional chaining (member/computed/method/chained), logical assignment, numeric separators. ES5: arrow→function with this capture, template→concat, const/let→var, default params, rest params, shorthand properties, spread. 40 tests.
+- **Native bindings infrastructure**: Detection layer for optional @steamroller/native-{platform}-{arch} packages. Bridge modules for parser, minifier, and resolver with automatic TS fallback. Rust scaffolding stubs and platform package stubs. 16 tests.
+
 ## [0.1.1] - 2026-06-03
 
 ### Fixed
