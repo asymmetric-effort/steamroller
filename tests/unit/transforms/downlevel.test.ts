@@ -1,7 +1,7 @@
 /**
  * Tests for src/transforms/downlevel.ts
  *
- * Verifies regex-based syntax downleveling for ES5 and ES2015 targets.
+ * Verifies AST-based syntax downleveling for ES5 and ES2015 targets.
  */
 import { describe, it, expect } from "vitest";
 import { downlevelCode } from "../../../src/transforms/downlevel.js";
@@ -38,6 +38,20 @@ describe("downlevelCode", () => {
         expect(result).toContain("return x + 1");
         expect(result).not.toContain("=>");
       });
+
+      it("should NOT transform arrow functions inside strings", () => {
+        const input = 'const s = "() => foo";';
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain('"() => foo"');
+        expect(result).not.toContain("function");
+      });
+
+      it("should capture this in arrow functions that reference this", () => {
+        const input = "const fn = () => { return this.x; };";
+        const result = downlevelCode(input, "es5");
+        expect(result).not.toContain("=>");
+        expect(result).toContain("_this");
+      });
     });
 
     describe("template literals -> string concatenation", () => {
@@ -52,7 +66,7 @@ describe("downlevelCode", () => {
         const input = "const s = `hello ${name}`;";
         const result = downlevelCode(input, "es5");
         expect(result).toContain('"hello "');
-        expect(result).toContain("+ name");
+        expect(result).toContain("name");
         expect(result).not.toContain("`");
         expect(result).not.toContain("${");
       });
@@ -64,6 +78,14 @@ describe("downlevelCode", () => {
         expect(result).toContain("b");
         expect(result).toContain('" and "');
         expect(result).not.toContain("`");
+      });
+
+      it("should handle template literals with nested expressions", () => {
+        const input = "const s = `result: ${a + b}`;";
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain("a + b");
+        expect(result).not.toContain("`");
+        expect(result).not.toContain("${");
       });
     });
 
@@ -87,22 +109,85 @@ describe("downlevelCode", () => {
       });
     });
 
-    describe("default parameters -> || fallbacks", () => {
-      it("should convert default parameter to || pattern", () => {
+    describe("default parameters -> void 0 checks", () => {
+      it("should convert default parameter to void 0 check", () => {
         const input = "function greet(name = 'world') { return name; }";
         const result = downlevelCode(input, "es5");
         expect(result).toContain("function greet(name)");
-        expect(result).toContain("name = name || 'world'");
+        expect(result).toContain("if (name === void 0) name = 'world'");
+      });
+
+      it("should handle default params with complex expressions containing , and )", () => {
+        const input = "function calc(a, b = Math.max(1, 2)) { return a + b; }";
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain("function calc(a, b)");
+        expect(result).toContain("if (b === void 0) b = Math.max(1, 2)");
+        expect(result).not.toContain("= Math.max(1, 2))");
+      });
+    });
+
+    describe("rest parameters -> arguments slicing", () => {
+      it("should convert rest parameters to arguments slicing", () => {
+        const input = "function f(...args) { return args; }";
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain("[].slice.call(arguments)");
+        expect(result).not.toContain("...");
+      });
+
+      it("should handle rest parameters with other params before", () => {
+        const input =
+          "function f(a, b, ...rest) { return [a, b].concat(rest); }";
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain("function f(a, b)");
+        expect(result).toContain("[].slice.call(arguments, 2)");
+        expect(result).not.toContain("...");
+      });
+    });
+
+    describe("shorthand properties -> explicit key-value", () => {
+      it("should convert shorthand properties to explicit key-value", () => {
+        const input = "const obj = {x, y};";
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain("x: x");
+        expect(result).toContain("y: y");
+      });
+    });
+
+    describe("spread in arrays -> concat", () => {
+      it("should convert spread in arrays to concat", () => {
+        const input = "const arr = [...a, ...b];";
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain("[].concat(a, b)");
+        expect(result).not.toContain("...");
+      });
+    });
+
+    describe("spread in calls -> apply", () => {
+      it("should convert spread in function calls to apply", () => {
+        const input = "f(...args);";
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain("f.apply(void 0, args)");
+        expect(result).not.toContain("...");
+      });
+
+      it("should handle spread in new expressions", () => {
+        const input = "new Foo(...args);";
+        const result = downlevelCode(input, "es5");
+        expect(result).toContain("Function.prototype.bind.apply");
+        expect(result).not.toContain("...");
       });
     });
   });
 
   describe("es2015 target", () => {
-    describe("optional chaining -> && chains", () => {
+    describe("optional chaining -> null checks", () => {
       it("should convert simple optional chaining", () => {
         const input = "const x = a?.b;";
         const result = downlevelCode(input, "es2015");
-        expect(result).toContain("a && a.b");
+        expect(result).toContain("=== null");
+        expect(result).toContain("=== void 0");
+        expect(result).toContain("void 0");
+        expect(result).toContain("a.b");
         expect(result).not.toContain("?.");
       });
 
@@ -110,27 +195,102 @@ describe("downlevelCode", () => {
         const input = "const x = a?.b?.c;";
         const result = downlevelCode(input, "es2015");
         expect(result).not.toContain("?.");
-        // Should produce a chain of && checks
-        expect(result).toContain("&&");
+        expect(result).toContain("=== null");
+        expect(result).toContain("=== void 0");
+      });
+
+      it("should handle optional chaining on computed properties", () => {
+        const input = "const x = a?.[b];";
+        const result = downlevelCode(input, "es2015");
+        expect(result).not.toContain("?.");
+        expect(result).toContain("[b]");
+        expect(result).toContain("=== null");
+      });
+
+      it("should handle optional method calls", () => {
+        const input = "const x = a?.b();";
+        const result = downlevelCode(input, "es2015");
+        expect(result).not.toContain("?.");
+        expect(result).toContain("=== null");
+        expect(result).toContain(".b()");
+      });
+
+      it("should handle chained optional: a?.b?.c?.d", () => {
+        const input = "const x = a?.b?.c?.d;";
+        const result = downlevelCode(input, "es2015");
+        expect(result).not.toContain("?.");
+        expect(result).toContain("=== null");
+        expect(result).toContain("=== void 0");
       });
     });
 
     describe("nullish coalescing -> ternary", () => {
-      it("should convert ?? to ternary null/void 0 check", () => {
+      it("should convert ?? to ternary null/void 0 check with temp var", () => {
         const input = "const x = a ?? b;";
         const result = downlevelCode(input, "es2015");
-        expect(result).toContain("a !== null");
-        expect(result).toContain("a !== void 0");
-        expect(result).toContain("? a : b");
+        expect(result).toContain("!== null");
+        expect(result).toContain("!== void 0");
         expect(result).not.toContain("??");
+        // Uses temp var pattern
+        expect(result).toContain("_tmp");
       });
 
       it("should convert ?? with property access on left side", () => {
         const input = "const x = obj.value ?? fallback;";
         const result = downlevelCode(input, "es2015");
-        expect(result).toContain("obj.value !== null");
-        expect(result).toContain("obj.value !== void 0");
-        expect(result).toContain("? obj.value : fallback");
+        expect(result).toContain("!== null");
+        expect(result).toContain("!== void 0");
+        expect(result).not.toContain("??");
+      });
+
+      it("should avoid double eval with complex left side", () => {
+        const input = "const x = getVal() ?? fallback;";
+        const result = downlevelCode(input, "es2015");
+        expect(result).not.toContain("??");
+        // Should use temp var to avoid calling getVal() twice
+        expect(result).toContain("_tmp");
+        expect(result).toContain("!== null");
+      });
+    });
+
+    describe("logical assignment", () => {
+      it("should convert ??= to null/void 0 check with assignment", () => {
+        const input = "a ??= b;";
+        const result = downlevelCode(input, "es2015");
+        expect(result).not.toContain("??=");
+        expect(result).toContain("!== null");
+        expect(result).toContain("a = b");
+      });
+
+      it("should convert ||= to logical or with assignment", () => {
+        const input = "a ||= b;";
+        const result = downlevelCode(input, "es2015");
+        expect(result).not.toContain("||=");
+        expect(result).toContain("||");
+        expect(result).toContain("a = b");
+      });
+
+      it("should convert &&= to logical and with assignment", () => {
+        const input = "a &&= b;";
+        const result = downlevelCode(input, "es2015");
+        expect(result).not.toContain("&&=");
+        expect(result).toContain("&&");
+        expect(result).toContain("a = b");
+      });
+    });
+
+    describe("numeric separators", () => {
+      it("should remove numeric separators", () => {
+        const input = "const x = 1_000_000;";
+        const result = downlevelCode(input, "es2015");
+        expect(result).toContain("1000000");
+        expect(result).not.toContain("_");
+      });
+
+      it("should handle numeric separators in different positions", () => {
+        const input = "const x = 0xFF_FF;";
+        const result = downlevelCode(input, "es2015");
+        expect(result).not.toContain("_");
       });
     });
 
@@ -174,7 +334,7 @@ describe("downlevelCode", () => {
       const input = "const x = a?.b;";
       const result = downlevelCode(input, "es5");
       expect(result).not.toContain("?.");
-      expect(result).toContain("&&");
+      expect(result).toContain("=== null");
     });
   });
 });
