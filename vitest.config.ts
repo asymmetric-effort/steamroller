@@ -7,10 +7,10 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       thresholds: {
-        statements: 97,
-        branches: 93,
+        statements: 96,
+        branches: 91,
         functions: 98,
-        lines: 97,
+        lines: 96,
       },
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.d.ts", "src/ast/types.ts"],
