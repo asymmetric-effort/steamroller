@@ -1,0 +1,14 @@
+{
+  "name": "@steamroller/native-win32-x64",
+  "version": "0.1.0",
+  "description": "Steamroller native bindings for Windows x64",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "main": "index.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asymmetric-effort/steamroller.git",
+    "directory": "packages/native-win32-x64"
+  }
+}

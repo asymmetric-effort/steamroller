@@ -361,6 +361,12 @@ export interface InputOptions {
   readonly shimMissingExports?: boolean;
   readonly strictDeprecations?: boolean;
   readonly treeshake?: boolean | TreeshakingPreset | TreeshakingOptions;
+  /** Whether to use native (Rust) bindings for performance-critical paths.
+   *  - `true`: require native bindings (error if unavailable)
+   *  - `false`: always use TypeScript implementations
+   *  - `'auto'`: use native when available, fallback to TypeScript (default)
+   */
+  readonly native?: boolean | "auto";
 }
 
 /** Entry point specification. */
