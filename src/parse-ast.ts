@@ -12,7 +12,7 @@ import type { Program } from "./ast/types.js";
 import { parse } from "./parser/parser.js";
 import type { ParseOptions } from "./parser/parser.js";
 import { yieldToEventLoop, checkAborted } from "./utils/async-utils.js";
-import { isNativeAvailable } from "./native/index.js";
+import { shouldUseNative } from "./native/index.js";
 import { parseWithNative } from "./native/parser-bridge.js";
 
 /**
@@ -45,7 +45,7 @@ export interface ParseAstOptions extends ParseOptions {
  * ```
  */
 export const parseAst = (input: string, options?: ParseAstOptions): Program => {
-  if (isNativeAvailable()) {
+  if (shouldUseNative()) {
     return parseWithNative(input, { sourceType: options?.sourceType });
   }
   return parse(input, {

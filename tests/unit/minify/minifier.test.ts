@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { minify } from "../../../src/minify/minifier.js";
+import type { MinifyResult } from "../../../src/minify/minifier.js";
 
 describe("minify", () => {
   describe("basic functionality", () => {
@@ -273,6 +274,77 @@ describe("minify", () => {
       expect(result).toContain("3");
       // mangling: longName renamed
       expect(result).not.toContain("longName");
+    });
+  });
+
+  describe("source map generation", () => {
+    it("returns { code, map } when sourceMap is true", () => {
+      const result = minify("var x = 1 + 2;", { sourceMap: true });
+      expect(result).toHaveProperty("code");
+      expect(result).toHaveProperty("map");
+      const r = result as MinifyResult;
+      expect(r.map.version).toBe(3);
+      expect(typeof r.map.mappings).toBe("string");
+    });
+
+    it("returns a string when sourceMap is false or omitted", () => {
+      const result1 = minify("var x = 1;");
+      expect(typeof result1).toBe("string");
+
+      const result2 = minify("var x = 1;", { sourceMap: false });
+      expect(typeof result2).toBe("string");
+    });
+
+    it("returns empty map for empty input with sourceMap", () => {
+      const result = minify("", { sourceMap: true }) as MinifyResult;
+      expect(result.code).toBe("");
+      expect(result.map.version).toBe(3);
+      expect(result.map.mappings).toBe("");
+    });
+
+    it("includes source content in the map when sourceMap is true", () => {
+      const code = "var x = 1 + 2;";
+      const result = minify(code, { sourceMap: true }) as MinifyResult;
+      expect(result.map.sourcesContent).toContain(code);
+    });
+
+    it("uses sourceMapSource for the source file name", () => {
+      const result = minify("var x = 1;", {
+        sourceMap: true,
+        sourceMapSource: "my-file.js",
+      }) as MinifyResult;
+      expect(result.map.sources).toContain("my-file.js");
+    });
+
+    it("defaults source name to input.js", () => {
+      const result = minify("var x = 1;", {
+        sourceMap: true,
+      }) as MinifyResult;
+      expect(result.map.sources).toContain("input.js");
+    });
+
+    it("produces a map with non-empty mappings for non-trivial code", () => {
+      const code = `
+        var x = 1 + 2;
+        var y = 3 * 4;
+      `;
+      const result = minify(code, {
+        sourceMap: true,
+        mangle: false,
+      }) as MinifyResult;
+      expect(result.code.length).toBeGreaterThan(0);
+      expect(result.map.mappings.length).toBeGreaterThan(0);
+    });
+
+    it("source map has valid structure with all required fields", () => {
+      const result = minify("function f(a) { return a + 1; }", {
+        sourceMap: true,
+      }) as MinifyResult;
+      expect(result.map).toHaveProperty("version", 3);
+      expect(Array.isArray(result.map.sources)).toBe(true);
+      expect(Array.isArray(result.map.sourcesContent)).toBe(true);
+      expect(Array.isArray(result.map.names)).toBe(true);
+      expect(typeof result.map.mappings).toBe("string");
     });
   });
 });

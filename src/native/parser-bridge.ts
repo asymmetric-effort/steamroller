@@ -44,7 +44,8 @@ export const parseWithNative = (
   const nativeParser = getNativeParser();
   const debug =
     typeof process !== "undefined" &&
-    !!process.env["NODE_DEBUG"]?.includes("steamroller");
+    (!!process.env["NODE_DEBUG"]?.includes("steamroller") ||
+      process.env["STEAMROLLER_DEBUG"] === "1");
 
   if (nativeParser) {
     const nativeStart = debug ? performance.now() : 0;
