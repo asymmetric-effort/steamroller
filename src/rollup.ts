@@ -44,6 +44,7 @@ import { Module } from "./module/Module.js";
 import type * as AST from "./ast/types.js";
 import { FileEmitter } from "./plugins/plugin-context-emit.js";
 import { maybeCreateTypescriptPlugin } from "./plugins/typescript-plugin.js";
+import { maybeCreateCSSPlugin } from "./plugins/css-plugin.js";
 
 /**
  * Collect all references from a scope tree using iterative traversal.
@@ -137,9 +138,15 @@ export const rollup = async (
   const tsPlugin = maybeCreateTypescriptPlugin(inputFiles, [
     ...normalized.plugins,
   ]);
-  const allPlugins: ReadonlyArray<Plugin> = tsPlugin
+  const pluginsWithTs: ReadonlyArray<Plugin> = tsPlugin
     ? [tsPlugin, ...normalized.plugins]
     : normalized.plugins;
+
+  // Step 1c: Auto-register CSS plugin if needed
+  const cssPlugin = maybeCreateCSSPlugin(inputFiles, [...pluginsWithTs]);
+  const allPlugins: ReadonlyArray<Plugin> = cssPlugin
+    ? [cssPlugin, ...pluginsWithTs]
+    : pluginsWithTs;
 
   // Step 2: Create plugin driver
   const warnings: Array<{ code: string; message: string }> = [];
