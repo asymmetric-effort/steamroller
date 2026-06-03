@@ -2,249 +2,277 @@ import { describe, it, expect } from "vitest";
 import { minify } from "../../../src/minify/minifier.js";
 
 describe("minify", () => {
-  describe("comment removal", () => {
-    it("removes single-line comments", () => {
-      const code = "const x = 1; // this is a comment\nconst y = 2;";
-      const result = minify(code);
-      expect(result).not.toContain("// this is a comment");
-      expect(result).toContain("const x = 1");
-      expect(result).toContain("const y = 2");
-    });
-
-    it("removes multi-line comments", () => {
-      const code =
-        "const x = 1; /* this is\na multi-line\ncomment */ const y = 2;";
-      const result = minify(code);
-      expect(result).not.toContain("multi-line");
-      expect(result).toContain("const x = 1");
-      expect(result).toContain("const y = 2");
-    });
-
-    it("preserves legal comments (/*! ... */)", () => {
-      const code =
-        "/*! Copyright 2024 */\nconst x = 1;\n/* regular comment */\nconst y = 2;";
-      const result = minify(code);
-      expect(result).toContain("/*! Copyright 2024 */");
-      expect(result).not.toContain("regular comment");
-    });
-
-    it("does not remove comments inside strings", () => {
-      const code = 'const x = "// not a comment";';
-      const result = minify(code);
-      expect(result).toContain("// not a comment");
-    });
-
-    it("does not remove comment-like patterns inside template literals", () => {
-      const code = "const x = `/* not a comment */`;";
-      const result = minify(code);
-      expect(result).toContain("/* not a comment */");
-    });
-  });
-
-  describe("whitespace collapse", () => {
-    it("collapses multiple spaces into one", () => {
-      const code = "const    x   =   1;";
-      const result = minify(code);
-      expect(result).toBe("const x = 1;");
-    });
-
-    it("collapses newlines into spaces", () => {
-      const code = "const x = 1;\n\n\nconst y = 2;";
-      const result = minify(code);
-      expect(result).toBe("const x = 1; const y = 2;");
-    });
-
-    it("collapses tabs and mixed whitespace", () => {
-      const code = "const\t\t  x\n  =\t1;";
-      const result = minify(code);
-      expect(result).toBe("const x = 1;");
-    });
-
-    it("preserves whitespace inside strings", () => {
-      const code = 'const x = "  hello   world  ";';
-      const result = minify(code);
-      expect(result).toContain("  hello   world  ");
-    });
-
-    it("trims leading and trailing whitespace", () => {
-      const code = "  const x = 1;  ";
-      const result = minify(code);
-      expect(result).toBe("const x = 1;");
-    });
-  });
-
-  describe("unnecessary semicolons", () => {
-    it("removes semicolons before closing braces", () => {
-      const code = "function f() { return 1; }";
-      const result = minify(code);
-      expect(result).toContain("return 1 }");
-    });
-
-    it("does not remove semicolons in other positions", () => {
-      const code = "const x = 1; const y = 2;";
-      const result = minify(code);
-      expect(result).toContain("const x = 1;");
-    });
-
-    it("does not remove semicolons inside strings", () => {
-      const code = 'const x = "a; }";';
-      const result = minify(code);
-      expect(result).toContain("a; }");
-    });
-  });
-
-  describe("variable mangling", () => {
-    it("renames local variables inside functions", () => {
-      const code = "function test() { var longName = 1; return longName; }";
-      const result = minify(code, { mangle: true });
-      expect(result).not.toContain("longName");
-      // The variable should have been renamed to a short name
-      expect(result).toContain("return");
-      expect(result).toContain("function");
-    });
-
-    it("renames let and const inside blocks", () => {
-      const code =
-        "function test() { let counter = 0; const value = 10; return counter + value; }";
-      const result = minify(code, { mangle: true });
-      expect(result).not.toContain("counter");
-      expect(result).not.toContain("value");
-    });
-
-    it("does not rename reserved words", () => {
-      const code =
-        "function test() { var result = console.log(true); return result; }";
-      const result = minify(code, { mangle: true });
-      expect(result).toContain("console");
-      expect(result).toContain("true");
-      expect(result).toContain("return");
-    });
-
-    it("does not rename top-level variables", () => {
-      const code = "const topLevel = 42;";
-      const result = minify(code, { mangle: true });
-      expect(result).toContain("topLevel");
-    });
-
-    it("generates sequential short names", () => {
-      const code =
-        "function test() { var alpha = 1; var beta = 2; var gamma = 3; return alpha + beta + gamma; }";
-      const result = minify(code, { mangle: true });
-      expect(result).not.toContain("alpha");
-      expect(result).not.toContain("beta");
-      expect(result).not.toContain("gamma");
-    });
-  });
-
-  describe("unnecessary parentheses removal", () => {
-    it("removes parens around simple return values", () => {
-      const code = "function f() { return (x); }";
-      const result = minify(code);
-      expect(result).toContain("return x");
-    });
-
-    it("removes parens in typeof expressions", () => {
-      const code = "typeof(x)";
-      const result = minify(code);
-      expect(result).toContain("typeof x");
-    });
-
-    it("removes double parentheses", () => {
-      const code = "const x = ((a + b));";
-      const result = minify(code);
-      expect(result).toContain("(a + b)");
-      expect(result).not.toContain("((a + b))");
-    });
-  });
-
-  describe("syntactic validity", () => {
-    it("produces syntactically valid code for a function", () => {
-      const code = `
-        // A function
-        function greet(name) {
-          /* Build greeting */
-          const greeting = "Hello, " + name;
-          return greeting;
-        }
-      `;
-      const result = minify(code);
-      // Should parse without throwing
-      expect(() => new Function(result)).not.toThrow();
-    });
-
-    it("produces syntactically valid code with mangling", () => {
-      const code = `
-        function add(x, y) {
-          var sum = x + y;
-          return sum;
-        }
-      `;
-      const result = minify(code, { mangle: true });
-      expect(() => new Function(result)).not.toThrow();
-    });
-
-    it("produces syntactically valid code for arrow functions", () => {
-      const code = `
-        const add = (a, b) => {
-          const result = a + b;
-          return result;
-        };
-      `;
-      const result = minify(code);
-      expect(() => new Function(result)).not.toThrow();
-    });
-
+  describe("basic functionality", () => {
     it("handles empty input", () => {
       const result = minify("");
       expect(result).toBe("");
     });
 
-    it("handles code with only comments", () => {
-      const code = "// just a comment\n/* another one */";
-      const result = minify(code);
+    it("handles whitespace-only input", () => {
+      const result = minify("   \n\t  ");
       expect(result).toBe("");
     });
 
-    it("handles code with escaped quotes in strings", () => {
-      const code = 'const x = "hello \\"world\\"";';
+    it("minifies a simple variable declaration", () => {
+      const result = minify("var x = 1;");
+      expect(result).toContain("var x=1");
+    });
+
+    it("removes comments", () => {
+      const code = "var x = 1; // a comment\n/* block comment */\nvar y = 2;";
       const result = minify(code);
-      expect(result).toContain('\\"world\\"');
+      expect(result).not.toContain("a comment");
+      expect(result).not.toContain("block comment");
+    });
+
+    it("collapses whitespace", () => {
+      const result = minify("var   x   =   1  ;");
+      expect(result).not.toContain("   ");
     });
   });
 
-  describe("options", () => {
-    it("respects removeComments: false", () => {
-      const code = "const x = 1; // comment";
-      const result = minify(code, { removeComments: false });
-      expect(result).toContain("// comment");
+  describe("dead code elimination", () => {
+    it("removes unreachable code after return", () => {
+      const result = minify("function f() { return 1; var x = 2; }");
+      expect(result).not.toContain("var x");
     });
 
-    it("respects collapseWhitespace: false", () => {
-      const code = "const    x = 1;";
-      const result = minify(code, { collapseWhitespace: false });
-      expect(result).toContain("const    x = 1;");
+    it("removes always-false branches", () => {
+      const result = minify("if (false) { console.log(1); }");
+      expect(result).toBe("");
     });
 
-    it("respects removeUnnecessarySemicolons: false", () => {
-      const code = "function f() { return 1; }";
-      const result = minify(code, { removeUnnecessarySemicolons: false });
-      expect(result).toContain("return 1; }");
+    it("can be disabled", () => {
+      const result = minify("function f() { return 1; var x = 2; }", {
+        deadCode: false,
+      });
+      expect(result).toContain("var");
+    });
+  });
+
+  describe("constant folding", () => {
+    it("folds 1 + 2 to 3", () => {
+      const result = minify("var x = 1 + 2;");
+      expect(result).toContain("3");
     });
 
-    it("applies all transformations together", () => {
+    it("folds string concatenation", () => {
+      const result = minify('var x = "a" + "b";');
+      expect(result).toContain('"ab"');
+    });
+
+    it("folds conditional with constant test", () => {
+      const result = minify("var x = true ? 1 : 2;");
+      expect(result).toContain("1");
+      expect(result).not.toContain("?");
+    });
+
+    it("can be disabled", () => {
+      const result = minify("var x = 1 + 2;", { constantFold: false });
+      expect(result).toContain("+");
+    });
+  });
+
+  describe("expression simplification", () => {
+    it("replaces true with !0", () => {
+      const result = minify("var x = true;", { constantFold: false });
+      expect(result).toContain("!0");
+    });
+
+    it("replaces false with !1", () => {
+      const result = minify("var x = false;", { constantFold: false });
+      expect(result).toContain("!1");
+    });
+
+    it("replaces undefined with void 0", () => {
+      const result = minify("var x = undefined;", { constantFold: false });
+      expect(result).toContain("void 0");
+    });
+
+    it("can be disabled", () => {
+      const result = minify("var x = undefined;", {
+        simplify: false,
+        constantFold: false,
+      });
+      // Without simplification, undefined remains
+      expect(result).toMatch(/\bundefined\b/);
+    });
+  });
+
+  describe("name mangling", () => {
+    it("renames local variables to short names", () => {
+      const result = minify(
+        "function test() { var longVariable = 1; return longVariable; }",
+      );
+      expect(result).not.toContain("longVariable");
+    });
+
+    it("does not rename top-level variables", () => {
+      const result = minify("var topLevel = 42;");
+      expect(result).toContain("topLevel");
+    });
+
+    it("preserves reserved names", () => {
+      const result = minify("function f() { var myVar = 1; return myVar; }", {
+        reserved: ["myVar"],
+      });
+      expect(result).toContain("myVar");
+    });
+
+    it("can be disabled", () => {
+      const result = minify(
+        "function test() { var longVariable = 1; return longVariable; }",
+        { mangle: false },
+      );
+      expect(result).toContain("longVariable");
+    });
+  });
+
+  describe("code compression", () => {
+    it("compresses arrow bodies", () => {
+      const result = minify("var f = () => { return 1; };");
+      expect(result).toContain("=>1");
+      expect(result).not.toContain("return");
+    });
+
+    it("can be disabled", () => {
+      const result = minify("var f = () => { return 1; };", {
+        compress: false,
+      });
+      expect(result).toContain("return");
+    });
+  });
+
+  describe("full pipeline integration", () => {
+    it("produces valid output for a complex function", () => {
       const code = `
-        // Calculate sum
-        function sum(a, b) {
-          /* add them */
-          var result = a + b;
-          return (result);
+        function greet(name) {
+          // Build greeting
+          var prefix = "Hello";
+          var greeting = prefix + ", " + name;
+          return greeting;
         }
       `;
-      const result = minify(code, { mangle: true });
-      expect(result).not.toContain("// Calculate");
-      expect(result).not.toContain("add them");
-      expect(result).not.toContain("  ");
-      expect(result).toContain("return");
+      const result = minify(code);
+      // Should be significantly shorter
+      expect(result.length).toBeLessThan(code.length);
+      expect(result).toContain("function");
+    });
+
+    it("handles multiple passes working together", () => {
+      const code = `
+        function calculate(x) {
+          var base = 1 + 2;
+          if (true) {
+            var result = base * x;
+            return result;
+          } else {
+            return 0;
+          }
+        }
+      `;
+      const result = minify(code);
+      // DCE removes else branch
+      // Constant folding: 1 + 2 -> 3
+      // Mangling: renames locals
+      expect(result).toContain("3");
+      expect(result).not.toContain("else");
+    });
+
+    it("handles arrow functions with all optimizations", () => {
+      const code = `
+        var add = (first, second) => {
+          var sum = first + second;
+          return sum;
+        };
+      `;
+      const result = minify(code);
+      expect(result.length).toBeLessThan(code.length);
+    });
+
+    it("handles classes", () => {
+      const code = `
+        class MyClass {
+          constructor(value) {
+            this.value = value;
+          }
+          getValue() {
+            return this.value;
+          }
+        }
+      `;
+      const result = minify(code);
+      expect(result).toContain("class");
+      expect(result).toContain("constructor");
+    });
+
+    it("handles exports", () => {
+      const code = `
+        export function helper(x) {
+          var doubled = x * 2;
+          return doubled;
+        }
+      `;
+      const result = minify(code);
+      expect(result).toContain("export");
+      expect(result).toContain("helper"); // exported name preserved
+    });
+
+    it("handles imports", () => {
+      const code = 'import { foo } from "bar";';
+      const result = minify(code);
+      expect(result).toContain("import");
+      expect(result).toContain("foo");
+    });
+
+    it("produces syntactically valid code", () => {
+      const code = `
+        function calculate(x, y) {
+          var sum = x + y;
+          var product = x * y;
+          if (sum > product) {
+            return sum;
+          } else {
+            return product;
+          }
+        }
+      `;
+      const result = minify(code);
+      // Should parse without error
+      expect(() => new Function(result)).not.toThrow();
+    });
+
+    it("handles property mangling", () => {
+      const code = `
+        function f() {
+          var obj = {};
+          obj._internal = 1;
+          obj._secret = 2;
+          return obj._internal + obj._secret;
+        }
+      `;
+      const result = minify(code, { mangleProperties: true });
+      expect(result).not.toContain("_internal");
+      expect(result).not.toContain("_secret");
+    });
+  });
+
+  describe("options defaults", () => {
+    it("enables all passes except mangleProperties by default", () => {
+      const code = `
+        function f() {
+          var x = 1 + 2;
+          var longName = true;
+          if (longName) {
+            return x;
+          }
+        }
+      `;
+      const result = minify(code);
+      // constant folding: 1 + 2 -> 3
+      expect(result).toContain("3");
+      // mangling: longName renamed
+      expect(result).not.toContain("longName");
     });
   });
 });
