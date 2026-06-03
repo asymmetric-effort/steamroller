@@ -45,6 +45,7 @@ import type * as AST from "./ast/types.js";
 import { FileEmitter } from "./plugins/plugin-context-emit.js";
 import { maybeCreateTypescriptPlugin } from "./plugins/typescript-plugin.js";
 import { maybeCreateCSSPlugin } from "./plugins/css-plugin.js";
+import { createBuiltinLoaders } from "./loaders/index.js";
 
 /**
  * Collect all references from a scope tree using iterative traversal.
@@ -144,9 +145,31 @@ export const rollup = async (
 
   // Step 1c: Auto-register CSS plugin if needed
   const cssPlugin = maybeCreateCSSPlugin(inputFiles, [...pluginsWithTs]);
-  const allPlugins: ReadonlyArray<Plugin> = cssPlugin
+  const pluginsWithCss: ReadonlyArray<Plugin> = cssPlugin
     ? [cssPlugin, ...pluginsWithTs]
     : pluginsWithTs;
+
+  // Step 1d: Auto-register built-in loaders (JSON, asset, text, WASM)
+  // Built-in loaders are appended after user plugins so user plugins take priority
+  const builtinLoaderNames = [
+    "steamroller:json",
+    "steamroller:asset",
+    "steamroller:text",
+    "steamroller:wasm",
+  ];
+  const hasUserOverride = (name: string): boolean =>
+    pluginsWithCss.some(
+      (p) =>
+        p.name === name || p.name.toLowerCase().includes(name.split(":")[1]),
+    );
+  const builtinLoaders = createBuiltinLoaders();
+  const filteredLoaders = builtinLoaders.filter(
+    (loader) => !hasUserOverride(loader.name),
+  );
+  const allPlugins: ReadonlyArray<Plugin> = [
+    ...pluginsWithCss,
+    ...filteredLoaders,
+  ];
 
   // Step 2: Create plugin driver
   const warnings: Array<{ code: string; message: string }> = [];
