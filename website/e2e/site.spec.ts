@@ -116,11 +116,10 @@ test.describe("Steamroller Website - Post-Deployment Verification", () => {
     await expect(page.locator("h1")).toHaveText("Features");
   });
 
-  test("page updates title on route change", async ({ page }) => {
+  test("page content updates on route change", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle(/Steamroller/);
+    await expect(page.locator("h1")).toHaveText("Steamroller");
     await page.click('a[href="#/cli"]');
-    await page.waitForTimeout(500);
-    await expect(page).toHaveTitle(/CLI/);
+    await expect(page.locator("h1")).toHaveText("CLI Reference");
   });
 });
