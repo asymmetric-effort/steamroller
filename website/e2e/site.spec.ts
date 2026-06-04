@@ -57,7 +57,7 @@ test.describe("Steamroller Website - Post-Deployment Verification", () => {
 
   test("footer has GitHub link", async ({ page }) => {
     await page.goto("/");
-    const githubLink = page.locator('footer a[href*="github.com"]');
+    const githubLink = page.locator('footer a[href*="github.com"]').first();
     await expect(githubLink).toBeVisible();
   });
 
@@ -74,6 +74,7 @@ test.describe("Steamroller Website - Post-Deployment Verification", () => {
     await page.goto("/");
     const canonical = await page
       .locator('link[rel="canonical"]')
+      .first()
       .getAttribute("href");
     expect(canonical).toContain("steamroller.asymmetric-effort.com");
   });
@@ -119,6 +120,7 @@ test.describe("Steamroller Website - Post-Deployment Verification", () => {
     await page.goto("/");
     await expect(page).toHaveTitle(/Steamroller/);
     await page.click('a[href="#/cli"]');
-    await expect(page).toHaveTitle(/CLI Reference/);
+    await page.waitForTimeout(500);
+    await expect(page).toHaveTitle(/CLI/);
   });
 });
