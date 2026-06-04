@@ -1,6 +1,14 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Steamroller Website - Post-Deployment Verification", () => {
+  test("no JavaScript console errors on load", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    expect(errors).toEqual([]);
+  });
+
   test("home page loads with correct title", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/Steamroller/);

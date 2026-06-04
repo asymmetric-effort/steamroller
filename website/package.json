@@ -10,9 +10,10 @@
     "test:e2e": "npx playwright test"
   },
   "dependencies": {
-    "@asymmetric-effort/specifyjs": "^0.2.98"
+    "@asymmetric-effort/specifyjs": "^0.2.151"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.14"
   }
