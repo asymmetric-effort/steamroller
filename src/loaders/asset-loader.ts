@@ -14,6 +14,7 @@ import type {
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
+import { optimizeSvg } from "../optimize/svg-optimizer.js";
 
 /** Default file extensions handled by the asset loader. */
 export const DEFAULT_ASSET_EXTENSIONS: ReadonlyArray<string> = [
@@ -67,10 +68,11 @@ export const parseAssetId = (
   readonly path: string;
   readonly inline: boolean;
   readonly raw: boolean;
+  readonly optimized: boolean;
 } => {
   const queryIndex = id.indexOf("?");
   if (queryIndex === -1) {
-    return { path: id, inline: false, raw: false };
+    return { path: id, inline: false, raw: false, optimized: false };
   }
   const cleanPath = id.slice(0, queryIndex);
   const query = id.slice(queryIndex + 1);
@@ -78,6 +80,7 @@ export const parseAssetId = (
     path: cleanPath,
     inline: query === "inline" || query.includes("inline"),
     raw: query === "raw" || query.includes("raw"),
+    optimized: query === "optimized" || query.includes("optimized"),
   };
 };
 
@@ -174,6 +177,20 @@ export const assetLoader = (options?: AssetLoaderOptions): Plugin => {
       if (parsed.raw) {
         const text = content.toString("utf-8");
         const escaped = text
+          .replace(/\\/g, "\\\\")
+          .replace(/`/g, "\\`")
+          .replace(/\$/g, "\\$");
+        return {
+          code: `export default \`${escaped}\`;\n`,
+          map: { mappings: "" },
+        };
+      }
+
+      // ?optimized: optimize SVG content before returning
+      if (parsed.optimized && filePath.endsWith(".svg")) {
+        const text = content.toString("utf-8");
+        const optimized = optimizeSvg(text);
+        const escaped = optimized
           .replace(/\\/g, "\\\\")
           .replace(/`/g, "\\`")
           .replace(/\$/g, "\\$");

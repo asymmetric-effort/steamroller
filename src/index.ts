@@ -45,3 +45,9 @@ export type {
   DuplicateModule,
   TreeShakeStats,
 } from "./analyze/types.js";
+export { optimizeSvg } from "./optimize/svg-optimizer.js";
+export type { SvgOptimizeOptions } from "./optimize/svg-optimizer.js";
+export { optimizeHtml } from "./optimize/html-optimizer.js";
+export type { HtmlOptimizeOptions } from "./optimize/html-optimizer.js";
+export { optimizeXml } from "./optimize/xml-optimizer.js";
+export type { XmlOptimizeOptions } from "./optimize/xml-optimizer.js";
