@@ -53,6 +53,11 @@ import { verifyBuild } from "../validation/verify-imports.js";
 import { minify } from "../minify/minifier.js";
 import { analyzeBuild } from "../analyze/analyzer.js";
 import { formatText, formatJson, formatHtml } from "../analyze/reporter.js";
+import {
+  generateImportMap,
+  serializeImportMap,
+} from "../importmap/generate-importmap.js";
+import type { ImportMapOptions } from "../importmap/types.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -1601,6 +1606,42 @@ const runBundleValidation = (result: RollupOutput, state: BuildState): void => {
 };
 
 /**
+ * Emits an importmap.json asset into the output when the importMap option is
+ * enabled. Mutates the output array by appending an OutputAsset.
+ *
+ * @param result - The generated RollupOutput (mutated in place)
+ * @param options - Output options that may contain importMap config
+ */
+const emitImportMapAsset = (
+  result: RollupOutput,
+  options: OutputOptions,
+): void => {
+  if (options.importMap === undefined || options.importMap === false) {
+    return;
+  }
+
+  const importMapOptions: ImportMapOptions =
+    options.importMap === true ? {} : (options.importMap as ImportMapOptions);
+
+  const importMap = generateImportMap(result, importMapOptions);
+  const source = serializeImportMap(importMap);
+
+  const asset: OutputAsset = {
+    type: "asset",
+    fileName: "importmap.json",
+    name: "importmap.json",
+    names: ["importmap.json"],
+    needsCodeReference: false,
+    originalFileName: null,
+    originalFileNames: [],
+    source,
+  };
+
+  // Append the asset to the output
+  (result.output as unknown as Array<OutputChunk | OutputAsset>).push(asset);
+};
+
+/**
  * Runs bundle analysis on the output and prints the report to stdout.
  *
  * @param result - The generated RollupOutput
@@ -1665,6 +1706,7 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
         );
       }
       const result = await generateOutput(state, outputOptions, false);
+      emitImportMapAsset(result, outputOptions);
       if (outputOptions.validate === true) {
         runBundleValidation(result, state);
       }
@@ -1687,6 +1729,7 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
         );
       }
       const output = await generateOutput(state, outputOptions, true);
+      emitImportMapAsset(output, outputOptions);
       if (outputOptions.validate === true) {
         runBundleValidation(output, state);
       }

@@ -29,6 +29,7 @@ export interface ParsedCommand {
   readonly environment: string;
   readonly validate: boolean;
   readonly analyze: boolean | "json" | "html" | "text";
+  readonly importMap: boolean;
 }
 
 /** Short flag aliases mapping to their full names. */
@@ -57,6 +58,7 @@ const BOOLEAN_FLAGS: ReadonlyArray<string> = [
   "no-stdin",
   "silent",
   "validate",
+  "import-map",
 ];
 
 /** Flags treated as strings. */
@@ -143,6 +145,7 @@ export const parseCli = (args: ReadonlyArray<string>): ParseCliResult => {
     environment: (parsed["environment"] as string) ?? "",
     validate: parsed["validate"] as boolean,
     analyze,
+    importMap: parsed["import-map"] === true,
   };
 
   const inputOptions: Partial<InputOptions> = {};

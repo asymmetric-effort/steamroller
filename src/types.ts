@@ -477,6 +477,13 @@ export interface OutputOptions {
   readonly validate?: boolean;
   readonly virtualDirname?: string;
   readonly analyze?: boolean | "json" | "html" | "text";
+  readonly importMap?:
+    | boolean
+    | {
+        readonly cdn?: "esm.sh" | "unpkg" | "jsdelivr" | "skypack";
+        readonly externals?: Readonly<Record<string, string>>;
+        readonly baseUrl?: string;
+      };
 }
 
 /** Preset names for generated code style. */

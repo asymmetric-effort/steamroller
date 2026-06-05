@@ -34,6 +34,7 @@ Options:
   --globals <pairs>       Global variable names (e.g., jquery:jQuery)
   --external <ids>        External module IDs
   --analyze [format]      Analyze bundle (text, json, html)
+  --import-map            Generate importmap.json alongside output
   --silent                Suppress output
   --version               Show version
   --help                  Show help
@@ -117,10 +118,13 @@ export const run = async (): Promise<void> => {
     const build = await rollup(config);
     const rawOutput = config.output;
     const baseOpts = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
-    const outputOpts =
-      parsed.command.analyze !== false
-        ? { ...baseOpts, analyze: parsed.command.analyze }
-        : baseOpts;
+    let outputOpts = baseOpts;
+    if (parsed.command.analyze !== false) {
+      outputOpts = { ...outputOpts, analyze: parsed.command.analyze };
+    }
+    if (parsed.command.importMap) {
+      outputOpts = { ...outputOpts, importMap: true };
+    }
     const output = await build.write(outputOpts ?? {});
     const duration = Date.now() - start;
     const fileName = output.output[0]?.fileName ?? "bundle";
