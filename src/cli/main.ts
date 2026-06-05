@@ -10,6 +10,7 @@ import { parseCli } from "./parse-cli.js";
 import { resolveConfigPath, loadConfigFile } from "./config-loader.js";
 import { rollup } from "../rollup.js";
 import { watch } from "../watch-entry.js";
+import { createDevServer } from "../server/dev-server.js";
 import { VERSION } from "../version.js";
 import type { RollupOptions } from "../types.js";
 
@@ -32,9 +33,15 @@ Options:
   --name <name>           Name for IIFE/UMD
   --globals <pairs>       Global variable names (e.g., jquery:jQuery)
   --external <ids>        External module IDs
+  --analyze [format]      Analyze bundle (text, json, html)
   --silent                Suppress output
   --version               Show version
   --help                  Show help
+
+Commands:
+  serve                   Start dev server with HMR
+    --port <port>         Dev server port (default: 3000)
+    --host <host>         Dev server host (default: localhost)
 `;
   process.stdout.write(helpText);
 };
@@ -61,6 +68,12 @@ export const run = async (): Promise<void> => {
   if (args.includes("--version") || args.includes("-v")) {
     printVersion();
     process.exit(0);
+  }
+
+  // Handle serve command
+  if (args[0] === "serve") {
+    await runServe(args.slice(1));
+    return;
   }
 
   const parsed = parseCli(args);
@@ -103,13 +116,52 @@ export const run = async (): Promise<void> => {
     const start = Date.now();
     const build = await rollup(config);
     const rawOutput = config.output;
-    const outputOpts = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
+    const baseOpts = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
+    const outputOpts =
+      parsed.command.analyze !== false
+        ? { ...baseOpts, analyze: parsed.command.analyze }
+        : baseOpts;
     const output = await build.write(outputOpts ?? {});
     const duration = Date.now() - start;
     const fileName = output.output[0]?.fileName ?? "bundle";
     process.stdout.write(`created ${fileName} in ${duration}ms\n`);
     await build.close();
   }
+};
+
+/**
+ * Run the dev server with HMR.
+ *
+ * @param args - Arguments after the "serve" command
+ */
+const runServe = async (args: ReadonlyArray<string>): Promise<void> => {
+  let port = 3000;
+  let host = "localhost";
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--port" && i + 1 < args.length) {
+      port = parseInt(args[i + 1], 10);
+      i++;
+    } else if (args[i] === "--host" && i + 1 < args.length) {
+      host = args[i + 1];
+      i++;
+    }
+  }
+
+  const server = createDevServer({ port, host });
+
+  server.on("listening", () => {
+    process.stdout.write(
+      `steamroller dev server running at http://${host}:${port}\n`,
+    );
+  });
+
+  server.on("error", (err: unknown) => {
+    const msg = err instanceof Error ? (err as Error).message : String(err);
+    process.stderr.write(`Server error: ${msg}\n`);
+  });
+
+  await server.listen();
 };
 
 /**
