@@ -56,7 +56,7 @@ import { rollup, watch, defineConfig } from "rollup";
 import { parseAst } from "rollup/parseAst";
 
 // After
-import { rollup, watch, defineConfig } from "steamroller";
+import { rollup, watch, defineConfig } from "@asymmetric-effort/steamroller";
 import { parseAst } from "steamroller/parseAst";
 ```
 
@@ -85,7 +85,7 @@ The config file format is identical. No changes to the config content are needed
 
 ```javascript
 // steamroller.config.js (same format as rollup.config.js)
-import { defineConfig } from "steamroller";
+import { defineConfig } from "@asymmetric-effort/steamroller";
 
 export default defineConfig({
   input: "src/index.ts",
@@ -148,7 +148,7 @@ Steamroller exposes the same JavaScript API as Rollup. The following sections do
 Creates a bundle from input options. This is the core API and is fully compatible with Rollup's `rollup()` function.
 
 ```typescript
-import { rollup } from "steamroller";
+import { rollup } from "@asymmetric-effort/steamroller";
 
 const bundle = await rollup({
   input: "src/main.js",
@@ -207,7 +207,7 @@ await bundle.close();
 Creates a file watcher that triggers rebuilds on changes. Fully compatible with Rollup's `watch()` API.
 
 ```typescript
-import { watch } from "steamroller";
+import { watch } from "@asymmetric-effort/steamroller";
 
 const watcher = watch({
   input: "src/main.js",
@@ -236,7 +236,7 @@ watcher.close();
 Parse JavaScript source into an ESTree-compatible AST. Available as both synchronous and asynchronous variants.
 
 ```typescript
-import { parseAst, parseAstAsync } from "steamroller";
+import { parseAst, parseAstAsync } from "@asymmetric-effort/steamroller";
 
 // Synchronous
 const ast = parseAst("const x = 1;");
@@ -264,7 +264,7 @@ const ast = await parseAstAsync("const x = 1;", {
 A type-helper identity function for config files. Returns its input unchanged but provides editor autocompletion and type checking.
 
 ```typescript
-import { defineConfig } from "steamroller";
+import { defineConfig } from "@asymmetric-effort/steamroller";
 
 // Single config
 export default defineConfig({
@@ -292,7 +292,7 @@ export default defineConfig((cliArgs) => ({
 A string constant containing the current Steamroller version.
 
 ```typescript
-import { VERSION } from "steamroller";
+import { VERSION } from "@asymmetric-effort/steamroller";
 console.log(VERSION);
 ```
 
@@ -426,7 +426,7 @@ Steamroller provides a `build()` function that accepts esbuild-style options and
 import { build } from "esbuild";
 
 // After (Steamroller)
-import { build } from "steamroller";
+import { build } from "@asymmetric-effort/steamroller";
 
 await build({
   entryPoints: ["src/index.ts"],
@@ -472,7 +472,7 @@ Internally, `build()` translates esbuild-style options into `rollup()` + `genera
 Steamroller includes a built-in minifier, removing the need for `@rollup/plugin-terser` or similar plugins for basic minification.
 
 ```typescript
-import { minify } from "steamroller";
+import { minify } from "@asymmetric-effort/steamroller";
 
 const result = minify(code, {
   removeComments: true, // Remove comments (preserves legal comments)
@@ -549,7 +549,7 @@ If you are migrating from esbuild, the `build()` API provides the smoothest path
 import { build } from "esbuild";
 
 // After
-import { build } from "steamroller";
+import { build } from "@asymmetric-effort/steamroller";
 ```
 
 ### Example: SpecifyJS-style Build
@@ -557,7 +557,7 @@ import { build } from "steamroller";
 The following pattern (multiple ESM entries with code splitting, plus per-entry CJS builds) works with both esbuild and Steamroller:
 
 ```typescript
-import { build } from "steamroller";
+import { build } from "@asymmetric-effort/steamroller";
 
 const entries = [
   { input: "src/index.ts", name: "mylib" },
@@ -667,8 +667,8 @@ Use this checklist to track your migration progress:
 
 ### Code Changes
 
-- [ ] Update all `import { ... } from 'rollup'` to `import { ... } from 'steamroller'`
-- [ ] Update all `import { ... } from 'rollup/parseAst'` to `import { ... } from 'steamroller/parseAst'`
+- [ ] Update all `import { ... } from 'rollup'` to `import { ... } from '@asymmetric-effort/steamroller'`
+- [ ] Update all `import { ... } from 'rollup/parseAst'` to `import { ... } from '@asymmetric-effort/steamroller/parseAst'`
 - [ ] Rename config file (optional): `rollup.config.*` to `steamroller.config.*`
 - [ ] Update `defineConfig` import in config file (if renaming)
 

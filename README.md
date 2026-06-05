@@ -38,7 +38,7 @@ See [PLAN.md](PLAN.md) for the exhaustive implementation plan and [GapAnalysis.m
 ## Installation
 
 ```bash
-npm install steamroller
+npm install @asymmetric-effort/steamroller
 ```
 
 ## Usage
@@ -46,7 +46,7 @@ npm install steamroller
 ### JavaScript API
 
 ```typescript
-import { rollup } from "steamroller";
+import { rollup } from "@asymmetric-effort/steamroller";
 
 const bundle = await rollup({
   input: "src/main.js",
@@ -93,8 +93,8 @@ Steamroller is compatible with the official `@rollup/plugin-*` ecosystem. Plugin
 
 ### Migration from Rollup
 
-1. `npm uninstall rollup && npm install steamroller`
-2. Replace `import { rollup } from 'rollup'` with `import { rollup } from 'steamroller'`
+1. `npm uninstall rollup && npm install @asymmetric-effort/steamroller`
+2. Replace `import { rollup } from 'rollup'` with `import { rollup } from '@asymmetric-effort/steamroller'`
 3. Rename config file (optional -- `rollup.config.*` is still supported)
 4. Replace `npx rollup` with `npx steamroller` in scripts
 

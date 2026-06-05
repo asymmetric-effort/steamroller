@@ -11,7 +11,7 @@ helpers, and version information.
 Creates a bundle from the given input options.
 
 ```typescript
-import { rollup } from "steamroller";
+import { rollup } from "@asymmetric-effort/steamroller";
 
 const bundle = await rollup(inputOptions);
 const { output } = await bundle.write(outputOptions);
@@ -35,7 +35,7 @@ await bundle.close();
 Watches input files and rebuilds on changes.
 
 ```typescript
-import { watch } from "steamroller";
+import { watch } from "@asymmetric-effort/steamroller";
 
 const watcher = watch(watchOptions);
 
@@ -63,7 +63,7 @@ watcher.close();
 A helper for defining configuration with type inference. Returns the input unchanged.
 
 ```typescript
-import { defineConfig } from "steamroller";
+import { defineConfig } from "@asymmetric-effort/steamroller";
 
 export default defineConfig({
   input: "src/index.ts",
@@ -91,7 +91,7 @@ export default defineConfig({
 A string constant containing the current Steamroller version.
 
 ```typescript
-import { VERSION } from "steamroller";
+import { VERSION } from "@asymmetric-effort/steamroller";
 
 console.log(VERSION); // e.g., "0.1.0"
 ```

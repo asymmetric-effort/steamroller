@@ -32,7 +32,7 @@ Rename your config file (optional) and update imports:
 import { defineConfig } from "rollup";
 
 // After (steamroller.config.ts)
-import { defineConfig } from "steamroller";
+import { defineConfig } from "@asymmetric-effort/steamroller";
 ```
 
 Steamroller reads both `steamroller.config.*` and `rollup.config.*` files, so renaming is optional.
@@ -59,7 +59,7 @@ Update import paths in any code that uses the programmatic API:
 import { rollup, watch } from "rollup";
 
 // After
-import { rollup, watch } from "steamroller";
+import { rollup, watch } from "@asymmetric-effort/steamroller";
 ```
 
 ## Plugin Compatibility

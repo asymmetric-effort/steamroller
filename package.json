@@ -1,5 +1,5 @@
 {
-  "name": "steamroller",
+  "name": "@asymmetric-effort/steamroller",
   "version": "0.2.1",
   "description": "A zero-dependency JavaScript bundler",
   "license": "MIT",

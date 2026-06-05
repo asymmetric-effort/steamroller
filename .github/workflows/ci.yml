@@ -311,9 +311,9 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/v}"
           echo "Waiting for npm registry to reflect v$TAG..."
           for i in $(seq 1 12); do
-            LATEST=$(npm view steamroller version 2>/dev/null || echo "")
+            LATEST=$(npm view @asymmetric-effort/steamroller version 2>/dev/null || echo "")
             if [ "$LATEST" = "$TAG" ]; then
-              echo "Verified: steamroller@$TAG is live on npm"
+              echo "Verified: @asymmetric-effort/steamroller@$TAG is live on npm"
               exit 0
             fi
             echo "Attempt $i/12: latest=$LATEST, expected=$TAG"

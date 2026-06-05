@@ -9,7 +9,7 @@ property and one or more hook functions.
 ## Plugin Structure
 
 ```typescript
-import type { Plugin } from "steamroller";
+import type { Plugin } from "@asymmetric-effort/steamroller";
 
 export const myPlugin = (): Plugin => ({
   name: "my-plugin",
