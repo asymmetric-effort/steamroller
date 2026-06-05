@@ -270,10 +270,19 @@ jobs:
         run: npx vitest run tests/compat/differential.test.ts --reporter=verbose
 
   # ── Stage 10: Publish to npm (tags only, after all validation) ───
+  # Requires test, dist-validation, bundle-size, and benchmarks to pass.
+  # PDV (verify-deployment) runs on main pushes, not tag pushes — tags
+  # should only be created after the main pipeline is fully green.
   publish:
     name: Publish to npm
-    needs: [test, dist-validation, bundle-size]
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, dist-validation, bundle-size, benchmark]
+    if: |
+      always() &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.test.result == 'success' &&
+      needs.dist-validation.result == 'success' &&
+      needs.bundle-size.result == 'success' &&
+      !contains(needs.benchmark.result, 'failure')
     runs-on: ubuntu-latest
     environment: npm
     permissions:
