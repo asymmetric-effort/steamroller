@@ -29,7 +29,7 @@ describe("fs/node-fs", () => {
         "utf-8",
       );
 
-      expect(content).toContain('"name": "steamroller"');
+      expect(content).toContain('"name": "@asymmetric-effort/steamroller"');
     });
 
     it("should reject for a non-existent file", async () => {
