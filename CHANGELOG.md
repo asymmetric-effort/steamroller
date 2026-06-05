@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-05
+
+### Changed
+
+- Rename package to `@asymmetric-effort/steamroller` (scoped under org)
+- Consolidate 6 workflow files into single CI/CD pipeline
+- Add Playwright-based post-deployment verification (replaces curl check)
+- Add dist validation, bundle size budget, and version verification stages
+- OIDC npm provenance for publishing (no stored tokens)
+
+### Fixed
+
+- Website: update @asymmetric-effort/specifyjs 0.2.98 → 0.2.151 (fixes Invalid hook call)
+- PDV: add "no JavaScript console errors" test to catch runtime crashes
+- PDV: fix locator strictness and route change assertions
+
 ## [0.2.1] - 2026-06-03
 
 ### Fixed
