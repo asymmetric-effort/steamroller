@@ -37,3 +37,11 @@ export { encodeVlq, decodeVlq } from "./sourcemap/vlq.js";
 export { MagicString } from "./sourcemap/magic-string.js";
 export { minify } from "./minify/minifier.js";
 export type { MinifyOptions } from "./minify/minifier.js";
+export { analyzeBuild } from "./analyze/analyzer.js";
+export type {
+  AnalysisResult,
+  ChunkAnalysis,
+  ModuleAnalysis,
+  DuplicateModule,
+  TreeShakeStats,
+} from "./analyze/types.js";

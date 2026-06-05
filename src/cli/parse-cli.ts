@@ -28,6 +28,7 @@ export interface ParsedCommand {
   readonly stdin: boolean;
   readonly environment: string;
   readonly validate: boolean;
+  readonly analyze: boolean | "json" | "html" | "text";
 }
 
 /** Short flag aliases mapping to their full names. */
@@ -73,6 +74,7 @@ const STRING_FLAGS: ReadonlyArray<string> = [
   "intro",
   "outro",
   "environment",
+  "analyze",
 ];
 
 /** Flags that accumulate into arrays. */
@@ -118,6 +120,16 @@ export const parseCli = (args: ReadonlyArray<string>): ParseCliResult => {
         ? configValue
         : false;
 
+  const analyzeValue = parsed["analyze"];
+  const analyze: boolean | "json" | "html" | "text" =
+    analyzeValue === "json" ||
+    analyzeValue === "html" ||
+    analyzeValue === "text"
+      ? analyzeValue
+      : analyzeValue === true || analyzeValue === ""
+        ? true
+        : false;
+
   const command: ParsedCommand = {
     configFile,
     watch: parsed["watch"] as boolean,
@@ -130,6 +142,7 @@ export const parseCli = (args: ReadonlyArray<string>): ParseCliResult => {
     stdin: stdinEnabled,
     environment: (parsed["environment"] as string) ?? "",
     validate: parsed["validate"] as boolean,
+    analyze,
   };
 
   const inputOptions: Partial<InputOptions> = {};

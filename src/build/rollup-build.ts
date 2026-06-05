@@ -51,6 +51,8 @@ import { downlevelCode } from "../transforms/downlevel.js";
 import { validateBundle } from "../validation/bundle-validator.js";
 import { verifyBuild } from "../validation/verify-imports.js";
 import { minify } from "../minify/minifier.js";
+import { analyzeBuild } from "../analyze/analyzer.js";
+import { formatText, formatJson, formatHtml } from "../analyze/reporter.js";
 
 /**
  * Immutable state describing the result of a build phase.
@@ -1599,6 +1601,29 @@ const runBundleValidation = (result: RollupOutput, state: BuildState): void => {
 };
 
 /**
+ * Runs bundle analysis on the output and prints the report to stdout.
+ *
+ * @param result - The generated RollupOutput
+ * @param mode - The analysis output mode
+ */
+const runAnalysis = (
+  result: RollupOutput,
+  mode: boolean | "json" | "html" | "text",
+): void => {
+  const analysis = analyzeBuild(
+    result.output as ReadonlyArray<OutputChunk | OutputAsset>,
+  );
+  if (mode === "json") {
+    process.stdout.write(formatJson(analysis) + "\n");
+  } else if (mode === "html") {
+    process.stdout.write(formatHtml(analysis) + "\n");
+  } else {
+    // true or "text"
+    process.stdout.write(formatText(analysis) + "\n");
+  }
+};
+
+/**
  * Creates a RollupBuild object from build state.
  * The returned object exposes the Rollup-compatible build API:
  * - generate() to produce output bundles in memory
@@ -1643,6 +1668,12 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
       if (outputOptions.validate === true) {
         runBundleValidation(result, state);
       }
+      if (
+        outputOptions.analyze !== undefined &&
+        outputOptions.analyze !== false
+      ) {
+        runAnalysis(result, outputOptions.analyze);
+      }
       return result;
     },
 
@@ -1658,6 +1689,12 @@ export const createRollupBuild = (state: BuildState): RollupBuild => {
       const output = await generateOutput(state, outputOptions, true);
       if (outputOptions.validate === true) {
         runBundleValidation(output, state);
+      }
+      if (
+        outputOptions.analyze !== undefined &&
+        outputOptions.analyze !== false
+      ) {
+        runAnalysis(output, outputOptions.analyze);
       }
       await writeOutput(output, outputOptions, state);
       return output;

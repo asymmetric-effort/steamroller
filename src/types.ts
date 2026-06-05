@@ -476,6 +476,7 @@ export interface OutputOptions {
   readonly target?: string;
   readonly validate?: boolean;
   readonly virtualDirname?: string;
+  readonly analyze?: boolean | "json" | "html" | "text";
 }
 
 /** Preset names for generated code style. */
