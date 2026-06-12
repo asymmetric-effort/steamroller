@@ -192,8 +192,10 @@ jobs:
         run: cd website && npm ci
       - name: Build website
         run: cd website && npm run build
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v5
       - name: Upload pages artifact
-        uses: asymmetric-effort/actions/actions/upload-pages-artifact@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: website/dist
 
