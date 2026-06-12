@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -67,7 +67,7 @@ jobs:
         node-version: [20, 22]
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -97,7 +97,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -182,7 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -250,7 +250,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -281,7 +281,7 @@ jobs:
       id-token: write
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
