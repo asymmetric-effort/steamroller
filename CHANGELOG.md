@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-06-12
+
+### Changed
+
+- Migrate CI/CD to asymmetric-effort/actions for reduced supply chain surface
+- Replace actions/checkout, actions/setup-node, actions/deploy-pages,
+  actions/upload-pages-artifact, actions/configure-pages, github/codeql-action/\*
+  with org-owned equivalents pinned to SHA
+- Add asymmetric-effort/actions/actions/setup-bun for bun runtime in CI
+- Replace manual npm publish steps with asymmetric-effort/actions/actions/npm-publish
+  (OIDC provenance, validation, single-step)
+- Add bun.lockb for bun package management
+- Supply chain: 4 third-party orgs → 1 (asymmetric-effort/actions) + actions/upload-artifact
+
 ## [0.2.2] - 2026-06-05
 
 ### Changed

@@ -28,14 +28,13 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
         with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
 
   # ── Stage 2: Build ────────────────────────────────────────────────
   build:
@@ -43,13 +42,12 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
         with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run build
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run build
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -68,19 +66,21 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node-version: [20, 22]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: "npm"
-      - run: npm ci
+      - run: bun install --frozen-lockfile
       - name: Download build artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: dist
           path: dist/
       - name: Run tests with coverage
-        run: npm test
+        run: bun run test
       - name: Upload coverage
         if: always() && matrix.os == 'ubuntu-latest' && matrix.node-version == 22
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -96,19 +96,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
         with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
+          bun-version: latest
+      - run: bun install --frozen-lockfile
       - name: Download build artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: dist
           path: dist/
       - name: Run benchmarks
-        run: npx vitest bench benchmarks/ --reporter=verbose
+        run: bunx vitest bench benchmarks/ --reporter=verbose
 
   # ── Stage 4: Dist Validation ─────────────────────────────────────
   dist-validation:
@@ -116,11 +115,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-          cache: "npm"
       - name: Download build artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -152,7 +150,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
       - name: Download build artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -160,17 +158,12 @@ jobs:
           path: dist/
       - name: Check bundle size
         run: |
-          # Total dist size
           TOTAL=$(du -sb dist/ | cut -f1)
           echo "Total dist size: $((TOTAL / 1024)) KB"
-
-          # Main entry gzipped
           gzip -k dist/index.js
           GZIP_SIZE=$(wc -c < dist/index.js.gz)
           echo "index.js gzipped: $((GZIP_SIZE / 1024)) KB ($GZIP_SIZE bytes)"
           rm dist/index.js.gz
-
-          # Budget: total dist under 5MB, main entry gzipped under 512KB
           if [ "$TOTAL" -gt 5242880 ]; then
             echo "ERROR: Total dist size $((TOTAL / 1024)) KB exceeds 5MB budget"
             exit 1
@@ -188,20 +181,19 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: website/package-lock.json
       - name: Install website dependencies
         run: cd website && npm ci
       - name: Build website
         run: cd website && npm run build
-      - name: Configure Pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v5
       - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        uses: asymmetric-effort/actions/actions/upload-pages-artifact@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
         with:
           path: website/dist
 
@@ -217,7 +209,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5
+        uses: asymmetric-effort/actions/actions/deploy-pages@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
 
   # ── Stage 8: Post-Deployment Verification (Playwright) ───────────
   verify-deployment:
@@ -226,8 +218,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
       - name: Install website dependencies
@@ -257,17 +249,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
         with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run build
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run build
       - name: Run compatibility tests
-        run: npx vitest run tests/compat/ --reporter=verbose
+        run: bunx vitest run tests/compat/ --reporter=verbose
       - name: Run differential tests
-        run: npx vitest run tests/compat/differential.test.ts --reporter=verbose
+        run: bunx vitest run tests/compat/differential.test.ts --reporter=verbose
 
   # ── Stage 10: Publish to npm (tags only, after all validation) ───
   # Requires test, dist-validation, bundle-size, and benchmarks to pass.
@@ -289,20 +280,16 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
-
-      - name: Configure npm for OIDC
-        run: |
-          echo "//registry.npmjs.org/:_authToken=" > ~/.npmrc
-          echo "registry=https://registry.npmjs.org/" >> ~/.npmrc
-
-      - run: npm ci
-      - run: npm run build
-
+      - run: bun install --frozen-lockfile
+      - run: bun run build
       - name: Verify version matches tag
         run: |
           TAG="${GITHUB_REF#refs/tags/v}"
@@ -311,10 +298,11 @@ jobs:
           SRC=$(node -p "require('./dist/version.js').VERSION")
           [ "$TAG" = "$SRC" ] || (echo "ERROR: Tag v$TAG != src/version.ts $SRC" && exit 1)
           echo "Version verified: $PKG"
-
-      - name: Publish with provenance (OIDC)
-        run: npx npm@latest publish --provenance --access public
-
+      - name: Publish to npm
+        uses: asymmetric-effort/actions/actions/npm-publish@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+        with:
+          access: public
+          provenance: "true"
       - name: Verify npm publish
         run: |
           TAG="${GITHUB_REF#refs/tags/v}"
