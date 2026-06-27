@@ -51,10 +51,10 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "^26.0.0",
     "@vitest/coverage-v8": "^4.1.9",
-    "prettier": "^3.0.0",
+    "prettier": "^3.8.4",
     "typescript": "^5.8.0",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }
