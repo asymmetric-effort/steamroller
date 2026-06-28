@@ -3,7 +3,7 @@
  * @description Unit tests for side effect detection.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   hasExpressionSideEffects,
   hasStatementSideEffects,

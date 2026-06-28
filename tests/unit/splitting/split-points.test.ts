@@ -3,7 +3,7 @@
  * @description Unit tests for split point detection.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   detectSplitPoints,
   type SplittableModule,

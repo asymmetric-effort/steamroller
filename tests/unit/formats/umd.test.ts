@@ -3,7 +3,7 @@
  * @description Tests for UMD format output (#77).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { umdFormat } from "../../../src/formats/umd.js";
 import type {
   ExportBinding,

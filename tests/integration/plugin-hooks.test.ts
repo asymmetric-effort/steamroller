@@ -4,7 +4,7 @@
  * Verifies that all 25 plugin hooks fire at their correct lifecycle
  * points and in the expected order during build, generate, and write.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

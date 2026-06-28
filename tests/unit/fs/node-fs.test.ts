@@ -4,7 +4,7 @@
  */
 
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createNodeFs } from "../../../src/fs/node-fs.js";
 
 const WORKTREE_ROOT = resolve(import.meta.dirname, "../../..");

@@ -3,7 +3,7 @@
  * @description Unit tests for the scoped CSS module.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { scopeCSS, generateScopeId } from "../../../src/css/scoped-css.js";
 
 describe("generateScopeId", () => {

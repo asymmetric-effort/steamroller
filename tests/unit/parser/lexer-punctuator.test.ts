@@ -8,7 +8,7 @@
  * @module tests/unit/parser/lexer-punctuator
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { scanPunctuator } from "../../../src/parser/lexer-punctuator.js";
 import type { ScanResult } from "../../../src/parser/lexer-punctuator.js";
 import { TokenType } from "../../../src/parser/token-types.js";

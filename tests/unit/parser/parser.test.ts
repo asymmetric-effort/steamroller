@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { Parser, parse } from "../../../src/parser/parser.js";
 import type { ParseOptions } from "../../../src/parser/parser.js";
 

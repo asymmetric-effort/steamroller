@@ -7,7 +7,7 @@
  * - Imports between modules are rewritten to point to correct output files
  * - preserveModulesRoot strips the specified prefix from output paths
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { createRollupBuild } from "../../../src/build/rollup-build.js";
 import type { BuildState } from "../../../src/build/rollup-build.js";
 import { Module } from "../../../src/module/Module.js";

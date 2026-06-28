@@ -3,7 +3,7 @@
  * @description Unit tests for JSX transform output (Issue #39).
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   transformJsxElement,
   transformJsxFragment,

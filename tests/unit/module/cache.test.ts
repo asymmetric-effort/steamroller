@@ -3,7 +3,7 @@
  * @description Unit tests for RollupCache and PluginCache.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
 import { RollupCache, PluginCache } from "../../../src/module/cache.js";
 import type {
   CachedModuleData,

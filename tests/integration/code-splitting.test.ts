@@ -4,7 +4,7 @@
  * Verifies that generate() produces multiple chunks when the module graph
  * contains dynamic imports and inlineDynamicImports is not set.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

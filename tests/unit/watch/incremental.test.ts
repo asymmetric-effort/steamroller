@@ -3,7 +3,8 @@
  * @description Unit tests for incremental rebuild support.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import {
   shouldRebuildModule,
   createIncrementalBuild,

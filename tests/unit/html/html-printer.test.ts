@@ -4,7 +4,7 @@
  * minified mode, and round-trip fidelity.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseHtml } from "../../../src/html/html-parser.js";
 import { printHtml } from "../../../src/html/html-printer.js";
 import type { Element, Text } from "../../../src/html/html-ast.js";

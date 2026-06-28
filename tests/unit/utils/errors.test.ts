@@ -4,7 +4,7 @@
  * Tests createRollupError, createRollupWarning, generateCodeFrame,
  * and formatError with various inputs covering happy and sad paths.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   createRollupError,
   createRollupWarning,

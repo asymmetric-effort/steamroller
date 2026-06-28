@@ -3,7 +3,7 @@
  * @description Unit tests for the built-in Svelte SFC plugin.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   isSvelteFile,
   sveltePlugin,

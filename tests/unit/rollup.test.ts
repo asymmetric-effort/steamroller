@@ -3,7 +3,7 @@
  * @description Tests for the main rollup() entry function.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { rollup } from "../../src/rollup.js";
 import type { Plugin } from "../../src/types.js";
 

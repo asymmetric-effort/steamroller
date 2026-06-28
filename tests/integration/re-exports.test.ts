@@ -5,7 +5,7 @@
  * includes them in the module graph. Tests verify that the bundler
  * processes re-export syntax without errors and produces valid output.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

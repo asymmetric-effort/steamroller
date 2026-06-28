@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseAst } from "../../../src/parse-ast.js";
 import { simplifyExpressions } from "../../../src/minify/simplify.js";
 import { emitMinified } from "../../../src/minify/emit.js";

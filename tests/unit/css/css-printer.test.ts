@@ -3,7 +3,7 @@
  * @description Unit tests for the CSS printer: pretty-print and minified output.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { printCSS } from "../../../src/css/css-printer.js";
 import { parseCSS } from "../../../src/css/css-parser.js";
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { scanNumericLiteral } from "../../../src/parser/lexer-numeric.js";
 import type { ScanResult } from "../../../src/parser/lexer-numeric.js";
 import { TokenType } from "../../../src/parser/token-types.js";

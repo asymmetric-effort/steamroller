@@ -3,7 +3,7 @@
  * @description Tests for IIFE format output (#81).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { iifeFormat } from "../../../src/formats/iife.js";
 import type {
   ExportBinding,

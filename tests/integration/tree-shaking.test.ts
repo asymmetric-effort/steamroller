@@ -4,7 +4,7 @@
  * Verifies that tree-shaking correctly removes unused exports,
  * preserves side effects, and can be disabled.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

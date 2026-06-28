@@ -3,7 +3,7 @@
  * @description Unit tests for FNV-1a content hashing.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { contentHash } from "../../../src/codegen/hash.js";
 
 describe("contentHash", () => {

@@ -4,7 +4,7 @@
  * Covers createNoopTimer, createPerfTimer, createTimer factory,
  * and all exported phase constants.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import {
   createNoopTimer,
   createPerfTimer,

@@ -3,7 +3,7 @@
  * @description Tests for format barrel exports and dispatcher.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import {
   amdFormat,
   cjsFormat,

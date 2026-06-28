@@ -3,7 +3,7 @@
  * @description Unit tests for the ExternalModule class.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { ExternalModule } from "../../../src/module/ExternalModule.js";
 import { Module } from "../../../src/module/Module.js";
 

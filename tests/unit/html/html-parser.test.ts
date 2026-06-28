@@ -6,7 +6,7 @@
  * and position tracking.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseHtml } from "../../../src/html/html-parser.js";
 import type { Element, Text, Comment } from "../../../src/html/html-ast.js";
 

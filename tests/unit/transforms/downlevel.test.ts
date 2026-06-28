@@ -3,7 +3,7 @@
  *
  * Verifies AST-based syntax downleveling for ES5 and ES2015 targets.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { downlevelCode } from "../../../src/transforms/downlevel.js";
 
 describe("downlevelCode", () => {

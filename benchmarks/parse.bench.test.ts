@@ -4,8 +4,10 @@
  * various source sizes and complexity levels.
  */
 
-import { bench, describe } from "vitest";
+import { describe, it } from "bun:test";
 import { parseAst } from "../src/parse-ast.js";
+import { runBenchmarkSuite, formatResult } from "./run.js";
+import type { BenchmarkConfig } from "./run.js";
 
 /**
  * Generates synthetic JavaScript source with approximately the given
@@ -79,35 +81,45 @@ const largeSource = generateSource(2000);
 const complexSource = generateComplexSource(50);
 
 describe("parseAst", () => {
-  bench(
-    "parse-small (~20 declarations)",
-    () => {
-      parseAst(smallSource);
-    },
-    { iterations: 200, warmupIterations: 10 },
-  );
+  it("benchmarks parser performance", () => {
+    const configs: ReadonlyArray<BenchmarkConfig> = [
+      {
+        name: "parse-small (~20 declarations)",
+        iterations: 200,
+        warmupIterations: 10,
+        fn: () => {
+          parseAst(smallSource);
+        },
+      },
+      {
+        name: "parse-medium (~200 declarations)",
+        iterations: 100,
+        warmupIterations: 5,
+        fn: () => {
+          parseAst(mediumSource);
+        },
+      },
+      {
+        name: "parse-large (~2000 declarations)",
+        iterations: 20,
+        warmupIterations: 2,
+        fn: () => {
+          parseAst(largeSource);
+        },
+      },
+      {
+        name: "parse-complex (classes + async + control flow)",
+        iterations: 50,
+        warmupIterations: 3,
+        fn: () => {
+          parseAst(complexSource);
+        },
+      },
+    ];
 
-  bench(
-    "parse-medium (~200 declarations)",
-    () => {
-      parseAst(mediumSource);
-    },
-    { iterations: 100, warmupIterations: 5 },
-  );
-
-  bench(
-    "parse-large (~2000 declarations)",
-    () => {
-      parseAst(largeSource);
-    },
-    { iterations: 20, warmupIterations: 2 },
-  );
-
-  bench(
-    "parse-complex (classes + async + control flow)",
-    () => {
-      parseAst(complexSource);
-    },
-    { iterations: 50, warmupIterations: 3 },
-  );
+    const suite = runBenchmarkSuite("parseAst", configs);
+    for (const result of suite.results) {
+      console.log(formatResult(result));
+    }
+  });
 });

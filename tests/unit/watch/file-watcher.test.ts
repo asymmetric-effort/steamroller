@@ -3,20 +3,19 @@
  * @description Unit tests for the FileWatcher class.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import { FileWatcher } from "../../../src/watch/file-watcher.js";
 import * as fs from "node:fs";
 import { writeFileSync, unlinkSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-vi.mock("node:fs", async () => {
-  const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
-  return {
-    ...actual,
-    watch: vi.fn(),
-  };
-});
+const actualFs = require("node:fs");
+vi.mock("node:fs", () => ({
+  ...actualFs,
+  watch: vi.fn(),
+}));
 
 describe("FileWatcher", () => {
   let watcher: FileWatcher;

@@ -3,7 +3,7 @@
  * @description Unit tests for ModuleInfoRegistry.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
 import { ModuleInfoRegistry } from "../../../src/module/module-info-registry.js";
 import { Module } from "../../../src/module/Module.js";
 

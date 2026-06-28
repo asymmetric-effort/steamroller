@@ -4,7 +4,7 @@
  * Verifies that rollup() can handle circular dependencies between modules,
  * producing warnings but still generating a valid bundle.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

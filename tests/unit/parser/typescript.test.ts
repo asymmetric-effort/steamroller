@@ -5,7 +5,7 @@
  * parameter properties, type-only imports/exports, generics, and edge cases.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parse } from "../../../src/parser/parser.js";
 import { transformTypeScript } from "../../../src/transforms/typescript-transform.js";
 import {

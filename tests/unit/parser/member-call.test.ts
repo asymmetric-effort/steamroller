@@ -8,7 +8,7 @@
  * @module tests/unit/parser/member-call
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parse } from "../../../src/parser/parser.js";
 import type * as AST from "../../../src/ast/types.js";
 

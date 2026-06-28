@@ -3,7 +3,7 @@
  * @description Type-level and runtime verification of filesystem interfaces.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import type {
   FsDirectoryEntry,
   FsModule,

@@ -7,7 +7,7 @@
  * @module tests/unit/perf/optimization-hints.test
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   createObjectPool,
   createStringBuilder,

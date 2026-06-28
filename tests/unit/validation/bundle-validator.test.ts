@@ -6,7 +6,7 @@
  * - Syntactically invalid code detection
  * - Missing import reference detection
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { validateBundle } from "../../../src/validation/bundle-validator.js";
 import type { OutputChunk, OutputAsset } from "../../../src/types.js";
 

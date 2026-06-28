@@ -3,7 +3,7 @@
  * @description Unit tests for pure annotation collection and manual pure function matching.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   collectPureAnnotations,
   isPureCall,

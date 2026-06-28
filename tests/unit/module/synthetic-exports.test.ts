@@ -4,7 +4,7 @@
  * and code generation utilities.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 import {
   generateSyntheticAccess,

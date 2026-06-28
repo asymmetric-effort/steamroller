@@ -4,7 +4,7 @@
  * and server functionality.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { createServer, type Server as HttpServer } from "node:http";
 import {
   encodeFrame,

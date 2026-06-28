@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { diffOutputs } from "./harness.js";
 
 describe("compat harness", () => {

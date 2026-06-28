@@ -1,6 +1,6 @@
 {
   "name": "@asymmetric-effort/steamroller",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "A zero-dependency JavaScript bundler",
   "license": "MIT",
   "author": "Asymmetric Effort <info@asymmetric-effort.com>",
@@ -39,11 +39,11 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "vitest run --coverage",
+    "test": "bun test --isolate tests/unit tests/integration tests/e2e tests/compat",
     "lint": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "benchmark": "vitest bench benchmarks/",
+    "benchmark": "bun test benchmarks/",
     "clean": "rm -rf dist coverage",
     "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run build && npm run test"
   },
@@ -51,10 +51,9 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@asymmetric-effort/nogginlessdom": "0.0.26",
     "@types/node": "^26.0.0",
-    "@vitest/coverage-v8": "^4.1.9",
     "prettier": "^3.8.4",
-    "typescript": "^5.8.0",
-    "vitest": "^4.1.9"
+    "typescript": "^5.8.0"
   }
 }

@@ -4,7 +4,8 @@
  * detection, topological sorting, and input normalization.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import {
   buildModuleGraph,
   normalizeInput,

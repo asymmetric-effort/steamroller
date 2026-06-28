@@ -4,7 +4,7 @@
  * Verifies that a single rollup() build can generate output multiple times
  * with different formats, producing correct results for each.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

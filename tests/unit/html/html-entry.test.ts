@@ -4,7 +4,7 @@
  * and various attribute patterns.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseHtml } from "../../../src/html/html-parser.js";
 import { extractHtmlDependencies } from "../../../src/html/html-entry.js";
 

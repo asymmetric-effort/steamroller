@@ -4,7 +4,7 @@
  * @module tests/unit/native/resolver-bridge
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { resolveWithNative } from "../../../src/native/resolver-bridge.js";
 
 describe("resolver bridge", () => {

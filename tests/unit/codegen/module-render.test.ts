@@ -3,7 +3,7 @@
  * @description Unit tests for MagicString-based module rendering.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   renderModule,
   generateEsImportRewrite,

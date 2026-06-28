@@ -6,7 +6,7 @@
  * - Bundles with broken/dangling import specifiers are caught
  * - External imports are correctly identified and allowed
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   verifyBuild,
   extractImportSpecifiers,

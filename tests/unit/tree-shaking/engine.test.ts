@@ -3,7 +3,7 @@
  * @description Unit tests for the multi-pass tree-shaking engine.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
 import {
   treeShake,
   type TreeShakeOptions,

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { LruCache } from "../../../src/utils/lru-cache";
 
 describe("LruCache", () => {

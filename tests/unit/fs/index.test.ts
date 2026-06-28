@@ -3,7 +3,7 @@
  * @description Tests for the fs module barrel export.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createNodeFs } from "../../../src/fs/index.js";
 import type {
   FsDirectoryEntry,

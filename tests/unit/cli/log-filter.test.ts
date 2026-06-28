@@ -4,7 +4,7 @@
  * @module tests/unit/cli/log-filter
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   getLogFilter,
   parseFilterPattern,

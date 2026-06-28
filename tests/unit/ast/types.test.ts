@@ -7,7 +7,7 @@
  * objects, testing discriminated union narrowing, and confirming that the
  * RollupAstNode wrapper and union types accept all expected members.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import type {
   BaseNode,
   SourcePosition,

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { minify } from "../../../src/minify/minifier.js";
 import type { MinifyResult } from "../../../src/minify/minifier.js";
 

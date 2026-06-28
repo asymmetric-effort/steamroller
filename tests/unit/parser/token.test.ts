@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { createToken } from "../../../src/parser/token.js";
 import type { Token } from "../../../src/parser/token.js";
 import { TokenType } from "../../../src/parser/token-types.js";

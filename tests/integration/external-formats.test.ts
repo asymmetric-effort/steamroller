@@ -4,7 +4,7 @@
  * Verifies that external modules are rendered correctly as CJS require()
  * vs ES import depending on the output format.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

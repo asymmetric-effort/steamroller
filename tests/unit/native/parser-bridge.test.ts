@@ -4,7 +4,8 @@
  * @module tests/unit/native/parser-bridge
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import { parseWithNative } from "../../../src/native/parser-bridge.js";
 import * as nativeIndex from "../../../src/native/index.js";
 

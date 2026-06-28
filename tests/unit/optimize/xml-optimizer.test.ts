@@ -4,7 +4,7 @@
  * whitespace collapsing, and unused namespace removal.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { optimizeXml } from "../../../src/optimize/xml-optimizer.js";
 
 describe("XML Optimizer", () => {

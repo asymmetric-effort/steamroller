@@ -3,7 +3,7 @@
  * @description Tests for ES module format output (#73).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { esFormat } from "../../../src/formats/es.js";
 import type {
   ExportBinding,

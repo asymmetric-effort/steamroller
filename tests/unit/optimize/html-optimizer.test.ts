@@ -5,7 +5,7 @@
  * empty attribute removal, and redundant attribute removal.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { optimizeHtml } from "../../../src/optimize/html-optimizer.js";
 
 describe("HTML Optimizer", () => {

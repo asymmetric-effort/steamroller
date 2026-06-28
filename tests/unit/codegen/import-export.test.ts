@@ -3,7 +3,7 @@
  * @description Unit tests for format-specific import/export rewriting utilities.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import {
   generateEsModuleMarker,
   generateExportCode,

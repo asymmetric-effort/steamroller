@@ -4,7 +4,7 @@
  * importing .css files, verifying asset emission, and CSS Modules.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseCSS } from "../../src/css/css-parser.js";
 import { printCSS } from "../../src/css/css-printer.js";
 import {

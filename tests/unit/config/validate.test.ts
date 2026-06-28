@@ -3,7 +3,7 @@
  * @description Tests for option validation and deprecation handling.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   validateInputOptions,
   validateOutputOptions,

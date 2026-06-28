@@ -3,7 +3,8 @@
  * @description Unit tests for the built-in TypeScript type-stripping plugin.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import {
   isTypeScriptFile,
   stripTypescript,

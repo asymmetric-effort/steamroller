@@ -4,7 +4,7 @@
  * Verifies that rollup() correctly handles complex dependency trees
  * with many modules, deep chains, diamond patterns, and shared deps.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

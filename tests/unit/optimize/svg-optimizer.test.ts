@@ -5,7 +5,7 @@
  * path data optimization, numeric cleanup, attribute sorting, and more.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { optimizeSvg } from "../../../src/optimize/svg-optimizer.js";
 
 describe("SVG Optimizer", () => {

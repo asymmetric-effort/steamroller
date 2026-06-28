@@ -5,7 +5,7 @@
  * directory/basename/extension extraction, filename sanitization,
  * and case-difference warnings.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   normalizePath,
   isAbsolute,

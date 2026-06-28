@@ -4,7 +4,8 @@
  * Tests end-to-end behavior of the loader plugins.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
+import { vi } from "../vi-compat.js";
 import * as fs from "node:fs";
 import {
   jsonLoader,

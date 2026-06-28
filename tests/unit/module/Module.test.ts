@@ -3,7 +3,7 @@
  * @description Unit tests for the Module class.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
 import { Module } from "../../../src/module/Module.js";
 import { ExternalModule } from "../../../src/module/ExternalModule.js";
 import type { ProgramNode } from "../../../src/ast/types.js";

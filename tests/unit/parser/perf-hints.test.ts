@@ -7,7 +7,7 @@
  * @module tests/unit/parser/perf-hints.test
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   createCharLookupTable,
   isIdentifierStart,

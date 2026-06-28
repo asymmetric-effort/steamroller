@@ -17,7 +17,7 @@
  * exports, checks that tree-shaking removes test-only code, and validates
  * that the CJS bundle is evaluable via `new Function()`.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

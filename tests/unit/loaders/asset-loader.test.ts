@@ -3,7 +3,8 @@
  * @description Unit tests for the built-in asset loader plugin.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import * as fs from "node:fs";
 import {
   isAssetFile,

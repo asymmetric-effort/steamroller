@@ -3,7 +3,7 @@
  * @description Unit tests for scope analysis.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { Scope, analyzeScopes } from "../../../src/tree-shaking/scope.js";
 import type { Program } from "../../../src/ast/types.js";
 

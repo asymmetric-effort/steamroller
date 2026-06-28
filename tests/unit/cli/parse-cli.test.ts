@@ -4,7 +4,7 @@
  * @module tests/unit/cli/parse-cli
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseCli } from "../../../src/cli/parse-cli.js";
 
 describe("parseCli", () => {

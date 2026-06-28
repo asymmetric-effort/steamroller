@@ -3,7 +3,7 @@
  * @description Tests for SystemJS format output (#82).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { systemFormat } from "../../../src/formats/system.js";
 import type {
   ExportBinding,

@@ -3,7 +3,7 @@
  * @description Unit tests for chunk optimization.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   optimizeChunks,
   type OptimizableChunk,

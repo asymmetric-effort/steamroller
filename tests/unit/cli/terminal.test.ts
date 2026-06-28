@@ -4,7 +4,8 @@
  * @module tests/unit/cli/terminal
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import {
   configureTerminal,
   getTerminalConfig,

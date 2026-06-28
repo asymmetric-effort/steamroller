@@ -4,7 +4,7 @@
  * @module tests/unit/utils/glob
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   isGlob,
   globParent,

@@ -3,7 +3,7 @@
  *
  * Covers text, JSON, and HTML output formats.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   formatText,
   formatJson,

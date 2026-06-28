@@ -3,7 +3,7 @@
  * @description Tests for output options normalization.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   normalizeOutputOptions,
   normalizeInterop,

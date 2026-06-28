@@ -3,7 +3,7 @@
  * @description Unit tests for CDN URL resolution of bare specifiers.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   resolveToCdn,
   parseSpecifier,

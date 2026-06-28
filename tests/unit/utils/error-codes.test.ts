@@ -4,7 +4,7 @@
  * Verifies that all error/warning codes are string constants with
  * values matching their export names, and that no duplicate values exist.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import * as errorCodes from "../../../src/utils/error-codes.js";
 
 /** All expected error code names. */

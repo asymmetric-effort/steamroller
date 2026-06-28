@@ -3,7 +3,7 @@
  * @description Tests for AMD format output (#79).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { amdFormat } from "../../../src/formats/amd.js";
 import type {
   ExportBinding,

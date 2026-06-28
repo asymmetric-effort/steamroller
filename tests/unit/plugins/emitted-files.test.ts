@@ -3,7 +3,7 @@
  * @description Unit tests for EmittedFileManager lifecycle management.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   EmittedFileManager,
   EmittedFileError,

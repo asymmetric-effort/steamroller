@@ -3,7 +3,7 @@
  * @description Tests for CommonJS format output (#75).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import {
   cjsFormat,
   getInteropHelper,

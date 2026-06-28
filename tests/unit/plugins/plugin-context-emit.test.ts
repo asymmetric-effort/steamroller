@@ -3,7 +3,8 @@
  * @description Unit tests for plugin context file emission and logging (Issue #70).
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import {
   FileEmitter,
   createPluginCache,

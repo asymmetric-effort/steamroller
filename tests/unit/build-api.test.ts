@@ -3,7 +3,8 @@
  * @description Tests for the esbuild-compatible build() API.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../vi-compat.js";
 import { build, mapFormat } from "../../src/build-api.js";
 import * as rollupModule from "../../src/rollup.js";
 

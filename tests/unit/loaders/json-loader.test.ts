@@ -3,7 +3,8 @@
  * @description Unit tests for the built-in JSON loader plugin.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import * as fs from "node:fs";
 import {
   isJSONFile,

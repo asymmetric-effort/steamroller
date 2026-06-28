@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { Lexer } from "../../../src/parser/lexer.js";
 import { TokenType } from "../../../src/parser/token-types.js";
 

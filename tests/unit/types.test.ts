@@ -4,7 +4,7 @@
  * module, tests verify that types compile correctly, key type relationships
  * hold, and discriminated unions work as expected.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import type {
   MaybeArray,
   MaybePromise,

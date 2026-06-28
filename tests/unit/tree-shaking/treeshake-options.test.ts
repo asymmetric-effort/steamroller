@@ -4,7 +4,7 @@
  * and experimental side effect logging.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   detectEvalUsage,
   detectArgumentsUsage,

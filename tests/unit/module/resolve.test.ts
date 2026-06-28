@@ -3,7 +3,7 @@
  * @description Unit tests for the module resolution pipeline.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   defaultResolve,
   isExternal,

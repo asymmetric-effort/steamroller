@@ -3,7 +3,8 @@
  * @description Unit tests for watch and cross-cutting hooks.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import type { Plugin } from "../../../src/types.js";
 import { PluginDriver } from "../../../src/plugins/driver.js";
 import {

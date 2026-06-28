@@ -4,7 +4,7 @@
  * @module tests/unit/sourcemap/output
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   generateSourcemapOutput,
   type SourcemapMode,

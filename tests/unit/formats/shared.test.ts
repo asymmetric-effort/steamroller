@@ -3,7 +3,7 @@
  * @description Tests for cross-format shared utilities (#84).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import {
   generateSourceMapComment,
   getExportMode,

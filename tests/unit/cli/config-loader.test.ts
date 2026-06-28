@@ -4,7 +4,8 @@
  * @module tests/unit/cli/config-loader
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import {
   findConfigFile,
   resolveConfigPath,

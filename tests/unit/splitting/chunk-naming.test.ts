@@ -3,7 +3,7 @@
  * @description Unit tests for chunk naming and file pattern resolution.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   resolveChunkFileName,
   resolveAssetFileName,

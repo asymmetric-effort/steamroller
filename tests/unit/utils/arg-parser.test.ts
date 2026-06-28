@@ -4,7 +4,7 @@
  * Covers long/short flags, boolean negation, dot notation,
  * arrays, aliases, defaults, positionals, and edge cases.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseArgs } from "../../../src/utils/arg-parser";
 import type { ParsedArgs, ParserOptions } from "../../../src/utils/arg-parser";
 

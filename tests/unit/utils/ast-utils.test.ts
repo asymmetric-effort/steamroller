@@ -4,7 +4,7 @@
  * Covers isReference() and locateCharacter() with happy and
  * sad paths for >=98% branch/line coverage.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   isReference,
   locateCharacter,

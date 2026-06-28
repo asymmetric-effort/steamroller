@@ -5,7 +5,7 @@
  * to JavaScript output.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   typescriptPlugin,
   isTypeScriptFile,

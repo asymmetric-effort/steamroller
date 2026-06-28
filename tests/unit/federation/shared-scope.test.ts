@@ -3,7 +3,7 @@
  * @description Unit tests for shared dependency management.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   parseSemver,
   compareSemver,

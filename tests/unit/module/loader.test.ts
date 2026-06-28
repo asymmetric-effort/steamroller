@@ -3,7 +3,8 @@
  * @description Unit tests for the module loading pipeline.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import { ModuleLoader } from "../../../src/module/loader.js";
 import type {
   LoadHook,

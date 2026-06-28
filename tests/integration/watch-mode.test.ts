@@ -4,7 +4,7 @@
  * Tests verify that watch() performs real builds, watches files for changes,
  * triggers incremental rebuilds, and can be cleanly closed.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

@@ -3,7 +3,8 @@
  * @description Unit tests for the build phase hook executor.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import type {
   Plugin,
   InputOptions,

@@ -4,12 +4,14 @@
  * performance on sample inputs of varying sizes.
  */
 
-import { bench, describe, beforeAll } from "vitest";
+import { describe, it, beforeAll, afterAll } from "bun:test";
 import { rollup } from "../src/rollup.js";
-import type { RollupBuild, InputOptions, OutputOptions } from "../src/types.js";
+import type { RollupBuild, OutputOptions } from "../src/types.js";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { runBenchmarkSuite, formatResult } from "./run.js";
+import type { BenchmarkConfig } from "./run.js";
 
 /**
  * Generates a set of interconnected JS modules in a temporary directory.
@@ -69,36 +71,49 @@ describe("bundle", () => {
     smallEntry = generateFixtureModules(join(baseDir, "small"), 10);
     mediumEntry = generateFixtureModules(join(baseDir, "medium"), 50);
     largeEntry = generateFixtureModules(join(baseDir, "large"), 200);
-
-    return () => {
-      rmSync(baseDir, { recursive: true, force: true });
-    };
   });
 
-  bench(
-    "bundle-small (10 modules)",
-    async () => {
-      const bundle: RollupBuild = await rollup({ input: smallEntry });
-      await bundle.generate(outputOptions);
-    },
-    { iterations: 20, warmupIterations: 2 },
-  );
+  afterAll(() => {
+    rmSync(baseDir, { recursive: true, force: true });
+  });
 
-  bench(
-    "bundle-medium (50 modules)",
-    async () => {
-      const bundle: RollupBuild = await rollup({ input: mediumEntry });
-      await bundle.generate(outputOptions);
-    },
-    { iterations: 10, warmupIterations: 1 },
-  );
+  it("benchmarks bundling performance", () => {
+    const configs: ReadonlyArray<BenchmarkConfig> = [
+      {
+        name: "bundle-small (10 modules)",
+        iterations: 20,
+        warmupIterations: 2,
+        fn: () => {
+          void rollup({ input: smallEntry }).then((bundle: RollupBuild) =>
+            bundle.generate(outputOptions),
+          );
+        },
+      },
+      {
+        name: "bundle-medium (50 modules)",
+        iterations: 10,
+        warmupIterations: 1,
+        fn: () => {
+          void rollup({ input: mediumEntry }).then((bundle: RollupBuild) =>
+            bundle.generate(outputOptions),
+          );
+        },
+      },
+      {
+        name: "bundle-large (200 modules)",
+        iterations: 5,
+        warmupIterations: 1,
+        fn: () => {
+          void rollup({ input: largeEntry }).then((bundle: RollupBuild) =>
+            bundle.generate(outputOptions),
+          );
+        },
+      },
+    ];
 
-  bench(
-    "bundle-large (200 modules)",
-    async () => {
-      const bundle: RollupBuild = await rollup({ input: largeEntry });
-      await bundle.generate(outputOptions);
-    },
-    { iterations: 5, warmupIterations: 1 },
-  );
+    const suite = runBenchmarkSuite("bundle", configs);
+    for (const result of suite.results) {
+      console.log(formatResult(result));
+    }
+  });
 });

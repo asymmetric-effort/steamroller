@@ -4,7 +4,7 @@
  * @module tests/unit/parse-ast
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseAst, parseAstAsync } from "../../src/parse-ast.js";
 
 describe("parseAst", () => {

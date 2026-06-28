@@ -3,7 +3,7 @@
  * @description Unit tests for interop mode helpers.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   generateInteropHelper,
   generateNamespaceAccess,

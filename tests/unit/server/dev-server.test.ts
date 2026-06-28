@@ -3,7 +3,7 @@
  * @description Unit tests for the HTTP dev server.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import http from "node:http";
 import { DevServer, createDevServer } from "../../../src/server/dev-server.js";
 

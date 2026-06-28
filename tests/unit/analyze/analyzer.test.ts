@@ -4,7 +4,7 @@
  * Covers per-module size calculation, duplicate detection, tree-shaking stats,
  * multi-chunk analysis, and edge cases.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { analyzeBuild } from "../../../src/analyze/analyzer.js";
 import type { OutputChunk, OutputAsset } from "../../../src/types.js";
 

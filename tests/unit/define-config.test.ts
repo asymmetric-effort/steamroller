@@ -4,7 +4,7 @@
  * Covers defineConfig() with single object, array, sync function,
  * and async function forms, plus the VERSION constant.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { defineConfig, VERSION } from "../../src/index";
 import type { RollupOptions, RollupOptionsFunction } from "../../src/index";
 import { readFileSync } from "node:fs";

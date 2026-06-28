@@ -4,7 +4,7 @@
  * @module tests/unit/native/minifier-bridge
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { minifyWithNative } from "../../../src/native/minifier-bridge.js";
 
 describe("minifier bridge", () => {

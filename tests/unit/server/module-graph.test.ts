@@ -3,7 +3,7 @@
  * @description Unit tests for the HMR module dependency graph.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
 import { ModuleGraph } from "../../../src/server/module-graph.js";
 
 describe("ModuleGraph", () => {

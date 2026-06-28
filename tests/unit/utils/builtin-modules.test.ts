@@ -4,7 +4,7 @@
  * @module tests/unit/utils/builtin-modules
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   BUILTIN_MODULES,
   BUILTIN_MODULES_WITH_PREFIX,

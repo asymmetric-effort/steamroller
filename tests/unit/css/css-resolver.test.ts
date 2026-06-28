@@ -5,7 +5,7 @@
  * circular-dependency detection, URL skipping, and error handling).
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   extractImports,
   resolveImportPath,

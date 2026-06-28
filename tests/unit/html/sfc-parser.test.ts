@@ -5,7 +5,7 @@
  * custom blocks, and lang attributes.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { parseSfc } from "../../../src/html/sfc-parser.js";
 
 describe("SFC Parser", () => {

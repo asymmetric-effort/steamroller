@@ -4,7 +4,8 @@
  * @module tests/unit/cli/main
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import { VERSION } from "../../../src/version.js";
 
 describe("cli/main", () => {

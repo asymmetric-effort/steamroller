@@ -5,12 +5,14 @@
  * tree-shaking on inputs with varying amounts of dead code.
  */
 
-import { bench, describe, beforeAll } from "vitest";
+import { describe, it, beforeAll, afterAll } from "bun:test";
 import { rollup } from "../src/rollup.js";
 import type { RollupBuild, OutputOptions } from "../src/types.js";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { runBenchmarkSuite, formatResult } from "./run.js";
+import type { BenchmarkConfig } from "./run.js";
 
 /**
  * Generates a module graph where only a fraction of exports are actually used.
@@ -92,69 +94,69 @@ describe("tree-shaking", () => {
 
     // Dense: 90% of exports used (light tree-shaking)
     denseEntry = generateTreeShakeFixtures(join(baseDir, "dense"), 50, 0.9);
-
-    return () => {
-      rmSync(baseDir, { recursive: true, force: true });
-    };
   });
 
-  bench(
-    "treeshake-small-sparse (10 modules, 10% used)",
-    async () => {
-      const bundle: RollupBuild = await rollup({
-        input: sparseSmallEntry,
-        treeshake: true,
-      });
-      await bundle.generate(outputOptions);
-    },
-    { iterations: 20, warmupIterations: 2 },
-  );
+  afterAll(() => {
+    rmSync(baseDir, { recursive: true, force: true });
+  });
 
-  bench(
-    "treeshake-medium-sparse (50 modules, 10% used)",
-    async () => {
-      const bundle: RollupBuild = await rollup({
-        input: sparseMediumEntry,
-        treeshake: true,
-      });
-      await bundle.generate(outputOptions);
-    },
-    { iterations: 10, warmupIterations: 1 },
-  );
+  it("benchmarks tree-shaking performance", () => {
+    const configs: ReadonlyArray<BenchmarkConfig> = [
+      {
+        name: "treeshake-small-sparse (10 modules, 10% used)",
+        iterations: 20,
+        warmupIterations: 2,
+        fn: () => {
+          void rollup({ input: sparseSmallEntry, treeshake: true }).then(
+            (bundle: RollupBuild) => bundle.generate(outputOptions),
+          );
+        },
+      },
+      {
+        name: "treeshake-medium-sparse (50 modules, 10% used)",
+        iterations: 10,
+        warmupIterations: 1,
+        fn: () => {
+          void rollup({ input: sparseMediumEntry, treeshake: true }).then(
+            (bundle: RollupBuild) => bundle.generate(outputOptions),
+          );
+        },
+      },
+      {
+        name: "treeshake-large-sparse (200 modules, 10% used)",
+        iterations: 5,
+        warmupIterations: 1,
+        fn: () => {
+          void rollup({ input: sparseLargeEntry, treeshake: true }).then(
+            (bundle: RollupBuild) => bundle.generate(outputOptions),
+          );
+        },
+      },
+      {
+        name: "treeshake-medium-dense (50 modules, 90% used)",
+        iterations: 10,
+        warmupIterations: 1,
+        fn: () => {
+          void rollup({ input: denseEntry, treeshake: true }).then(
+            (bundle: RollupBuild) => bundle.generate(outputOptions),
+          );
+        },
+      },
+      {
+        name: "no-treeshake-medium (50 modules, baseline)",
+        iterations: 10,
+        warmupIterations: 1,
+        fn: () => {
+          void rollup({ input: sparseMediumEntry, treeshake: false }).then(
+            (bundle: RollupBuild) => bundle.generate(outputOptions),
+          );
+        },
+      },
+    ];
 
-  bench(
-    "treeshake-large-sparse (200 modules, 10% used)",
-    async () => {
-      const bundle: RollupBuild = await rollup({
-        input: sparseLargeEntry,
-        treeshake: true,
-      });
-      await bundle.generate(outputOptions);
-    },
-    { iterations: 5, warmupIterations: 1 },
-  );
-
-  bench(
-    "treeshake-medium-dense (50 modules, 90% used)",
-    async () => {
-      const bundle: RollupBuild = await rollup({
-        input: denseEntry,
-        treeshake: true,
-      });
-      await bundle.generate(outputOptions);
-    },
-    { iterations: 10, warmupIterations: 1 },
-  );
-
-  bench(
-    "no-treeshake-medium (50 modules, baseline)",
-    async () => {
-      const bundle: RollupBuild = await rollup({
-        input: sparseMediumEntry,
-        treeshake: false,
-      });
-      await bundle.generate(outputOptions);
-    },
-    { iterations: 10, warmupIterations: 1 },
-  );
+    const suite = runBenchmarkSuite("tree-shaking", configs);
+    for (const result of suite.results) {
+      console.log(formatResult(result));
+    }
+  });
 });

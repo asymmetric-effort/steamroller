@@ -8,7 +8,7 @@
  * @module tests/unit/error-parity.test
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import * as errorCodes from "../../src/utils/error-codes.js";
 import {
   createRollupError,

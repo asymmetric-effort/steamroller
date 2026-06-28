@@ -3,7 +3,8 @@
  * @description Unit tests for watch CLI hooks.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import { executeWatchHook, WatchHooks } from "../../../src/watch/cli-hooks.js";
 import * as childProcess from "node:child_process";
 

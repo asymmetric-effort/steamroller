@@ -3,7 +3,7 @@
  * @description Unit tests for the remote entry generator.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   generateContainerInit,
   generateModuleMap,

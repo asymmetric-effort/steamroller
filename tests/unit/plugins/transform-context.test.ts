@@ -3,7 +3,7 @@
  * @description Unit tests for TransformPluginContext implementation.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import type {
   ExistingDecodedSourceMap,
   SourceMapSegment,

@@ -4,7 +4,7 @@
  * :local() and :global() handling, and JS mapping generation.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   processCSSModule,
   scopeClassName,

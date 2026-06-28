@@ -3,7 +3,8 @@
  * @description Unit tests for the RollupWatcherImpl class.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import type { RollupWatcherEvent } from "../../../src/types.js";
 
 type ChangeHandler = (filePath: string, event: string) => void;

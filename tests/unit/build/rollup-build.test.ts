@@ -4,7 +4,8 @@
  * Covers createRollupBuild() interface shape, generate(), write(), close(),
  * post-close error behavior, and cache/watchFiles/getTimings accessors.
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "bun:test";
+import { vi } from "../../vi-compat.js";
 import { createRollupBuild } from "../../../src/build/rollup-build.js";
 import type { BuildState } from "../../../src/build/rollup-build.js";
 import type {
