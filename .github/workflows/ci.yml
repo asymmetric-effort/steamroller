@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -67,7 +67,7 @@ jobs:
         node-version: [20, 22]
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           bun-version: latest
       - uses: asymmetric-effort/actions/actions/setup-node@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
@@ -97,7 +97,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -182,7 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           bun-version: latest
       - uses: asymmetric-effort/actions/actions/setup-node@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
@@ -252,7 +252,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -283,7 +283,7 @@ jobs:
       id-token: write
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           bun-version: latest
       - uses: asymmetric-effort/actions/actions/setup-node@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
