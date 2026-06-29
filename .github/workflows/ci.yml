@@ -301,7 +301,7 @@ jobs:
           [ "$TAG" = "$SRC" ] || (echo "ERROR: Tag v$TAG != src/version.ts $SRC" && exit 1)
           echo "Version verified: $PKG"
       - name: Publish to npm
-        uses: asymmetric-effort/actions/actions/npm-publish@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+        uses: asymmetric-effort/actions/actions/npm-publish@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           access: public
           provenance: "true"
