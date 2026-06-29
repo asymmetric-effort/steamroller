@@ -70,7 +70,7 @@ jobs:
       - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
         with:
           bun-version: latest
-      - uses: asymmetric-effort/actions/actions/setup-node@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           node-version: ${{ matrix.node-version }}
       - run: bun install --frozen-lockfile
@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-node@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           node-version: "22"
       - name: Download build artifact
@@ -185,7 +185,7 @@ jobs:
       - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
         with:
           bun-version: latest
-      - uses: asymmetric-effort/actions/actions/setup-node@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           node-version: "22"
       - name: Install website dependencies
@@ -221,7 +221,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/setup-node@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           node-version: "22"
       - name: Install website dependencies
@@ -286,7 +286,7 @@ jobs:
       - uses: asymmetric-effort/actions/actions/setup-bun@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
         with:
           bun-version: latest
-      - uses: asymmetric-effort/actions/actions/setup-node@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
