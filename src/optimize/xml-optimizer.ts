@@ -65,11 +65,7 @@ interface MutablePI {
 }
 
 type MutableChild =
-  | MutableElement
-  | MutableText
-  | MutableComment
-  | MutableCdata
-  | MutablePI;
+  MutableElement | MutableText | MutableComment | MutableCdata | MutablePI;
 
 // ============================================================
 // Core optimizer

@@ -134,7 +134,7 @@ export const decodeMappings = (
       const fields: Array<number> = [];
       let pos = 0;
 
-      for (; pos < segStr.length; ) {
+      for (; pos < segStr.length;) {
         const decoded = decodeVlq(segStr, pos);
         fields.push(decoded.value);
         pos += decoded.length;

@@ -18,9 +18,7 @@ import {
 /** Options for building the module graph. */
 export interface GraphOptions {
   readonly input:
-    | string
-    | ReadonlyArray<string>
-    | Readonly<Record<string, string>>;
+    string | ReadonlyArray<string> | Readonly<Record<string, string>>;
   readonly resolveId: (
     source: string,
     importer: string | undefined,

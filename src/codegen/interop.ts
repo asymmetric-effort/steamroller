@@ -16,11 +16,7 @@
  * Boolean values are normalized: true → 'auto', false → 'esModule'.
  */
 export type InteropType =
-  | "auto"
-  | "esModule"
-  | "default"
-  | "defaultOnly"
-  | boolean;
+  "auto" | "esModule" | "default" | "defaultOnly" | boolean;
 
 /**
  * A function that resolves the interop type for a given module ID.

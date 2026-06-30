@@ -152,9 +152,7 @@ import { rollup } from "@asymmetric-effort/steamroller";
 
 const bundle = await rollup({
   input: "src/main.js",
-  plugins: [
-    /* ... */
-  ],
+  plugins: [/* ... */],
   external: ["lodash"],
 });
 ```

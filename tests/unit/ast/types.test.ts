@@ -722,17 +722,15 @@ describe("ESTree AST type definitions", () => {
         "get",
         "set",
       ];
-      const methods = kinds.map(
-        (kind): MethodDefinition => ({
-          type: "MethodDefinition",
-          key: id("m"),
-          value: funcExpr(),
-          kind,
-          computed: false,
-          static: false,
-          ...BASE,
-        }),
-      );
+      const methods = kinds.map((kind): MethodDefinition => ({
+        type: "MethodDefinition",
+        key: id("m"),
+        value: funcExpr(),
+        kind,
+        computed: false,
+        static: false,
+        ...BASE,
+      }));
       expect(methods).toHaveLength(4);
       expect(methods[0].kind).toBe("constructor");
       expect(methods[3].kind).toBe("set");
@@ -1047,15 +1045,13 @@ describe("ESTree AST type definitions", () => {
         "void",
         "delete",
       ];
-      const nodes = operators.map(
-        (op): UnaryExpression => ({
-          type: "UnaryExpression",
-          operator: op,
-          prefix: true,
-          argument: id("x"),
-          ...BASE,
-        }),
-      );
+      const nodes = operators.map((op): UnaryExpression => ({
+        type: "UnaryExpression",
+        operator: op,
+        prefix: true,
+        argument: id("x"),
+        ...BASE,
+      }));
       expect(nodes).toHaveLength(7);
       expect(nodes[0].operator).toBe("-");
       expect(nodes[6].operator).toBe("delete");
@@ -1086,29 +1082,25 @@ describe("ESTree AST type definitions", () => {
         "in",
         "instanceof",
       ];
-      const nodes = operators.map(
-        (op): BinaryExpression => ({
-          type: "BinaryExpression",
-          operator: op,
-          left: id("a"),
-          right: id("b"),
-          ...BASE,
-        }),
-      );
+      const nodes = operators.map((op): BinaryExpression => ({
+        type: "BinaryExpression",
+        operator: op,
+        left: id("a"),
+        right: id("b"),
+        ...BASE,
+      }));
       expect(nodes).toHaveLength(22);
     });
 
     it("should compile LogicalExpression", () => {
       const operators: ReadonlyArray<LogicalOperator> = ["||", "&&", "??"];
-      const nodes = operators.map(
-        (op): LogicalExpression => ({
-          type: "LogicalExpression",
-          operator: op,
-          left: id("a"),
-          right: id("b"),
-          ...BASE,
-        }),
-      );
+      const nodes = operators.map((op): LogicalExpression => ({
+        type: "LogicalExpression",
+        operator: op,
+        left: id("a"),
+        right: id("b"),
+        ...BASE,
+      }));
       expect(nodes).toHaveLength(3);
     });
 
@@ -1131,15 +1123,13 @@ describe("ESTree AST type definitions", () => {
         "&&=",
         "??=",
       ];
-      const nodes = operators.map(
-        (op): AssignmentExpression => ({
-          type: "AssignmentExpression",
-          operator: op,
-          left: id("x"),
-          right: lit(1),
-          ...BASE,
-        }),
-      );
+      const nodes = operators.map((op): AssignmentExpression => ({
+        type: "AssignmentExpression",
+        operator: op,
+        left: id("x"),
+        right: lit(1),
+        ...BASE,
+      }));
       expect(nodes).toHaveLength(16);
     });
 

@@ -51,9 +51,9 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@asymmetric-effort/nogginlessdom": "0.0.26",
-    "@types/node": "^26.0.0",
-    "prettier": "^3.8.4",
+    "@asymmetric-effort/nogginlessdom": "0.0.28",
+    "@types/node": "^26.0.1",
+    "prettier": "^3.9.1",
     "typescript": "^5.8.0"
   }
 }

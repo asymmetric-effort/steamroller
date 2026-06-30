@@ -377,8 +377,7 @@ describe("cli/main", () => {
 
       const watchModule = await import("../../../src/watch-entry.js");
       let capturedListener:
-        | ((event: Record<string, unknown>) => void)
-        | undefined;
+        ((event: Record<string, unknown>) => void) | undefined;
       const mockWatcher = {
         close: vi.fn(),
         on: vi.fn(
@@ -420,8 +419,7 @@ describe("cli/main", () => {
 
       const watchModule = await import("../../../src/watch-entry.js");
       let capturedListener:
-        | ((event: Record<string, unknown>) => void)
-        | undefined;
+        ((event: Record<string, unknown>) => void) | undefined;
       const mockWatcher = {
         close: vi.fn(),
         on: vi.fn(
@@ -459,8 +457,7 @@ describe("cli/main", () => {
 
       const watchModule = await import("../../../src/watch-entry.js");
       let capturedListener:
-        | ((event: Record<string, unknown>) => void)
-        | undefined;
+        ((event: Record<string, unknown>) => void) | undefined;
       const mockWatcher = {
         close: vi.fn(),
         on: vi.fn(
@@ -496,8 +493,7 @@ describe("cli/main", () => {
 
       const watchModule = await import("../../../src/watch-entry.js");
       let capturedListener:
-        | ((event: Record<string, unknown>) => void)
-        | undefined;
+        ((event: Record<string, unknown>) => void) | undefined;
       const mockWatcher = {
         close: vi.fn(),
         on: vi.fn(

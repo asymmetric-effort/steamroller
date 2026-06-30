@@ -10,11 +10,7 @@
  * or an async function returning a string.
  */
 export type AddonValue =
-  | string
-  | (() => string)
-  | (() => Promise<string>)
-  | null
-  | undefined;
+  string | (() => string) | (() => Promise<string>) | null | undefined;
 
 /**
  * Collection of all addon hooks for output generation.

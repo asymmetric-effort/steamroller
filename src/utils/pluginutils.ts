@@ -38,11 +38,7 @@ export interface AstNode {
 
 /** A single include / exclude filter entry. */
 export type FilterPattern =
-  | string
-  | RegExp
-  | ReadonlyArray<string | RegExp>
-  | null
-  | undefined;
+  string | RegExp | ReadonlyArray<string | RegExp> | null | undefined;
 
 // ---------------------------------------------------------------------------
 // Reserved words

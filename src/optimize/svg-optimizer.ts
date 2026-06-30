@@ -351,11 +351,7 @@ interface MutablePI {
 }
 
 type MutableChild =
-  | MutableElement
-  | MutableText
-  | MutableComment
-  | MutableCdata
-  | MutablePI;
+  MutableElement | MutableText | MutableComment | MutableCdata | MutablePI;
 
 interface MutableDoc {
   mode: "html" | "xml";

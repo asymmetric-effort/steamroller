@@ -93,10 +93,7 @@ export interface ExistingRawSourceMap {
 
 /** Acceptable source map input formats. */
 export type SourceMapInput =
-  | ExistingRawSourceMap
-  | string
-  | null
-  | { readonly mappings: "" };
+  ExistingRawSourceMap | string | null | { readonly mappings: "" };
 
 // ============================================================
 // Module Types
@@ -107,11 +104,7 @@ export type ModuleFormat = "amd" | "cjs" | "es" | "iife" | "system" | "umd";
 
 /** Interop mode for CJS/ESM boundary handling. */
 export type InteropType =
-  | "auto"
-  | "esModule"
-  | "default"
-  | "defaultOnly"
-  | boolean;
+  "auto" | "esModule" | "default" | "defaultOnly" | boolean;
 
 /** Detailed information about a resolved module. */
 export interface ModuleInfo {
@@ -232,10 +225,7 @@ export type EmittedFile = EmittedAsset | EmittedChunk | EmittedPrebuiltChunk;
 
 /** Controls how entry point signatures are preserved. */
 export type PreserveEntrySignaturesOption =
-  | false
-  | "strict"
-  | "allow-extension"
-  | "exports-only";
+  false | "strict" | "allow-extension" | "exports-only";
 
 /** Hash encoding character set. */
 export type HashCharacters = "base64" | "base36" | "hex";
@@ -371,9 +361,7 @@ export interface InputOptions {
 
 /** Entry point specification. */
 export type InputOption =
-  | string
-  | ReadonlyArray<string>
-  | Readonly<Record<string, string>>;
+  string | ReadonlyArray<string> | Readonly<Record<string, string>>;
 
 /** External module specification. */
 export type ExternalOption =
@@ -408,10 +396,7 @@ export interface TreeshakingOptions {
 
 /** Controls which modules are considered to have side effects. */
 export type ModuleSideEffectsOption =
-  | boolean
-  | "no-external"
-  | ReadonlyArray<string>
-  | HasModuleSideEffects;
+  boolean | "no-external" | ReadonlyArray<string> | HasModuleSideEffects;
 
 /** Predicate for determining module side effects. */
 export type HasModuleSideEffects = (id: string, external: boolean) => boolean;
@@ -466,8 +451,7 @@ export interface OutputOptions {
   readonly sourcemapExcludeSources?: boolean;
   readonly sourcemapFile?: string;
   readonly sourcemapFileNames?:
-    | string
-    | ((chunkInfo: PreRenderedChunk) => string);
+    string | ((chunkInfo: PreRenderedChunk) => string);
   readonly sourcemapIgnoreList?: SourcemapIgnoreListOption;
   readonly sourcemapPathTransform?: SourcemapPathTransformOption;
   readonly strict?: boolean;
@@ -500,8 +484,7 @@ export interface GeneratedCodeOptions {
 
 /** Mapping of external module names to global variable names. */
 export type GlobalsOption =
-  | Readonly<Record<string, string>>
-  | ((name: string) => string);
+  Readonly<Record<string, string>> | ((name: string) => string);
 
 /** Manual chunk assignment configuration. */
 export type ManualChunksOption =
@@ -516,8 +499,7 @@ export type ManualChunksOption =
 
 /** Mapping or function for rewriting external import paths. */
 export type OptionsPaths =
-  | Readonly<Record<string, string>>
-  | ((id: string) => string);
+  Readonly<Record<string, string>> | ((id: string) => string);
 
 /** Predicate for excluding sources from the source map ignore list. */
 export type SourcemapIgnoreListOption = (
@@ -969,9 +951,7 @@ export interface NormalizedOutputOptions {
   readonly sourcemapExcludeSources: boolean;
   readonly sourcemapFile: string | undefined;
   readonly sourcemapFileNames:
-    | string
-    | ((chunkInfo: PreRenderedChunk) => string)
-    | undefined;
+    string | ((chunkInfo: PreRenderedChunk) => string) | undefined;
   readonly sourcemapIgnoreList: SourcemapIgnoreListOption;
   readonly sourcemapPathTransform: SourcemapPathTransformOption | undefined;
   readonly strict: boolean;
@@ -1004,12 +984,7 @@ export interface NormalizedGeneratedCodeOptions {
 
 /** Supported buffer encoding types for file operations. */
 export type BufferEncoding =
-  | "ascii"
-  | "base64"
-  | "hex"
-  | "latin1"
-  | "utf-8"
-  | "utf8";
+  "ascii" | "base64" | "hex" | "latin1" | "utf-8" | "utf8";
 
 /** File stat information for the virtual file system. */
 export interface RollupFileStats {

@@ -929,8 +929,7 @@ describe("buildModuleGraph", () => {
     expect(ids).toContain("./shared.ts");
     // other.ts should have shared.ts as a dependency
     const otherMod = result.modules.find((m) => m.id === "./other.ts") as
-      | Module
-      | undefined;
+      Module | undefined;
     if (otherMod) {
       const hasShared = Array.from(otherMod.dependencies).some(
         (d) => d.id === "./shared.ts",

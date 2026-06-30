@@ -200,11 +200,7 @@ interface MutablePI {
 }
 
 type MutableChild =
-  | MutableElement
-  | MutableText
-  | MutableComment
-  | MutableCdata
-  | MutablePI;
+  MutableElement | MutableText | MutableComment | MutableCdata | MutablePI;
 
 // ============================================================
 // Clone AST to mutable form
