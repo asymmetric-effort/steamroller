@@ -3,4 +3,4 @@
  *
  * Kept in sync with the version field in package.json.
  */
-export const VERSION: string = "0.2.4";
+export const VERSION: string = "0.2.5";
