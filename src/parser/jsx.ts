@@ -336,14 +336,13 @@ const parseJSXElementName = (
   lexer.setPosition(endPos);
 
   let result:
-    | AST.JSXIdentifier
-    | AST.JSXMemberExpression
-    | AST.JSXNamespacedName = Object.freeze({
-    type: "JSXIdentifier" as const,
-    start: startPos,
-    end: endPos,
-    name,
-  });
+    AST.JSXIdentifier | AST.JSXMemberExpression | AST.JSXNamespacedName =
+    Object.freeze({
+      type: "JSXIdentifier" as const,
+      start: startPos,
+      end: endPos,
+      name,
+    });
 
   // Check for namespaced name: ns:tag
   if (lexer.is(TokenType.Colon)) {

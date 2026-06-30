@@ -361,8 +361,7 @@ const collectIdentifierRefs = (
       }
       // Handle decorators
       const decorators = node["decorators"] as
-        | ReadonlyArray<Record<string, unknown>>
-        | undefined;
+        ReadonlyArray<Record<string, unknown>> | undefined;
       if (decorators !== undefined) {
         for (let i = decorators.length - 1; i >= 0; i--) {
           stack.push({ node: decorators[i] });

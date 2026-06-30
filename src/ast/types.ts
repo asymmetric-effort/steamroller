@@ -397,13 +397,7 @@ export interface SequenceExpression extends BaseNode {
 
 /** Unary operator tokens. */
 export type UnaryOperator =
-  | "-"
-  | "+"
-  | "!"
-  | "~"
-  | "typeof"
-  | "void"
-  | "delete";
+  "-" | "+" | "!" | "~" | "typeof" | "void" | "delete";
 
 /** A unary expression. */
 export interface UnaryExpression extends BaseNode {
@@ -708,11 +702,7 @@ export interface JSXAttribute extends BaseNode {
   readonly type: "JSXAttribute";
   readonly name: JSXIdentifier | JSXNamespacedName;
   readonly value:
-    | Literal
-    | JSXExpressionContainer
-    | JSXElement
-    | JSXFragment
-    | null;
+    Literal | JSXExpressionContainer | JSXElement | JSXFragment | null;
 }
 
 /** A spread attribute in a JSX element ({...expr}). */
@@ -1122,9 +1112,7 @@ export type Statement =
 
 /** All declaration node types. */
 export type Declaration =
-  | VariableDeclaration
-  | FunctionDeclaration
-  | ClassDeclaration;
+  VariableDeclaration | FunctionDeclaration | ClassDeclaration;
 
 /** All TypeScript statement node types (extends Statement for TS-aware parsing). */
 export type TSStatement = Statement | TSDeclaration;

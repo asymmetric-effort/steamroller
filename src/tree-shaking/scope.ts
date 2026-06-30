@@ -12,13 +12,7 @@ import { isReference } from "../utils/ast-utils.js";
 export interface Binding {
   readonly name: string;
   readonly kind:
-    | "var"
-    | "let"
-    | "const"
-    | "function"
-    | "class"
-    | "param"
-    | "import";
+    "var" | "let" | "const" | "function" | "class" | "param" | "import";
   readonly node: AST.BaseNode;
   readonly scope: Scope;
   readonly references: Array<Reference>;

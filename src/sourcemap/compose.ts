@@ -164,7 +164,7 @@ const findSegmentForColumn = (
   let high = segments.length - 1;
   let result: ReadonlyArray<number> | null = null;
 
-  for (; low <= high; ) {
+  for (; low <= high;) {
     const mid = (low + high) >>> 1;
     const midColumn = segments[mid][0];
 

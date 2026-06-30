@@ -59,9 +59,7 @@ type WatcherEventType = "event" | "change" | "restart" | "close";
  * Union type for all listener types.
  */
 type WatcherListener =
-  | WatcherEventListener
-  | WatcherChangeListener
-  | WatcherLifecycleListener;
+  WatcherEventListener | WatcherChangeListener | WatcherLifecycleListener;
 
 /**
  * RollupWatcher orchestrates file watching and incremental rebuilds.
@@ -175,8 +173,7 @@ export class RollupWatcherImpl {
     }
 
     const changeListeners = this.listeners.get("change") as
-      | Array<WatcherChangeListener>
-      | undefined;
+      Array<WatcherChangeListener> | undefined;
     if (changeListeners) {
       for (let i = 0; i < changeListeners.length; i++) {
         changeListeners[i](filePath, { event });
@@ -273,8 +270,7 @@ export class RollupWatcherImpl {
    */
   private emitEvent(event: RollupWatcherEvent): void {
     const listeners = this.listeners.get("event") as
-      | Array<WatcherEventListener>
-      | undefined;
+      Array<WatcherEventListener> | undefined;
     if (listeners) {
       for (let i = 0; i < listeners.length; i++) {
         listeners[i](event);
@@ -287,8 +283,7 @@ export class RollupWatcherImpl {
    */
   private emitLifecycle(event: "restart" | "close"): void {
     const listeners = this.listeners.get(event) as
-      | Array<WatcherLifecycleListener>
-      | undefined;
+      Array<WatcherLifecycleListener> | undefined;
     if (listeners) {
       for (let i = 0; i < listeners.length; i++) {
         listeners[i]();

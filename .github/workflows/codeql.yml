@@ -20,11 +20,11 @@ jobs:
       matrix:
         language: [javascript-typescript]
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/codeql-init@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-      - uses: asymmetric-effort/actions/actions/codeql-autobuild@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
-      - uses: asymmetric-effort/actions/actions/codeql-analyze@ff2533dd569d39bb4d8b09d294b3ed595bf3eefb # main
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
         with:
           category: /language:${{ matrix.language }}

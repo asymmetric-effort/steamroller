@@ -11,8 +11,7 @@ export type ManualChunksFn = (moduleId: string) => string | null | undefined;
 
 /** Manual chunks configuration: either a record or a function. */
 export type ManualChunksConfig =
-  | Readonly<Record<string, ReadonlyArray<string>>>
-  | ManualChunksFn;
+  Readonly<Record<string, ReadonlyArray<string>>> | ManualChunksFn;
 
 /** Result of chunk assignment: map from chunk name to module IDs. */
 export type ChunkAssignment = Map<string, Array<string>>;

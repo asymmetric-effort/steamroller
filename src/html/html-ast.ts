@@ -110,11 +110,7 @@ export interface Doctype extends HtmlBaseNode {
 
 /** Any node that can appear as a child of an element or document. */
 export type HtmlChildNode =
-  | Element
-  | Text
-  | Comment
-  | CdataSection
-  | ProcessingInstruction;
+  Element | Text | Comment | CdataSection | ProcessingInstruction;
 
 /** Any node in the HTML AST. */
 export type HtmlNode =

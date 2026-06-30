@@ -311,8 +311,7 @@ export const normalizeOutputOptions = (
       ((relPath: string) => relPath.includes("node_modules")),
     sourcemapPathTransform:
       (options.sourcemapPathTransform as
-        | SourcemapPathTransformOption
-        | undefined) ?? undefined,
+        SourcemapPathTransformOption | undefined) ?? undefined,
     strict: options.strict ?? true,
     systemNullSetters: options.systemNullSetters ?? true,
     validate: options.validate ?? false,

@@ -25,9 +25,7 @@ export interface TreeShakeResult {
 export interface TreeShakeOptions {
   readonly enabled: boolean;
   readonly moduleSideEffects:
-    | boolean
-    | "no-external"
-    | ((id: string, external: boolean) => boolean);
+    boolean | "no-external" | ((id: string, external: boolean) => boolean);
   readonly propertyReadSideEffects: boolean | "always";
   readonly tryCatchDeoptimization: boolean;
   readonly unknownGlobalSideEffects: boolean;
