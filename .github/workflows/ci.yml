@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -67,10 +67,10 @@ jobs:
         node-version: [20, 22]
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
       - run: bun install --frozen-lockfile
@@ -97,7 +97,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Download build artifact
@@ -182,10 +182,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Install website dependencies
@@ -221,7 +221,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Install website dependencies
@@ -252,7 +252,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -283,10 +283,10 @@ jobs:
       id-token: write
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - uses: asymmetric-effort/actions/actions/setup-node@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
