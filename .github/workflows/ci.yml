@@ -195,7 +195,7 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v5
       - name: Upload pages artifact
-        uses: asymmetric-effort/actions/actions/upload-pages-artifact@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+        uses: actions/upload-pages-artifact@v4
         with:
           path: website/dist
 
