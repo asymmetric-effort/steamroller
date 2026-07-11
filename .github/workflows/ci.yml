@@ -28,7 +28,7 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: asymmetric-effort/actions/actions/setup-bun@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
         with:
           bun-version: latest
@@ -42,7 +42,7 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: asymmetric-effort/actions/actions/setup-bun@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
         with:
           bun-version: latest
@@ -66,7 +66,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node-version: [20, 22]
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: asymmetric-effort/actions/actions/setup-bun@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
         with:
           bun-version: latest
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: asymmetric-effort/actions/actions/setup-bun@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
         with:
           bun-version: latest
@@ -115,7 +115,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -150,7 +150,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - name: Download build artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -181,7 +181,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: asymmetric-effort/actions/actions/setup-bun@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
         with:
           bun-version: latest
@@ -220,7 +220,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -251,7 +251,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: asymmetric-effort/actions/actions/setup-bun@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
         with:
           bun-version: latest
@@ -282,7 +282,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@940ebd094488ead7765982278cfda3653fdbce48 # main
+      - uses: asymmetric-effort/actions/actions/checkout@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
       - uses: asymmetric-effort/actions/actions/setup-bun@57770ba97ec0391c6b2fed3f3519f2f310efe74a # main
         with:
           bun-version: latest
