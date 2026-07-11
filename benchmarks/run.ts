@@ -20,7 +20,7 @@ export interface BenchmarkConfig {
   readonly name: string;
   readonly iterations: number;
   readonly warmupIterations?: number;
-  readonly fn: () => void;
+  readonly fn: () => void | Promise<void>;
 }
 
 /** Summary of all benchmark runs. */
@@ -80,6 +80,56 @@ export const runBenchmark = (config: BenchmarkConfig): BenchmarkResult => {
 };
 
 /**
+ * Runs a single async benchmark function for the given number of iterations.
+ */
+export const runBenchmarkAsync = async (
+  config: BenchmarkConfig,
+): Promise<BenchmarkResult> => {
+  const warmup = config.warmupIterations ?? 3;
+
+  for (let i = 0; i < warmup; i++) {
+    await config.fn();
+  }
+
+  const timings: Array<number> = [];
+
+  for (let i = 0; i < config.iterations; i++) {
+    const start = performance.now();
+    await config.fn();
+    const end = performance.now();
+    timings.push(end - start);
+  }
+
+  let totalMs = 0;
+  let minMs = Infinity;
+  let maxMs = -Infinity;
+
+  for (let i = 0; i < timings.length; i++) {
+    const t = timings[i];
+    totalMs += t;
+    if (t < minMs) {
+      minMs = t;
+    }
+    if (t > maxMs) {
+      maxMs = t;
+    }
+  }
+
+  const avgMs = totalMs / config.iterations;
+  const opsPerSecond = avgMs > 0 ? 1000 / avgMs : Infinity;
+
+  return {
+    name: config.name,
+    iterations: config.iterations,
+    totalMs,
+    avgMs,
+    minMs,
+    maxMs,
+    opsPerSecond,
+  };
+};
+
+/**
  * Runs a suite of benchmarks and returns aggregated results.
  */
 export const runBenchmarkSuite = (
@@ -91,6 +141,27 @@ export const runBenchmarkSuite = (
 
   for (let i = 0; i < configs.length; i++) {
     results.push(runBenchmark(configs[i]));
+  }
+
+  return {
+    name,
+    results,
+    totalDuration: performance.now() - start,
+  };
+};
+
+/**
+ * Runs a suite of async benchmarks and returns aggregated results.
+ */
+export const runBenchmarkSuiteAsync = async (
+  name: string,
+  configs: ReadonlyArray<BenchmarkConfig>,
+): Promise<BenchmarkSuite> => {
+  const start = performance.now();
+  const results: Array<BenchmarkResult> = [];
+
+  for (let i = 0; i < configs.length; i++) {
+    results.push(await runBenchmarkAsync(configs[i]));
   }
 
   return {

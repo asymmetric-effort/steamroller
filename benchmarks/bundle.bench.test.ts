@@ -10,7 +10,7 @@ import type { RollupBuild, OutputOptions } from "../src/types.js";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { runBenchmarkSuite, formatResult } from "./run.js";
+import { runBenchmarkSuiteAsync, formatResult } from "./run.js";
 import type { BenchmarkConfig } from "./run.js";
 
 /**
@@ -77,41 +77,38 @@ describe("bundle", () => {
     rmSync(baseDir, { recursive: true, force: true });
   });
 
-  it("benchmarks bundling performance", () => {
+  it("benchmarks bundling performance", async () => {
     const configs: ReadonlyArray<BenchmarkConfig> = [
       {
         name: "bundle-small (10 modules)",
         iterations: 20,
         warmupIterations: 2,
-        fn: () => {
-          void rollup({ input: smallEntry }).then((bundle: RollupBuild) =>
-            bundle.generate(outputOptions),
-          );
+        fn: async () => {
+          const bundle: RollupBuild = await rollup({ input: smallEntry });
+          await bundle.generate(outputOptions);
         },
       },
       {
         name: "bundle-medium (50 modules)",
         iterations: 10,
         warmupIterations: 1,
-        fn: () => {
-          void rollup({ input: mediumEntry }).then((bundle: RollupBuild) =>
-            bundle.generate(outputOptions),
-          );
+        fn: async () => {
+          const bundle: RollupBuild = await rollup({ input: mediumEntry });
+          await bundle.generate(outputOptions);
         },
       },
       {
         name: "bundle-large (200 modules)",
         iterations: 5,
         warmupIterations: 1,
-        fn: () => {
-          void rollup({ input: largeEntry }).then((bundle: RollupBuild) =>
-            bundle.generate(outputOptions),
-          );
+        fn: async () => {
+          const bundle: RollupBuild = await rollup({ input: largeEntry });
+          await bundle.generate(outputOptions);
         },
       },
     ];
 
-    const suite = runBenchmarkSuite("bundle", configs);
+    const suite = await runBenchmarkSuiteAsync("bundle", configs);
     for (const result of suite.results) {
       console.log(formatResult(result));
     }
