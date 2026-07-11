@@ -211,7 +211,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: asymmetric-effort/actions/actions/deploy-pages@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+        uses: actions/deploy-pages@v4
 
   # ── Stage 8: Post-Deployment Verification (Playwright) ───────────
   verify-deployment:
