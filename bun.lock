@@ -6,8 +6,8 @@
       "name": "@asymmetric-effort/steamroller",
       "devDependencies": {
         "@asymmetric-effort/nogginlessdom": "0.0.28",
-        "@types/node": "^26.0.1",
-        "prettier": "^3.9.1",
+        "@types/node": "^26.1.0",
+        "prettier": "^3.9.4",
         "typescript": "^5.8.0",
       },
     },
@@ -15,7 +15,7 @@
   "packages": {
     "@asymmetric-effort/nogginlessdom": ["@asymmetric-effort/nogginlessdom@0.0.28", "", {}, "sha512-1SOP09xiE63dNpdBeQ+3h+UWb9LoEfQU7o3mXnVKRmN3qHhaeTuMfg7QqD7spBneTRl988n6AdF2jICGjitw2w=="],
 
-    "@types/node": ["@types/node@26.0.1", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-fc3KiUoBt6kie0N9bIW3E47vZsuaMf0PM2AaUpLCLT0s/LvX1nxAim6Fc049cNxODPpGm6qRAuUOB86SkRuPQw=="],
+    "@types/node": ["@types/node@26.1.1", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
 
     "prettier": ["prettier@3.9.4", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-yWG/o/4oJfo036EKAfK6ACAoDOfHeRHx4tuxkfBZiauURiaSmYwlpOr5LQqKtIkRD2z1PLteme2WoxEnj4tHTg=="],
 
