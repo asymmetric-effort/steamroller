@@ -54,6 +54,6 @@
     "@asymmetric-effort/nogginlessdom": "0.0.28",
     "@types/node": "^26.1.0",
     "prettier": "^3.9.4",
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   }
 }
