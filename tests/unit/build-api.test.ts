@@ -641,8 +641,8 @@ describe("build", () => {
       });
 
       const plugin = (rollupSpy.mock.calls[0][0] as any).plugins[0];
-      const resolved = plugin.resolveId("mylib");
-      expect(resolved).toContain("src/index.ts");
+      const resolved = plugin.resolveId("mylib") as string;
+      expect(resolved.replace(/\\/g, "/")).toContain("src/index.ts");
       expect(plugin.resolveId("other")).toBeNull();
     });
 
@@ -660,8 +660,8 @@ describe("build", () => {
       });
 
       const plugin = (rollupSpy.mock.calls[0][0] as any).plugins[0];
-      const resolved = plugin.resolveId("mylib/hooks");
-      expect(resolved).toContain("src/hooks");
+      const resolved = plugin.resolveId("mylib/hooks") as string;
+      expect(resolved.replace(/\\/g, "/")).toContain("src/hooks");
     });
 
     it("does not add plugins when alias is not provided", async () => {
