@@ -5,6 +5,7 @@
  * and returns an esbuild-like result object.
  */
 
+import { resolve } from "node:path";
 import { rollup } from "./rollup.js";
 import type {
   InputOptions,
@@ -13,6 +14,7 @@ import type {
   RollupLog,
   OutputChunk,
   OutputAsset,
+  Plugin,
 } from "./types.js";
 
 // ============================================================
@@ -77,6 +79,14 @@ export interface BuildOptions {
   readonly target?: string;
   /** Target platform. */
   readonly platform?: BuildPlatform;
+  /** Text to prepend to output files, keyed by file type. */
+  readonly banner?: Readonly<Record<string, string>>;
+  /** Map of import specifiers to replacement paths (resolved relative to cwd). */
+  readonly alias?: Readonly<Record<string, string>>;
+  /** Enable code splitting for ESM output. Shared modules are extracted into separate chunks. */
+  readonly splitting?: boolean;
+  /** Naming pattern for generated chunks. Supports [name] and [hash] placeholders. */
+  readonly chunkNames?: string;
 }
 
 // ============================================================
@@ -149,6 +159,22 @@ export const build = async (options: BuildOptions): Promise<BuildResult> => {
     return { outputFiles: [], errors, warnings };
   }
 
+  // Validate splitting constraints
+  if (options.splitting) {
+    if (options.outfile) {
+      errors.push({
+        text: "splitting requires outdir, not outfile — multiple chunks cannot be written to a single file",
+      });
+      return { outputFiles: [], errors, warnings };
+    }
+    if (options.format && options.format !== "esm") {
+      errors.push({
+        text: `splitting is only supported with format "esm", got "${options.format}"`,
+      });
+      return { outputFiles: [], errors, warnings };
+    }
+  }
+
   // Build the input option — single string for one entry, array for multiple
   const input: string | ReadonlyArray<string> =
     entryPoints.length === 1 ? entryPoints[0] : entryPoints;
@@ -156,10 +182,32 @@ export const build = async (options: BuildOptions): Promise<BuildResult> => {
   // Map external option
   const external: ReadonlyArray<string> | undefined = options.external;
 
+  // Build plugins array
+  const plugins: Array<Plugin> = [];
+
+  // Alias plugin: remap import specifiers to cwd-relative paths
+  if (options.alias) {
+    const aliasEntries = Object.entries(options.alias);
+    plugins.push({
+      name: "steamroller-alias",
+      resolveId(source: string) {
+        for (let i = 0; i < aliasEntries.length; i++) {
+          const [key, value] = aliasEntries[i];
+          if (source === key || source.startsWith(key + "/")) {
+            const remainder = source === key ? "" : source.slice(key.length);
+            return resolve(process.cwd(), value + remainder);
+          }
+        }
+        return null;
+      },
+    });
+  }
+
   // Translate to rollup InputOptions
   const inputOptions: InputOptions = {
     input,
     external: external as InputOptions["external"],
+    plugins: plugins.length > 0 ? plugins : undefined,
     treeshake: options.bundle !== false,
     onLog: (_level, log) => {
       const rollupLog = log as RollupLog;
@@ -187,6 +235,8 @@ export const build = async (options: BuildOptions): Promise<BuildResult> => {
     dir: outdir,
     sourcemap: mapSourcemap(options.sourcemap),
     compact: options.minify === true,
+    banner: options.banner?.js,
+    chunkFileNames: options.splitting ? options.chunkNames : undefined,
   };
 
   try {

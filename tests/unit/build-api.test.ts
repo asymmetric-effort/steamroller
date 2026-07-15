@@ -575,6 +575,178 @@ describe("build", () => {
       expect(result.errors).toHaveLength(0);
       expect(result.outputFiles.length).toBe(3);
     });
+
+    it("passes banner.js to rollup output options", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      await build({
+        entryPoints: ["entry.js"],
+        outdir: "out",
+        banner: { js: "/* copyright */" },
+      });
+
+      expect(mockBundle.generate).toHaveBeenCalledWith(
+        expect.objectContaining({ banner: "/* copyright */" }),
+      );
+    });
+
+    it("does not set banner when not provided", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      await build({ entryPoints: ["entry.js"], outdir: "out" });
+
+      expect(mockBundle.generate).toHaveBeenCalledWith(
+        expect.objectContaining({ banner: undefined }),
+      );
+    });
+
+    it("creates an alias plugin when alias is provided", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      await build({
+        entryPoints: ["entry.js"],
+        outdir: "out",
+        alias: { foo: "./src/foo.ts" },
+      });
+
+      const callArgs = rollupSpy.mock.calls[0][0] as any;
+      expect(callArgs.plugins).toBeDefined();
+      expect(callArgs.plugins.length).toBe(1);
+      expect(callArgs.plugins[0].name).toBe("steamroller-alias");
+    });
+
+    it("alias plugin resolves exact matches to cwd-relative paths", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      await build({
+        entryPoints: ["entry.js"],
+        outdir: "out",
+        alias: { mylib: "./src/index.ts" },
+      });
+
+      const plugin = (rollupSpy.mock.calls[0][0] as any).plugins[0];
+      const resolved = plugin.resolveId("mylib");
+      expect(resolved).toContain("src/index.ts");
+      expect(plugin.resolveId("other")).toBeNull();
+    });
+
+    it("alias plugin resolves subpath imports", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      await build({
+        entryPoints: ["entry.js"],
+        outdir: "out",
+        alias: { mylib: "./src" },
+      });
+
+      const plugin = (rollupSpy.mock.calls[0][0] as any).plugins[0];
+      const resolved = plugin.resolveId("mylib/hooks");
+      expect(resolved).toContain("src/hooks");
+    });
+
+    it("does not add plugins when alias is not provided", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      await build({ entryPoints: ["entry.js"], outdir: "out" });
+
+      const callArgs = rollupSpy.mock.calls[0][0] as any;
+      expect(callArgs.plugins).toBeUndefined();
+    });
+
+    it("passes chunkFileNames when splitting is enabled", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      await build({
+        entryPoints: ["a.js", "b.js"],
+        outdir: "out",
+        format: "esm",
+        splitting: true,
+        chunkNames: "chunks/[name]-[hash]",
+      });
+
+      expect(mockBundle.generate).toHaveBeenCalledWith(
+        expect.objectContaining({ chunkFileNames: "chunks/[name]-[hash]" }),
+      );
+    });
+
+    it("does not set chunkFileNames when splitting is disabled", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      await build({
+        entryPoints: ["entry.js"],
+        outdir: "out",
+        chunkNames: "chunks/[name]-[hash]",
+      });
+
+      expect(mockBundle.generate).toHaveBeenCalledWith(
+        expect.objectContaining({ chunkFileNames: undefined }),
+      );
+    });
+
+    it("allows splitting with esm format", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      const result = await build({
+        entryPoints: ["a.js", "b.js"],
+        outdir: "out",
+        format: "esm",
+        splitting: true,
+      });
+
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("allows splitting with default format", async () => {
+      const mockBundle = {
+        generate: vi.fn().mockResolvedValue({ output: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      rollupSpy.mockResolvedValue(mockBundle as any);
+
+      const result = await build({
+        entryPoints: ["a.js", "b.js"],
+        outdir: "out",
+        splitting: true,
+      });
+
+      expect(result.errors).toHaveLength(0);
+    });
   });
 
   describe("result shape", () => {
@@ -585,6 +757,49 @@ describe("build", () => {
       expect(Array.isArray(result.outputFiles)).toBe(true);
       expect(Array.isArray(result.errors)).toBe(true);
       expect(Array.isArray(result.warnings)).toBe(true);
+    });
+  });
+
+  describe("splitting validation", () => {
+    it("returns error when splitting is used with outfile", async () => {
+      const result = await build({
+        entryPoints: ["entry.js"],
+        outfile: "out.js",
+        splitting: true,
+      });
+
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].text).toContain(
+        "splitting requires outdir, not outfile",
+      );
+    });
+
+    it("returns error when splitting is used with cjs format", async () => {
+      const result = await build({
+        entryPoints: ["entry.js"],
+        outdir: "out",
+        format: "cjs",
+        splitting: true,
+      });
+
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].text).toContain(
+        'splitting is only supported with format "esm"',
+      );
+    });
+
+    it("returns error when splitting is used with iife format", async () => {
+      const result = await build({
+        entryPoints: ["entry.js"],
+        outdir: "out",
+        format: "iife",
+        splitting: true,
+      });
+
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].text).toContain(
+        'splitting is only supported with format "esm"',
+      );
     });
   });
 });

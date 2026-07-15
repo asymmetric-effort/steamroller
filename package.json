@@ -1,6 +1,6 @@
 {
   "name": "@asymmetric-effort/steamroller",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "A zero-dependency JavaScript bundler",
   "license": "MIT",
   "author": "Asymmetric Effort <info@asymmetric-effort.com>",
@@ -48,7 +48,7 @@
     "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run build && npm run test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "devDependencies": {
     "@asymmetric-effort/nogginlessdom": "0.0.28",
