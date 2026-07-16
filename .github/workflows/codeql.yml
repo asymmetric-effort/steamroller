@@ -20,7 +20,7 @@ jobs:
       matrix:
         language: [javascript-typescript]
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
       - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}

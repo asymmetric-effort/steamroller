@@ -28,8 +28,8 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -42,8 +42,8 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -66,8 +66,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node-version: [24]
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
       - uses: actions/setup-node@v4
@@ -96,8 +96,8 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -115,7 +115,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -150,7 +150,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
       - name: Download build artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -181,8 +181,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
       - uses: actions/setup-node@v4
@@ -220,7 +220,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -251,8 +251,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
@@ -282,8 +282,8 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: asymmetric-effort/actions/actions/checkout@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
-      - uses: asymmetric-effort/actions/actions/setup-bun@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+      - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
+      - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
       - uses: actions/setup-node@v4
@@ -301,7 +301,7 @@ jobs:
           [ "$TAG" = "$SRC" ] || (echo "ERROR: Tag v$TAG != src/version.ts $SRC" && exit 1)
           echo "Version verified: $PKG"
       - name: Publish to npm
-        uses: asymmetric-effort/actions/actions/npm-publish@db7bf0da04b1904428ef5244fd0a9c97cb62d88e # main
+        uses: asymmetric-effort/actions/actions/npm-publish@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           access: public
           provenance: "true"
