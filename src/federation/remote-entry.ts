@@ -44,15 +44,25 @@ export const generateModuleMap = (
     return "var __federation_module_map__ = {};\n";
   }
 
+  const pathMap = entries
+    .map(([key, path]) => `  ${JSON.stringify(key)}: ${JSON.stringify(path)}`)
+    .join(",\n");
+
   const moduleEntries = entries
-    .map(([key, path]) => {
-      return `  ${JSON.stringify(key)}: () => import(${JSON.stringify(path)})`;
+    .map(([key]) => {
+      return `  ${JSON.stringify(key)}: () => import(__federation_paths__[${JSON.stringify(key)}])`;
     })
     .join(",\n");
 
-  return ["var __federation_module_map__ = {", moduleEntries, "};", ""].join(
-    "\n",
-  );
+  return [
+    "var __federation_paths__ = {",
+    pathMap,
+    "};",
+    "var __federation_module_map__ = {",
+    moduleEntries,
+    "};",
+    "",
+  ].join("\n");
 };
 
 /**
@@ -175,12 +185,16 @@ export const generateSharedInit = (
     return "";
   }
 
+  const sharedPaths = entries
+    .map(([key]) => `  ${JSON.stringify(key)}: ${JSON.stringify(key)}`)
+    .join(",\n");
+
   const registrations = entries
     .map(([key, config]) => {
       return [
         `  __federation_shared_scope__[${JSON.stringify(key)}] = {`,
         `    version: ${JSON.stringify(config.requiredVersion)},`,
-        `    get: function() { return import(${JSON.stringify(key)}); },`,
+        `    get: function() { return import(__federation_shared_paths__[${JSON.stringify(key)}]); },`,
         `    loaded: ${config.eager},`,
         `    eager: ${config.eager}`,
         "  };",
@@ -189,6 +203,9 @@ export const generateSharedInit = (
     .join("\n");
 
   return [
+    "var __federation_shared_paths__ = {",
+    sharedPaths,
+    "};",
     "// Initialize shared scope entries",
     "(function() {",
     registrations,

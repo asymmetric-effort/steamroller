@@ -319,7 +319,7 @@ const scopeSlotted = (selector: string, attr: string): string => {
     return selector;
   }
 
-  const slotAttr = attr.replace("]", "-s]");
+  const slotAttr = attr.replaceAll("]", "-s]");
   const scoped = inner + slotAttr;
 
   if (before) {
