@@ -70,7 +70,7 @@ jobs:
       - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
       - run: bun install --frozen-lockfile
@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
       - name: Download build artifact
@@ -185,7 +185,7 @@ jobs:
       - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
       - name: Install website dependencies
@@ -221,7 +221,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: asymmetric-effort/actions/actions/checkout@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
       - name: Install website dependencies
@@ -286,7 +286,7 @@ jobs:
       - uses: asymmetric-effort/actions/actions/setup-bun@b9346f850c6159e6c7d5121f1b54bb378b8220c7 # main
         with:
           bun-version: latest
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
